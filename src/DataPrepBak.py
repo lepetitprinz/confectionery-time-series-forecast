@@ -6,12 +6,10 @@ import numpy as np
 
 
 class DataPrep(object):
-    COL_TARGET = 'sales'
     COL_DATETIME = 'dt'
     COL_DROP_SELL = ['pd_cd']
     COL_VARIABLE = {'univ': ['dt', 'sales'],
-                    'multi':  ['dt', 'sales', 'amt'],
-                    'exg': ['dt', 'sales', 'amt']}
+                    'multi':  ['dt', 'sales', 'amt']}
     COL_EXO = ['dc']
     COL_TYPE_NUM = ['sales', 'amt', 'unit_price', 'store_price']
     COL_TYPE_POS = ['sales', 'amt', 'unit_price', 'store_price']
@@ -45,9 +43,6 @@ class DataPrep(object):
         # preprocess sales dataset
         sell_in = self.prep_sales(df=sell_in)
         sell_out = self.prep_sales(df=sell_out)
-
-        sell_in[self.__class__.COL_TARGET] = sell_in[self.__class__.COL_TARGET].astype(float)
-        sell_out[self.__class__.COL_TARGET] = sell_out[self.__class__.COL_TARGET].astype(float)
 
         # Grouping
         sell_in_group = self.group(df=sell_in)
@@ -100,22 +95,17 @@ class DataPrep(object):
 
     def group(self, df: pd.DataFrame) -> dict:
         df_group = defaultdict(dict)
-        cust_list = list(df['cust_cd'].unique())
-        cust_list.append('all')
-
-        for cust in cust_list:
-            if cust != 'all':
-                filtered_cust = df[df['cust_cd'] == cust]
-            else:
-                filtered_cust = df
-            pd_list = list(filtered_cust['pd_nm'].unique())
-            pd_list.append('all')
-            for pd in pd_list:
-                if pd == 'all':
-                    filtered_pd = filtered_cust
-                else:
-                    filtered_pd = filtered_cust[filtered_cust['pd_nm'] == pd]
-                df_group[cust].update({pd: filtered_pd})
+        for group_type in self.group_type:
+            if group_type == 'all':
+                df_group[group_type].update({group_type: df})
+            elif group_type == 'pd':
+                pd_types = df['pd_nm'].unique()
+                for pd_type in pd_types:
+                    df_group[group_type].update({pd_type: df[df['pd_nm'] == pd_type]})
+            elif group_type == 'cust':
+                cust_types = df['cust_cd'].unique()
+                for cust_type in cust_types:
+                    df_group[group_type].update({cust_type: df[df['cust_cd'] == cust_type]})
 
         return df_group
 
@@ -145,27 +135,27 @@ class DataPrep(object):
         return df_group
 
     @staticmethod
-    def split_sequence(df, n_steps_in, n_steps_out):
+    def split_sequence_univ(df: pd.DataFrame, feature: str, timesteps: int, pred_steps=1):
         """
         Split univariate sequence data
         :param df: Time series data
-        :param n_steps_in:
-        :param n_steps_out:
+        :param timesteps:
         :return:
         """
-        data = df.astype('float32')
-        x = []
-        y = []
-        for i in range(len(data)):
+        data = df[feature].values
+        n = len(data)
+
+        X, y = list(), list()
+        for i in range(n):
             # find the end of this pattern
-            end_ix = i + n_steps_in
-            out_end_ix = end_ix + n_steps_out
+            end_ix = i + timesteps
+            pred_ix = end_ix + pred_steps
             # check if we are beyond the sequence
-            if out_end_ix > len(df):
+            if end_ix > n - 1:
                 break
             # gather input and output parts of the pattern
-            seq_x, seq_y = data[i:end_ix, :], data[end_ix:out_end_ix, :]
-            x.append(seq_x)
+            seq_x, seq_y = data[i:end_ix], data[end_ix:pred_ix]
+            X.append(seq_x)
             y.append(seq_y)
 
-        return np.array(x), np.array(y)
+        return np.array(X), np.array(y)

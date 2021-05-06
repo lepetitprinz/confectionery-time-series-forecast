@@ -1,12 +1,17 @@
 from DataPrep import DataPrep
+from WindowGenerator import WindowGenerator
 import config
 
 from typing import Dict, Callable, Any
+import os
 import warnings
-from math import sqrt
 
+from copy import deepcopy
 import numpy as np
 import pandas as pd
+from math import sqrt
+from datetime import timedelta
+from collections import defaultdict
 
 from sklearn.metrics import mean_squared_error
 
@@ -20,11 +25,12 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.vector_ar.var_model import VAR
 from statsmodels.tsa.statespace.varmax import VARMAX
 
+import tensorflow as tf
+from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
-from prophet import Prophet
-
+# from prophet import Prophet
 warnings.filterwarnings('ignore')
 
 
@@ -54,6 +60,8 @@ class ModelStats(object):
     """
 
     def __init__(self, sell_in, sell_out):
+        # path
+        self.save_path = os.path.join('..', 'result', 'forecast')
         # model type
         self.model_type = config.VAR_TYPE
 
@@ -67,6 +75,11 @@ class ModelStats(object):
                                                     'arima': self.arima,
                                                     'ses': self.ses,
                                                     'hw': self.hw}
+
+        self.model_multi: Dict[str, stats_method] = {'var': self.var,
+                                                     'varma': self.varma,
+                                                     'varmax': self.varmax,
+                                                     'lstm_vn': self.lstml_vanilla}
         # hyper-parameters
         self.cfg_ar = (config.LAG, config.TREND, config.SEASONAL, config.PERIOD)
         self.cfg_arma = (config.TWO_LVL_ORDER, config.FREQUENCY, config.TREND_ARMA)
@@ -74,42 +87,222 @@ class ModelStats(object):
         self.cfg_ses = (config.INIT_METHOD, config.SMOOTHING, config.OPTIMIZED)
         self.cfg_hw = (config.TREND_HW, config.DAMPED_TREND, config.SEASONAL_MTD, config.PERIOD,
                        config.USE_BOXCOX, config.REMOVE_BIAS)
+        self.cfg_var = config.LAG
+        self.cfg_varma = (config.TWO_LVL_ORDER, config.TREND)
+        self.cfg_varmax = (config.TWO_LVL_ORDER, config.TREND)
+
         self.cfg_dict = {'ar': self.cfg_ar,
                          'arma': self.cfg_arma,
                          'arima': self.cfg_arima,
                          'ses': self.cfg_ses,
-                         'hw': self.cfg_hw}
+                         'hw': self.cfg_hw,
+                         'var': self.cfg_var,
+                         'varma': self.cfg_varma,
+                         'varmax': self.cfg_varmax}
 
-    def train(self):
+    def train(self) -> dict:
+        print("Implement model training")
+        scores = pd.DataFrame()
+        best_models = deepcopy(self.df_sell)
+
+        for sell_type, cust in best_models.items():   # sell type: sell-in / sell-out
+            for cust_type, prod in cust.items():    # customer type: all / A / B / C
+                for prod_type, time in prod.items():    # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, df in time.items():    # time type: D / W
+                        if len(df) > 0:
+                            best_model, models = self.get_best_models(df=df)
+                            time[time_type] = best_model
+                            # Make accuracy score dataframe
+                            temp = pd.DataFrame({'sell_type': sell_type,
+                                                 'cust_type': cust_type,
+                                                 'prod_type': prod_type,
+                                                 'time_type': time_type,
+                                                 'model': np.array(models)[:, 0],
+                                                 'rmse': np.array(models)[:, 1]})
+                            scores = pd.concat([scores, temp])
+
+        scores.to_csv(os.path.join(self.save_path, 'scores_' + self.model_type + '.csv'),
+                      index=False, encoding='utf-8-sig')
+        print("Training model is finished\n")
+
+        return best_models
+
+    def forecast(self, best_models: dict) -> dict:
+        print("Implement model prediction")
+        forecast = {}
         if self.model_type == 'univ':
-            best_models = self.df_sell.copy()
-            for sell_type, sell in best_models.items():
-                for group_type, group in sell.items():
-                    for grp, time_range in group.items():
-                        for time_type, df in time_range.items():
-                            best_model = self.get_best_models(df=df)
-                            time_range[time_type] = best_model
+            forecast = deepcopy(self.df_sell)
+            for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
+                for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                    for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                        for time_type, df in time.items():  # time type: D / W
+                            best_model = best_models[sell_type][cust_type][prod_type][time_type][0]
+                            prediction = None
+                            if best_model in self.model_univ:
+                                prediction = self.model_univ[best_model](history=df,
+                                                                         cfg=self.cfg_dict[best_model],
+                                                                         pred_step=config.N_TEST)
+                            # else:    # Prophet model
+                            #     prediction = self.prophet(history=df.values, n_test=config.N_TEST)
+                            time[time_type] = prediction
 
-            return best_models
+        print("Model prediction is finished\n")
 
-    def predict(self, model):
-        return
+        return forecast
 
-    def get_best_models(self, df):
+    def save_result(self, forecast: dict, best_models) -> None:
+        result = pd.DataFrame()
+        for sell_type, cust in forecast.items():
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, prediction in time.items():  # time type: D / W
+                        start_dt = self.df_sell[sell_type][cust_type][prod_type][time_type].index[-1]
+                        start_dt += timedelta(days=1)
+                        dt = pd.date_range(start=start_dt, periods=config.N_TEST, freq=time_type)
+                        best_model = best_models[sell_type][cust_type][prod_type][time_type][0]
+                        temp = pd.DataFrame({'sell_type': sell_type,
+                                             'cust_type': cust_type,
+                                             'prod_type': prod_type,
+                                             'time_type': time_type,
+                                             'modle': best_model,
+                                             'dt': dt,
+                                             'prediction': prediction})
+                        result = pd.concat([result, temp])
+
+        result.to_csv(os.path.join(self.save_path, 'forecast_' + self.model_type + '.csv'),
+                      index=False, encoding='utf-8-sig')
+
+    # def save_result(self, forecast: dict) -> None:
+    #     if self.model_type == 'univ':
+    #         for sell_type, sell in forecast.items():
+    #             for group_type, group in sell.items():
+    #                 for grp, time_range in group.items():
+    #                     for time_type, prediction in time_range.items():
+    #                         start_dt = self.df_sell[sell_type][group_type][grp][time_type].index[-1]
+    #                         start_dt += timedelta(days=1)
+    #                         dt = pd.date_range(start=start_dt, periods=config.N_TEST, freq=time_type)
+    #                         result = pd.DataFrame({'dt': dt, 'prediction': prediction})
+    #                         result.to_csv(os.path.join(self.save_path, self.model_type, sell_type + '_' + group_type +
+    #                                                    '_' + grp + '_' + time_type + '.csv'), index=False)
+
+        print("Forecast results are saved")
+
+    def get_best_models(self, df) -> list:
         best_models = []
         for model in config.MODEL_CANDIDATES[self.model_type]:
-            score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
-                                                  data=df, n_test=config.N_TEST)
-            best_models.append([model, score])
+            score = 0
+            if self.model_type == 'univ':
+                if isinstance(df, pd.DataFrame):
+                    data = df.values
+                else:
+                    data = df.tolist()
+                score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
+                                                      data=data, n_test=config.N_TEST)
+            elif self.model_type == 'multi':
+                score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
+                                                       data=df, n_test=config.N_TEST)
+
+            elif self.model_type == 'exg':
+                train_size = int(len(df) * config.TRAIN_RATE)
+                train = df.iloc[:train_size, :]
+                val = df.iloc[train_size:, :]
+
+                score = self.lstml_vanilla(train=train, val=val, units=config.LSTM_UNIT)
+
+            best_models.append([model, round(score)])
 
         # prophet model
-        score = self.prophet(history=df, n_test=config.N_TEST)
-        best_models.append(['prophet', score])
+        # score = self.prophet(history=df, n_test=config.N_TEST)
+        # best_models.append(['prophet', score])
 
         best_models = sorted(best_models, key=lambda x: x[1])
 
-        return best_models[0]
+        return best_models[0], best_models
 
+    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test) -> np.array:
+        """
+        :param model: Statistical model
+        :param model_cfg: configuration
+        :param data: time series data
+        :param n_test: number of test data
+        :return:
+        """
+        # split dataset
+        train, test = self.train_test_split(data=data, n_test=n_test)
+        # history = data.values  # seed history with training dataset
+
+        predictions = []
+        for i in range(len(test)):
+            # fit model and make forecast for history
+            yhat = self.model_univ[model](history=train,
+                                          cfg=model_cfg,
+                                          pred_step=n_test-i)
+            # store err in list of predictions
+            err = self.calc_sqrt_mse(test[i:], yhat)
+            predictions.append(err)
+
+            # add actual observation to history for the next loop
+            train = np.append(train, test[i])
+
+        # estimate prediction error
+        rmse = np.mean(predictions)
+
+        return rmse
+
+    def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test) -> np.array:
+        # split dataset
+        train, test = self.train_test_split(data=data, n_test=n_test)
+        # history = data.values  # seed history with training dataset
+
+        predictions = []
+        for i in range(len(test)):
+            # fit model and make forecast for history
+            yhat = self.model_multi[model](history=train,
+                                           cfg=model_cfg,
+                                           pred_step=n_test-i)
+            # store err in list of predictions
+            err = self.calc_sqrt_mse(test[config.TARGET_COL][i:], yhat)
+            predictions.append(err)
+
+            # add actual observation to history for the next loop
+            train = train.append(test.iloc[i, :])
+
+        # estimate prediction error
+        rmse = np.mean(predictions)
+
+        return rmse
+
+    def train_test_split(self, data, n_test):
+        if self.model_type == 'univ':
+            return data[:-n_test], data[-n_test:]
+
+        elif self.model_type == 'multi':
+            return data.iloc[:-n_test, :], data.iloc[-n_test:, :]
+
+    @staticmethod
+    def calc_sqrt_mse(actual, predicted):
+        return sqrt(mean_squared_error(actual, predicted))
+
+    def score_model(self, model: str, data, n_test, cfg):
+        # convert config to a key
+        key = str(cfg)
+        result = self.walk_fwd_validation_univ(model=model, data=data, n_test=n_test,
+                                               model_cfg=cfg)
+        return model, key, result
+
+    # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
+    #     scores = [self.score_model(model=model, data=data, n_test=n_test,
+    #                                cfg=cfg) for cfg in cfg_list]
+    #     # remove empty results
+    #     scores = [score for score in scores if score[1] != None]
+    #     # sort configs by error, asc
+    #     scores.sort(key=lambda tup: tup[2])
+    #
+    #     return scores
+
+    #############################
+    # Univariate Model
+    #############################
     # Auto-regressive Model
     @stats_method
     def ar(self, history, cfg: tuple, pred_step=0):
@@ -125,16 +318,16 @@ class ModelStats(object):
         :param pred_step: prediction steps
         :return: forecast result
         """
-        l, t, s, p = cfg
-        model = AutoReg(endog=history, lags=l, trend=t, seasonal=s, period=p)
+        lag, t, s, p = cfg
+        model = AutoReg(endog=history, lags=lag, trend=t, seasonal=s, period=p)
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
-        # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step)
+        # Make multi-step prediction
+        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
 
-        return yhat[0]
+        return yhat
 
     # Auto regressive moving average model
     @stats_method
@@ -161,9 +354,9 @@ class ModelStats(object):
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step)
+        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
 
-        return yhat[0]
+        return yhat
 
     # Autoregressive integrated moving average model
     @stats_method
@@ -193,9 +386,9 @@ class ModelStats(object):
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step)
+        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
 
-        return yhat[0]
+        return yhat
 
     @stats_method
     def ses(self, history, cfg: tuple, pred_step=0):
@@ -218,9 +411,9 @@ class ModelStats(object):
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step)
+        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
 
-        return yhat[0]
+        return yhat
 
     @stats_method
     def hw(self, history, cfg: tuple, pred_step=0):
@@ -253,138 +446,152 @@ class ModelStats(object):
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step)
+        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
 
-        return yhat[0]
+        return yhat
 
-    def prophet(self, history, n_test):
-        data = history.reset_index(level=0)
-        data = data.rename(columns={'dt': 'ds', 'sales': 'y'})
-        train = data.iloc[:-n_test, :]
-        test = data.iloc[-n_test:, :]
+    # def prophet(self, history, n_test, forecast=False):
+    #
+    #     data = history.reset_index(level=0)
+    #     data = data.rename(columns={'dt': 'ds', 'sales': 'y'})
+    #
+    #     model = Prophet()
+    #     if not forecast:
+    #         train = data.iloc[:-n_test, :]
+    #         test = data.iloc[-n_test:, :]
+    #
+    #         model.fit(train)
+    #         future = model.make_future_dataframe(periods=n_test)
+    #         forecast = model.predict(future)
+    #
+    #         error = self.calc_sqrt_mse(test['y'], forecast['yhat'][-n_test:])
+    #
+    #         return error
+    #
+    #     else:
+    #         model.fit(history)
+    #         future = model.make_future_dataframe(periods=n_test)
+    #         forecast = model.predict(future)
+    #
+    #         return  forecast['yhat'][-n_test:]
 
-        model = Prophet()
-        model.fit(train)
-
-        future = model.make_future_dataframe(periods=n_test)
-        forecast = model.predict(future)
-
-        error = self.calc_sqrt_mse(test['y'], forecast['yhat'][-n_test:])
-
-        return error
-
-    @staticmethod
-    def train_test_split(data: pd.DataFrame, n_test):
-        return data.values[:-n_test], data.values[-n_test:]
-
-    @staticmethod
-    def calc_sqrt_mse(actual, predicted):
-        return sqrt(mean_squared_error(actual, predicted))
-
-    def score_model(self, model: str, data, n_test, cfg):
-        # convert config to a key
-        key = str(cfg)
-        result = self.walk_fwd_validation_univ(model=model, data=data, n_test=n_test,
-                                               model_cfg=cfg)
-        return model, key, result
-
-    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test):
+    #############################
+    # Multi-variate Model
+    #############################
+    @stats_method
+    def var(self, history: pd.DataFrame, cfg, pred_step=0):
         """
-        :param model: Statistical model
-                'ar': Autoregressive model
-                'arma': Autoregressive Moving Average model
-                'arima': Autoregressive Integrated Moving Average model
-                'varmax': Vector Autoregressive Moving Average with eXogenous regressors model
-                'hw': Holt Winters model
-        :param data:
-        :param n_test: number of test data
-        :param model_cfg: configuration
+        :param history:
+        :param cfg:
+        :param pred_step:
         :return:
         """
-        # split dataset
-        train, test = self.train_test_split(data=data, n_test=n_test)
-        # history = data.values  # seed history with training dataset
+        lag = cfg
+        # define model
+        model = VAR(history)
+        # fit model
+        model_fit = model.fit(lag)
+        # print('Coefficients: {}'.format(model_fit.params))
+        # print(model_fit.summary())
 
-        predictions = []
-        for i in range(len(test)):
-            # fit model and make forecast for history
-            yhat = self.model_univ[model](history=train,
-                                          config=model_cfg,
-                                          pred_step=n_test-i)
-            # store forecast in list of predictions
-            predictions.append(yhat)
+        # Make multi-step forecast
+        # yhat = model.predict(start=len(history), end=len(history) + pred_step - 1)
+        yhat = model_fit.forecast(y=history.values, steps=pred_step)
 
-            # add actual observation to history for the next loop
-            train = np.append(train, test[i])
+        return yhat[:, 0]
 
-        # estimate prediction error
-        error = self.calc_sqrt_mse(test, predictions)
+    # Vector Autoregressive Moving Average model
+    def varma(self, history: pd.DataFrame, cfg, pred_step=0):
+        """
+        :param history: time series data
+        :param cfg:
+                o: order (p, q)
+                    p: Trend autoregression order
+                    q: Trend moving average order
+                t: trend ('n', 'c', 't', 'ct')
+                    n: No trend
+                    c: Constant only
+                    t: Time trend only
+                    ct: Constant and time trend
+        :param pred_step: prediction steps
+        :return: forecast result
+        """
+        o, t = cfg
+        # define model
+        model = VARMAX(history.astype(float),  order=o, trend=t)
+        # fit model
+        model_fit = model.fit()
+        # print('Coefficients: {}'.format(model_fit.params))
+        # print(model_fit.summary())
 
-        return error
+        # Make multi-step forecast
+        yhat = model_fit.forecast(y=history.values, steps=pred_step)
 
-    # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
-    #     scores = [self.score_model(model=model, data=data, n_test=n_test,
-    #                                cfg=cfg) for cfg in cfg_list]
-    #     # remove empty results
-    #     scores = [score for score in scores if score[1] != None]
-    #     # sort configs by error, asc
-    #     scores.sort(key=lambda tup: tup[2])
-    #
-    #     return scores
+        return yhat.iloc[:, 0]
 
+    # Vector Autoregressive Moving Average with eXogenous regressors model
+    def varmax(self, history: pd.DataFrame, data_exog: pd.DataFrame, cfg, pred_step=0):
+        """
+        :param history: time series data
+        :param data_exog: exogenous data
+        :param cfg:
+                o: order (p, q)
+                    p: Trend autoregression order
+                    q: Trend moving average order
+                t: trend ('n', 'c', 't', 'ct')
+                    n: No trend
+                    c: Constant only
+                    t: Time trend only
+                    ct: Constant and time trend
+        :param pred_step: prediction steps
+        :return: forecast result
+        """
+        o, t = cfg
+        # define model
+        model = VARMAX(history, exog=data_exog,  order=o, trend=t)
+        # fit model
+        model_fit = model.fit()
+        # print('Coefficients: {}'.format(model_fit.params))
+        # print(model_fit.summary())
 
-class ModelLstm(object):
-    def __init__(self, sell_in, sell_out):
-        self.df_sell_in = sell_in
-        self.df_sell_out = sell_out
-        # Hyperparameters
-        self.lstm_unit = config.LSTM_UNIT
-        self.epochs = config.EPOCHS
-        self.batch_size = config.BATCH_SIZE
+        # Make multi-step forecast
+        yhat = model_fit.forecast(y=history.values, steps=pred_step)
 
-    def lstml_vanilla(self, train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame,
-                      units: int, timesteps: int, pred_steps=1):
+        return yhat[:, 0]
 
-        x_train, y_train = self.preprocessing.split_sequence_univ(df=train, feature='Close',
-                                                                  timesteps=timesteps, pred_steps=pred_steps)
-        x_val, y_val = self.preprocessing.split_sequence_univ(df=val, feature='Close',
-                                                              timesteps=timesteps, pred_steps=pred_steps)
-        x_test, y_test = self.preprocessing.split_sequence_univ(df=test, feature='Close',
-                                                                timesteps=timesteps, pred_steps=pred_steps)
-        # Reshape
-        n_features = 1
-        x_train = self.lstm_data_reshape(data=x_train, n_feature=n_features)
-        x_val = self.lstm_data_reshape(data=x_val, n_feature=n_features)
-        x_test = self.lstm_data_reshape(data=x_test, n_feature=n_features)
+    def lstml_vanilla(self, train: pd.DataFrame, val: pd.DataFrame, units: int):
+        x_train, y_train = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
+                                                   n_steps_out=config.N_TEST)
+        x_val, y_val = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
+                                               n_steps_out=config.N_TEST)
+
+        n_features = x_train.shape[2]
+        # x_train = self.lstm_data_reshape(data=x_train, n_feature=n_features)
+        # x_val = self.lstm_data_reshape(data=x_val, n_feature=n_features)
 
         # Build model
         model = Sequential()
-        model.add(LSTM(units=units, activation='relu', input_shape=(timesteps, n_features)))
-        model.add(Dense(1, activation='sigmoid'))
-        model.compile(optimizer='adam', loss='mae')
+        model.add(LSTM(units=units, activation='relu', return_sequences=True,
+                  input_shape=(config.N_TEST, n_features)))
+        model.add(Dense(n_features))
+        model.compile(optimizer='adam', loss=self.root_mean_squared_error)
 
         history = model.fit(x_train, y_train,
-                            epochs=self.__class__.EPOCHS,
-                            batch_size=self.__class__.BATCH_SIZE,
+                            epochs=config.EPOCHS,
+                            batch_size=config.BATCH_SIZE,
                             validation_data=(x_val, y_val),
                             shuffle=False)
-        # self.history = history
 
-        predictions = model.predict(x_test, verbose=0)
-        rmse = self.calc_sqrt_mse(actual=y_test, predicted=predictions)
-        print('Test RMSE: %.3f' % rmse)
+        rmse = np.mean(history.history['val_loss'])
 
-        return predictions, rmse
+        return rmse
 
     def lstml_stacked(self, train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame,
                       units: int, timesteps: int, pred_steps=1):
 
-        x_train, y_train = self.preprocessing.split_sequence_univ(df=train, feature='Close',
-                                                                  timesteps=timesteps, pred_steps=pred_steps)
-        x_val, y_val = self.preprocessing.split_sequence_univ(df=val, feature='Close',
-                                                              timesteps=timesteps, pred_steps=pred_steps)
-        x_test, y_test = self.preprocessing.split_sequence_univ(df=test, feature='Close',
-                                                                timesteps=timesteps, pred_steps=pred_steps)
+        x_train, y_train = DataPrep.split_sequence(df=train, time_steps=config.LAG, pred_steps=config.N_TEST)
+        x_val, y_val = DataPrep.split_sequence(df=val, time_steps=config.LAG, pred_steps=config.N_TEST)
+        x_test, y_test = DataPrep.split_sequence(df=test, time_steps=config.LAG, pred_steps=config.N_TEST)
         # reshape data
         n_features = 1
         x_train = self.lstm_data_reshape(data=x_train, n_feature=n_features)
@@ -396,12 +603,12 @@ class ModelLstm(object):
         model.add(LSTM(units=units, activation='relu', return_sequences=True, input_shape=(timesteps, n_features)))
         model.add(LSTM(units=units, activation='relu'))
         model.add(Dense(1, activation='sigmoid'))
-        model.compile(optimizer='adam', loss='mae')
+        model.compile(optimizer='adam', loss=self.root_mean_squared_error)
 
         # fit model
         history = model.fit(x_train, y_train,
-                            epochs=self.__class__.EPOCHS,
-                            batch_size=self.__class__.BATCH_SIZE,
+                            epochs=config.EPOCHS,
+                            batch_size=config.BATCH_SIZE,
                             validation_data=(x_val, y_val),
                             shuffle=False)
         self.history = history
@@ -420,3 +627,6 @@ class ModelLstm(object):
     def calc_sqrt_mse(actual, predicted):
         return sqrt(mean_squared_error(actual, predicted))
 
+    @staticmethod
+    def root_mean_squared_error(y_true, y_pred):
+        return K.sqrt(K.mean(K.square(y_pred - y_true)))
