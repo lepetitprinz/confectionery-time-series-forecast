@@ -35,9 +35,9 @@ warnings.filterwarnings('ignore')
 
 
 # Model Decorator
-def stats_method(func: Callable) -> Callable[[object, list, tuple, int], Any]:
-    def wrapper(obj: object, history: list, cfg: tuple, pred_step: int):
-        return func(obj, history, cfg, pred_step)
+def stats_method(func: Callable) -> Callable[[object, list, tuple, int, str], Any]:
+    def wrapper(obj: object, history: list, cfg: tuple, time_type: str, pred_step: int):
+        return func(obj, history, cfg, time_type, pred_step)
     return wrapper
 
 
@@ -79,13 +79,13 @@ class ModelStats(object):
         self.model_multi: Dict[str, stats_method] = {'var': self.var,
                                                      'varma': self.varma,
                                                      'varmax': self.varmax,
-                                                     'lstm_vn': self.lstml_vanilla}
+                                                     'lstm_vn': self.lstml_train}
         # hyper-parameters
         self.cfg_ar = (config.LAG, config.TREND, config.SEASONAL, config.PERIOD)
         self.cfg_arma = (config.TWO_LVL_ORDER, config.FREQUENCY, config.TREND_ARMA)
         self.cfg_arima = (config.THR_LVL_ORDER, config.FREQUENCY, config.TREND_ARMA)
         self.cfg_ses = (config.INIT_METHOD, config.SMOOTHING, config.OPTIMIZED)
-        self.cfg_hw = (config.TREND_HW, config.DAMPED_TREND, config.SEASONAL_MTD, config.PERIOD,
+        self.cfg_hw = (config.TREND_HW, config.DAMPED_TREND, config.SEASONAL_HW, config.PERIOD,
                        config.USE_BOXCOX, config.REMOVE_BIAS)
         self.cfg_var = config.LAG
         self.cfg_varma = (config.TWO_LVL_ORDER, config.TREND)
@@ -108,9 +108,9 @@ class ModelStats(object):
         for sell_type, cust in best_models.items():   # sell type: sell-in / sell-out
             for cust_type, prod in cust.items():    # customer type: all / A / B / C
                 for prod_type, time in prod.items():    # product type: all / 가 / 나 / 다 / 라 / 바
-                    for time_type, df in time.items():    # time type: D / W
+                    for time_type, df in time.items():    # time type: D / W / M
                         if len(df) > 0:
-                            best_model, models = self.get_best_models(df=df)
+                            best_model, models = self.get_best_models(df=df, time_type=time_type)
                             time[time_type] = best_model
                             # Make accuracy score dataframe
                             temp = pd.DataFrame({'sell_type': sell_type,
@@ -130,21 +130,27 @@ class ModelStats(object):
     def forecast(self, best_models: dict) -> dict:
         print("Implement model prediction")
         forecast = {}
-        if self.model_type == 'univ':
-            forecast = deepcopy(self.df_sell)
-            for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
-                for cust_type, prod in cust.items():  # customer type: all / A / B / C
-                    for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, df in time.items():  # time type: D / W
-                            best_model = best_models[sell_type][cust_type][prod_type][time_type][0]
-                            prediction = None
-                            if best_model in self.model_univ:
-                                prediction = self.model_univ[best_model](history=df,
-                                                                         cfg=self.cfg_dict[best_model],
-                                                                         pred_step=config.N_TEST)
-                            # else:    # Prophet model
-                            #     prediction = self.prophet(history=df.values, n_test=config.N_TEST)
-                            time[time_type] = prediction
+        forecast = deepcopy(self.df_sell)
+        for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, df in time.items():  # time type: D / W
+                        best_model = best_models[sell_type][cust_type][prod_type][time_type][0]
+                        prediction = None
+                        if self.model_type == 'univ':
+                            prediction = self.model_univ[best_model](history=df,
+                                                                     cfg=self.cfg_dict[best_model],
+                                                                     time_type=time_type,
+                                                                     pred_step=config.N_TEST)
+                        elif self.model_type == 'multi':
+                            prediction = self.model_multi[best_model](history=df,
+                                                                      cfg=self.cfg_dict[best_model],
+                                                                      time_type=time_type,
+                                                                      pred_step=config.N_TEST)
+                        elif self.model_type == 'exg':
+                            prediction = self.lstml_predict(train=df, units=config.LSTM_UNIT)
+
+                        time[time_type] = np.round(prediction)
 
         print("Model prediction is finished\n")
 
@@ -164,7 +170,7 @@ class ModelStats(object):
                                              'cust_type': cust_type,
                                              'prod_type': prod_type,
                                              'time_type': time_type,
-                                             'modle': best_model,
+                                             'model': best_model,
                                              'dt': dt,
                                              'prediction': prediction})
                         result = pd.concat([result, temp])
@@ -187,7 +193,7 @@ class ModelStats(object):
 
         print("Forecast results are saved")
 
-    def get_best_models(self, df) -> list:
+    def get_best_models(self, df, time_type: str) -> list:
         best_models = []
         for model in config.MODEL_CANDIDATES[self.model_type]:
             score = 0
@@ -197,17 +203,17 @@ class ModelStats(object):
                 else:
                     data = df.tolist()
                 score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
-                                                      data=data, n_test=config.N_TEST)
+                                                      data=data, n_test=config.N_TEST, time_type=time_type)
             elif self.model_type == 'multi':
                 score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
-                                                       data=df, n_test=config.N_TEST)
+                                                       data=df, n_test=config.N_TEST, time_type=time_type)
 
             elif self.model_type == 'exg':
-                train_size = int(len(df) * config.TRAIN_RATE)
-                train = df.iloc[:train_size, :]
-                val = df.iloc[train_size:, :]
+                # train_size = int(len(df) * config.TRAIN_RATE)
+                # train = df.iloc[:train_size, :]
+                # val = df.iloc[train_size:, :]
 
-                score = self.lstml_vanilla(train=train, val=val, units=config.LSTM_UNIT)
+                score = self.lstml_train(train=df, units=config.LSTM_UNIT)
 
             best_models.append([model, round(score)])
 
@@ -219,7 +225,7 @@ class ModelStats(object):
 
         return best_models[0], best_models
 
-    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test) -> np.array:
+    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test, time_type) -> np.array:
         """
         :param model: Statistical model
         :param model_cfg: configuration
@@ -236,7 +242,8 @@ class ModelStats(object):
             # fit model and make forecast for history
             yhat = self.model_univ[model](history=train,
                                           cfg=model_cfg,
-                                          pred_step=n_test-i)
+                                          pred_step=n_test-i,
+                                          time_type=time_type)
             # store err in list of predictions
             err = self.calc_sqrt_mse(test[i:], yhat)
             predictions.append(err)
@@ -249,7 +256,7 @@ class ModelStats(object):
 
         return rmse
 
-    def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test) -> np.array:
+    def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test, time_type) -> np.array:
         # split dataset
         train, test = self.train_test_split(data=data, n_test=n_test)
         # history = data.values  # seed history with training dataset
@@ -259,6 +266,7 @@ class ModelStats(object):
             # fit model and make forecast for history
             yhat = self.model_multi[model](history=train,
                                            cfg=model_cfg,
+                                           time_type=time_type,
                                            pred_step=n_test-i)
             # store err in list of predictions
             err = self.calc_sqrt_mse(test[config.TARGET_COL][i:], yhat)
@@ -305,7 +313,7 @@ class ModelStats(object):
     #############################
     # Auto-regressive Model
     @stats_method
-    def ar(self, history, cfg: tuple, pred_step=0):
+    def ar(self, history, cfg: tuple, time_type, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -319,7 +327,7 @@ class ModelStats(object):
         :return: forecast result
         """
         lag, t, s, p = cfg
-        model = AutoReg(endog=history, lags=lag, trend=t, seasonal=s, period=p)
+        model = AutoReg(endog=history, lags=lag[time_type], trend=t, seasonal=s, period=p[time_type])
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
@@ -331,7 +339,7 @@ class ModelStats(object):
 
     # Auto regressive moving average model
     @stats_method
-    def arma(self, history, cfg: tuple, pred_step=0):
+    def arma(self, history, cfg: tuple, time_type, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -347,7 +355,7 @@ class ModelStats(object):
         """
         o, f, t = cfg
         # define model
-        model = ARMA(endog=history, order=o, freq=f)
+        model = ARMA(endog=history, order=o[time_type], freq=f)
         # fit model
         model_fit = model.fit(trend=t, disp=0)
         # print('Coefficients: {}'.format(model_fit.params))
@@ -360,7 +368,7 @@ class ModelStats(object):
 
     # Autoregressive integrated moving average model
     @stats_method
-    def arima(self, history, cfg: tuple, pred_step=0):
+    def arima(self, history, cfg: tuple, time_type, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -379,7 +387,7 @@ class ModelStats(object):
         """
         o, f, t = cfg
         # define model
-        model = ARIMA(history, order=o, trend=t, freq=f)
+        model = ARIMA(history, order=o[time_type], trend=t, freq=f)
         # fit model
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
@@ -391,7 +399,7 @@ class ModelStats(object):
         return yhat
 
     @stats_method
-    def ses(self, history, cfg: tuple, pred_step=0):
+    def ses(self, history, cfg: tuple, time_type, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -416,7 +424,7 @@ class ModelStats(object):
         return yhat
 
     @stats_method
-    def hw(self, history, cfg: tuple, pred_step=0):
+    def hw(self, history, cfg: tuple, time_type, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -438,8 +446,8 @@ class ModelStats(object):
         """
         t, d, s, p, b, r = cfg
         # define model
-        model = ExponentialSmoothing(history, trend=t, damped_trend=d, seasonal=s, seasonal_periods=p,
-                                     use_boxcox=b)
+        model = ExponentialSmoothing(history, trend=t, damped_trend=d, seasonal=s,
+                                     seasonal_periods=p[time_type], use_boxcox=b)
         # fit model
         model_fit = model.fit(optimized=True, remove_bias=r)     # fit model
         # print('Coefficients: {}'.format(model_fit.params))
@@ -479,7 +487,7 @@ class ModelStats(object):
     # Multi-variate Model
     #############################
     @stats_method
-    def var(self, history: pd.DataFrame, cfg, pred_step=0):
+    def var(self, history: pd.DataFrame, cfg, time_type, pred_step=0):
         """
         :param history:
         :param cfg:
@@ -490,7 +498,7 @@ class ModelStats(object):
         # define model
         model = VAR(history)
         # fit model
-        model_fit = model.fit(lag)
+        model_fit = model.fit(lag[time_type])
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
@@ -559,65 +567,56 @@ class ModelStats(object):
 
         return yhat[:, 0]
 
-    def lstml_vanilla(self, train: pd.DataFrame, val: pd.DataFrame, units: int):
+    def lstml_train(self, train: pd.DataFrame, units: int):
         x_train, y_train = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
                                                    n_steps_out=config.N_TEST)
-        x_val, y_val = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
-                                               n_steps_out=config.N_TEST)
+        # x_val, y_val = DataPrep.split_sequence(df=val.values, n_steps_in=config.TIME_STEP,
+        #                                        n_steps_out=config.N_TEST)
 
         n_features = x_train.shape[2]
-        # x_train = self.lstm_data_reshape(data=x_train, n_feature=n_features)
-        # x_val = self.lstm_data_reshape(data=x_val, n_feature=n_features)
 
         # Build model
         model = Sequential()
         model.add(LSTM(units=units, activation='relu', return_sequences=True,
                   input_shape=(config.N_TEST, n_features)))
+        # model.add(LSTM(units=units, activation='relu'))
         model.add(Dense(n_features))
         model.compile(optimizer='adam', loss=self.root_mean_squared_error)
 
         history = model.fit(x_train, y_train,
                             epochs=config.EPOCHS,
                             batch_size=config.BATCH_SIZE,
-                            validation_data=(x_val, y_val),
-                            shuffle=False)
+                            shuffle=False,
+                            verbose=0)
 
-        rmse = np.mean(history.history['val_loss'])
+        rmse = np.mean(history.history['loss'])
 
         return rmse
 
-    def lstml_stacked(self, train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame,
-                      units: int, timesteps: int, pred_steps=1):
+    def lstml_predict(self, train: pd.DataFrame, units: int):
+        x_train, y_train = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
+                                                   n_steps_out=config.N_TEST)
+        n_features = x_train.shape[2]
 
-        x_train, y_train = DataPrep.split_sequence(df=train, time_steps=config.LAG, pred_steps=config.N_TEST)
-        x_val, y_val = DataPrep.split_sequence(df=val, time_steps=config.LAG, pred_steps=config.N_TEST)
-        x_test, y_test = DataPrep.split_sequence(df=test, time_steps=config.LAG, pred_steps=config.N_TEST)
-        # reshape data
-        n_features = 1
-        x_train = self.lstm_data_reshape(data=x_train, n_feature=n_features)
-        x_val = self.lstm_data_reshape(data=x_val, n_feature=n_features)
-        x_test = self.lstm_data_reshape(data=x_test, n_feature=n_features)
-
-        # build model
+        # Build model
         model = Sequential()
-        model.add(LSTM(units=units, activation='relu', return_sequences=True, input_shape=(timesteps, n_features)))
-        model.add(LSTM(units=units, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
+        model.add(LSTM(units=units, activation='relu', return_sequences=True,
+                  input_shape=(config.N_TEST, n_features)))
+        # model.add(LSTM(units=units, activation='relu'))
+        model.add(Dense(n_features))
         model.compile(optimizer='adam', loss=self.root_mean_squared_error)
 
-        # fit model
-        history = model.fit(x_train, y_train,
-                            epochs=config.EPOCHS,
-                            batch_size=config.BATCH_SIZE,
-                            validation_data=(x_val, y_val),
-                            shuffle=False)
-        self.history = history
+        model.fit(x_train, y_train,
+                  epochs=config.EPOCHS,
+                  batch_size=config.BATCH_SIZE,
+                  shuffle=False,
+                  verbose=0)
+        test = x_train[-1]
+        test = test.reshape(1, test.shape[0], test.shape[1])
 
-        predictions = model.predict(x_test, verbose=0)
-        rmse = self.calc_sqrt_mse(actual=y_test, predicted=predictions)
-        print('Test RMSE: %.3f' % rmse)
+        predictions = model.predict(test, verbose=0)
 
-        return predictions, rmse
+        return predictions[0][:, 0]
 
     @staticmethod
     def lstm_data_reshape(data: np.array, n_feature: int):

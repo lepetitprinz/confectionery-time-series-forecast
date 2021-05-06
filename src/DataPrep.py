@@ -64,7 +64,7 @@ class DataPrep(object):
         self.sell_in_prep = resampled_sell_in
         self.sell_out_prep = resampled_sell_out
 
-        print("Data preprocessing is finished")
+        print("Data preprocessing is finished\n")
 
     def prep_sales(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert columns to lower case
