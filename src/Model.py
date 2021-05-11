@@ -75,11 +75,9 @@ class ModelStats(object):
                                                     'arima': self.arima,
                                                     'ses': self.ses,
                                                     'hw': self.hw}
+        self.model_multi: Dict[str, stats_method] = {'var': self.var}
+        self.model_exg: Dict[str, stats_method] = {'lstm_vn': self.lstml_train}
 
-        self.model_multi: Dict[str, stats_method] = {'var': self.var,
-                                                     'varma': self.varma,
-                                                     'varmax': self.varmax,
-                                                     'lstm_vn': self.lstml_train}
         # hyper-parameters
         self.cfg_ar = (config.LAG, config.TREND, config.SEASONAL, config.PERIOD)
         self.cfg_arma = (config.TWO_LVL_ORDER, config.FREQUENCY, config.TREND_ARMA)
@@ -129,7 +127,6 @@ class ModelStats(object):
 
     def forecast(self, best_models: dict) -> dict:
         print("Implement model prediction")
-        forecast = {}
         forecast = deepcopy(self.df_sell)
         for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
             for cust_type, prod in cust.items():  # customer type: all / A / B / C
@@ -156,6 +153,38 @@ class ModelStats(object):
 
         return forecast
 
+    def forecast_all(self) -> dict:
+        print("Implement model prediction")
+        forecast = deepcopy(self.df_sell)
+        for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, df in time.items():  # time type: D / W
+                        pred_all = {}
+                        if self.model_type == 'univ':
+                            for model in self.model_univ:
+                                prediction = self.model_univ[model](history=df,
+                                                                    cfg=self.cfg_dict[model],
+                                                                    time_type=time_type,
+                                                                    pred_step=config.N_TEST)
+                                pred_all[model] = np.round(prediction)
+                        elif self.model_type == 'multi':
+                            for model in self.model_multi:
+                                prediction = self.model_multi[model](history=df,
+                                                                     cfg=self.cfg_dict[model],
+                                                                     time_type=time_type,
+                                                                     pred_step=config.N_TEST)
+                                pred_all[model] = np.round(prediction)
+                        elif self.model_type == 'exg':
+                            prediction = self.lstml_predict(train=df, units=config.LSTM_UNIT)
+                            pred_all['lstm'] = np.round(prediction)
+
+                        time[time_type] = pred_all
+
+        print("Model prediction is finished\n")
+
+        return forecast
+
     def save_result(self, forecast: dict, best_models) -> None:
         result = pd.DataFrame()
         for sell_type, cust in forecast.items():
@@ -177,21 +206,31 @@ class ModelStats(object):
 
         result.to_csv(os.path.join(self.save_path, 'forecast_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
+        print("Forecast results are saved\n")
 
-    # def save_result(self, forecast: dict) -> None:
-    #     if self.model_type == 'univ':
-    #         for sell_type, sell in forecast.items():
-    #             for group_type, group in sell.items():
-    #                 for grp, time_range in group.items():
-    #                     for time_type, prediction in time_range.items():
-    #                         start_dt = self.df_sell[sell_type][group_type][grp][time_type].index[-1]
-    #                         start_dt += timedelta(days=1)
-    #                         dt = pd.date_range(start=start_dt, periods=config.N_TEST, freq=time_type)
-    #                         result = pd.DataFrame({'dt': dt, 'prediction': prediction})
-    #                         result.to_csv(os.path.join(self.save_path, self.model_type, sell_type + '_' + group_type +
-    #                                                    '_' + grp + '_' + time_type + '.csv'), index=False)
+    def save_result_all(self, forecast: dict) -> None:
+        result = pd.DataFrame()
+        for sell_type, cust in forecast.items():
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, prediction in time.items():  # time type: D / W
+                        for model, pred_result in prediction.items():
+                            start_dt = self.df_sell[sell_type][cust_type][prod_type][time_type].index[-1]
+                            start_dt += timedelta(days=1)
+                            dt = pd.date_range(start=start_dt, periods=config.N_TEST, freq=time_type)
+                            temp = pd.DataFrame({'sell_type': sell_type,
+                                                 'cust_type': cust_type,
+                                                 'prod_type': prod_type,
+                                                 'time_type': time_type,
+                                                 'model': model,
+                                                 'dt': dt,
+                                                 'prediction': pred_result})
+                            result = pd.concat([result, temp])
 
-        print("Forecast results are saved")
+        result.to_csv(os.path.join(self.save_path, 'forecast_all_' + self.model_type + '.csv'),
+                      index=False, encoding='utf-8-sig')
+
+        print("Forecast results are saved\n")
 
     def get_best_models(self, df, time_type: str) -> list:
         best_models = []
@@ -234,18 +273,18 @@ class ModelStats(object):
         :return:
         """
         # split dataset
-        train, test = self.train_test_split(data=data, n_test=n_test)
+        train, test = self.train_test_split(data=data, train_size=config.TRAIN_RATE)
         # history = data.values  # seed history with training dataset
 
         predictions = []
-        for i in range(len(test)):
+        for i in range(len(test) - n_test + 1):
             # fit model and make forecast for history
             yhat = self.model_univ[model](history=train,
                                           cfg=model_cfg,
-                                          pred_step=n_test-i,
+                                          pred_step=n_test,
                                           time_type=time_type)
             # store err in list of predictions
-            err = self.calc_sqrt_mse(test[i:], yhat)
+            err = self.calc_sqrt_mse(test[i: i+n_test], yhat)
             predictions.append(err)
 
             # add actual observation to history for the next loop
@@ -258,18 +297,18 @@ class ModelStats(object):
 
     def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test, time_type) -> np.array:
         # split dataset
-        train, test = self.train_test_split(data=data, n_test=n_test)
+        train, test = self.train_test_split(data=data, train_size=config.TRAIN_RATE)
         # history = data.values  # seed history with training dataset
 
         predictions = []
-        for i in range(len(test)):
+        for i in range(len(test) - n_test + 1):
             # fit model and make forecast for history
             yhat = self.model_multi[model](history=train,
                                            cfg=model_cfg,
                                            time_type=time_type,
-                                           pred_step=n_test-i)
+                                           pred_step=n_test)
             # store err in list of predictions
-            err = self.calc_sqrt_mse(test[config.TARGET_COL][i:], yhat)
+            err = self.calc_sqrt_mse(test[config.TARGET_COL][i: i+n_test], yhat)
             predictions.append(err)
 
             # add actual observation to history for the next loop
@@ -280,12 +319,13 @@ class ModelStats(object):
 
         return rmse
 
-    def train_test_split(self, data, n_test):
+    def train_test_split(self, data, train_size):
+        data_length = len(data)
         if self.model_type == 'univ':
-            return data[:-n_test], data[-n_test:]
+            return data[: int(data_length * train_size)], data[int(data_length * train_size):]
 
         elif self.model_type == 'multi':
-            return data.iloc[:-n_test, :], data.iloc[-n_test:, :]
+            return data.iloc[:int(data_length * train_size), :], data.iloc[int(data_length * train_size):, :]
 
     @staticmethod
     def calc_sqrt_mse(actual, predicted):
@@ -586,6 +626,7 @@ class ModelStats(object):
         history = model.fit(x_train, y_train,
                             epochs=config.EPOCHS,
                             batch_size=config.BATCH_SIZE,
+                            validation_split=1-config.TRAIN_RATE,
                             shuffle=False,
                             verbose=0)
 

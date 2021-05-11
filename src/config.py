@@ -1,29 +1,28 @@
 import os
 
-# path
+# Result Method configuration
+BEST_OR_ALL = 'all'    # all / best
+
+# Path configuration
 BASE_DIR = os.path.join('..', 'data')
 SELL_IN_DIR = os.path.join(BASE_DIR, 'sales_sell_in.csv')
 SELL_OUT_DIR = os.path.join(BASE_DIR, 'sales_sell_out.csv')
 
-# Data setting
-# VAR_TYPE = 'univ'    # univ / multi
+# Data configuration
 TARGET_COL = 'sales'
-VAR_TYPE = 'multi'    # univ / multi / exg
+VAR_TYPE = 'exg'    # univ / multi / exg
 GROUP_TYPE = ['pd', 'cust', 'all']    # pd / cust / all
-RESAMPLE_RULE = ['D', 'W', 'M']    # Data resampling rule (Day, Week, Month)
+RESAMPLE_RULE = ['W']    # D / W / M    Data resampling rule (Day, Week, Month)
 
-# MODEL Candidates
+# MODEL configuration
+TRAIN_RATE = 0.7
 MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'ses', 'hw'],
-                    'multi': ['var'],     #'multi': ['var'],
+                    'multi': ['var'],
                     'exg': ['lstm_vn']}
-
-# MODEL_CANDIDATES = {'univ': ['ar'],
-#                     'multi': ['var'],
-#                     'exg': ['varmax']}
 
 # Statistical Model Hyper-parameters
 # Configurations of each model
-N_TEST = 6      # prediction
+N_TEST = 12      # prediction
 
 LAG = {'D': 7, 'W': 1, 'M': 1}      # AR
 SEASONAL = True                     # AR
@@ -49,8 +48,7 @@ USE_BOXCOX = None       # Holt-Winters
 REMOVE_BIAS = True      # Holt-Winters
 
 # Deep Learning Hyper-parameters
-TRAIN_RATE = 0.7
-TIME_STEP = 6    # 4 weeks
+TIME_STEP = 12   # 4 weeks
 LSTM_UNIT = 32
 EPOCHS = 50
 BATCH_SIZE = 32
