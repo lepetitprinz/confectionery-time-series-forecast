@@ -6,7 +6,7 @@ import numpy as np
 
 
 class DataPrep(object):
-    COL_TARGET = 'sales'
+    COL_TARGET = 'amt'
     COL_DATETIME = 'dt'
     COL_DROP_SELL = ['pd_cd']
     COL_VARIABLE = {'univ': ['dt', 'amt'],

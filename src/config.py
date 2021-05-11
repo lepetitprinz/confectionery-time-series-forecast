@@ -50,5 +50,5 @@ REMOVE_BIAS = True      # Holt-Winters
 # Deep Learning Hyper-parameters
 TIME_STEP = 12   # 4 weeks
 LSTM_UNIT = 32
-EPOCHS = 50
+EPOCHS = 100
 BATCH_SIZE = 32

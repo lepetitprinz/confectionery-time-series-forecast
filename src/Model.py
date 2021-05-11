@@ -13,6 +13,8 @@ from datetime import timedelta
 from collections import defaultdict
 
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 # Univariate Statistical Models
 from statsmodels.tsa.ar_model import AutoReg
@@ -96,6 +98,8 @@ class ModelStats(object):
                          'var': self.cfg_var,
                          'varma': self.cfg_varma,
                          'varmax': self.cfg_varmax}
+
+        self.epoch_best = 0
 
     def train(self) -> dict:
         print("Implement model training")
@@ -607,10 +611,13 @@ class ModelStats(object):
         return yhat[:, 0]
 
     def lstml_train(self, train: pd.DataFrame, units: int):
-        x_train, y_train = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
+        # scaling
+        scaler = MinMaxScaler()
+        train_scaled = scaler.fit_transform(train)
+        train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
+
+        x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
                                                    n_steps_out=config.N_TEST)
-        # x_val, y_val = DataPrep.split_sequence(df=val.values, n_steps_in=config.TIME_STEP,
-        #                                        n_steps_out=config.N_TEST)
 
         n_features = x_train.shape[2]
 
@@ -628,13 +635,19 @@ class ModelStats(object):
                             validation_split=1-config.TRAIN_RATE,
                             shuffle=False,
                             verbose=0)
+        self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
 
         rmse = np.mean(history.history['loss'])
 
         return rmse
 
     def lstml_predict(self, train: pd.DataFrame, units: int):
-        x_train, y_train = DataPrep.split_sequence(df=train.values, n_steps_in=config.TIME_STEP,
+        # scaling
+        scaler = MinMaxScaler()
+        train_scaled = scaler.fit_transform(train)
+        train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
+
+        x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
                                                    n_steps_out=config.N_TEST)
         n_features = x_train.shape[2]
 
@@ -647,7 +660,7 @@ class ModelStats(object):
         model.compile(optimizer='adam', loss=self.root_mean_squared_error)
 
         model.fit(x_train, y_train,
-                  epochs=config.EPOCHS,
+                  epochs=self.epoch_best,
                   batch_size=config.BATCH_SIZE,
                   shuffle=False,
                   verbose=0)
@@ -655,8 +668,9 @@ class ModelStats(object):
         test = test.reshape(1, test.shape[0], test.shape[1])
 
         predictions = model.predict(test, verbose=0)
+        predictions = scaler.inverse_transform(predictions[0])
 
-        return predictions[0][:, 0]
+        return predictions[:, 0]
 
     @staticmethod
     def lstm_data_reshape(data: np.array, n_feature: int):
