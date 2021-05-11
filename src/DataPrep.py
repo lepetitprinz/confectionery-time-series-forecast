@@ -9,12 +9,12 @@ class DataPrep(object):
     COL_TARGET = 'sales'
     COL_DATETIME = 'dt'
     COL_DROP_SELL = ['pd_cd']
-    COL_VARIABLE = {'univ': ['dt', 'sales'],
-                    'multi':  ['dt', 'sales', 'amt'],
-                    'exg': ['dt', 'sales', 'amt']}
+    COL_VARIABLE = {'univ': ['dt', 'amt'],
+                    'multi':  ['dt', 'amt', 'sales'],
+                    'exg': ['dt', 'amt', 'sales']}
     COL_EXO = ['dc']
-    COL_TYPE_NUM = ['sales', 'amt', 'unit_price', 'store_price']
-    COL_TYPE_POS = ['sales', 'amt', 'unit_price', 'store_price']
+    COL_TYPE_NUM = ['amt', 'sales', 'unit_price', 'store_price']
+    COL_TYPE_POS = ['amt', 'sales', 'unit_price', 'store_price']
 
     def __init__(self):
         # Path

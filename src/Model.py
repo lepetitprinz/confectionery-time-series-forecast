@@ -1,5 +1,4 @@
 from DataPrep import DataPrep
-from WindowGenerator import WindowGenerator
 import config
 
 from typing import Dict, Callable, Any

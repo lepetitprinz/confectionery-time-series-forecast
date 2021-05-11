@@ -1,7 +1,7 @@
 import os
 
 # Result Method configuration
-BEST_OR_ALL = 'all'    # all / best
+BEST_OR_ALL = 'best'    # all / best
 
 # Path configuration
 BASE_DIR = os.path.join('..', 'data')
@@ -9,7 +9,7 @@ SELL_IN_DIR = os.path.join(BASE_DIR, 'sales_sell_in.csv')
 SELL_OUT_DIR = os.path.join(BASE_DIR, 'sales_sell_out.csv')
 
 # Data configuration
-TARGET_COL = 'sales'
+TARGET_COL = 'amt'
 VAR_TYPE = 'exg'    # univ / multi / exg
 GROUP_TYPE = ['pd', 'cust', 'all']    # pd / cust / all
 RESAMPLE_RULE = ['W']    # D / W / M    Data resampling rule (Day, Week, Month)
