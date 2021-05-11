@@ -98,7 +98,8 @@ class DataPrep(object):
 
         return df
 
-    def group(self, df: pd.DataFrame) -> dict:
+    @staticmethod
+    def group(df: pd.DataFrame) -> dict:
         df_group = defaultdict(dict)
         cust_list = list(df['cust_cd'].unique())
         cust_list.append('all')
@@ -110,12 +111,12 @@ class DataPrep(object):
                 filtered_cust = df
             pd_list = list(filtered_cust['pd_nm'].unique())
             pd_list.append('all')
-            for pd in pd_list:
-                if pd == 'all':
+            for prod in pd_list:
+                if prod == 'all':
                     filtered_pd = filtered_cust
                 else:
-                    filtered_pd = filtered_cust[filtered_cust['pd_nm'] == pd]
-                df_group[cust].update({pd: filtered_pd})
+                    filtered_pd = filtered_cust[filtered_cust['pd_nm'] == prod]
+                df_group[cust].update({prod: filtered_pd})
 
         return df_group
 
@@ -130,7 +131,7 @@ class DataPrep(object):
     def resample(self, df_group: dict) -> dict:
         """
         Data Resampling
-        :param df: time series dataset
+        :param df_group: time series dataset
         :return:
         """
         for group in df_group.values():

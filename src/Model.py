@@ -10,10 +10,8 @@ import numpy as np
 import pandas as pd
 from math import sqrt
 from datetime import timedelta
-from collections import defaultdict
 
 from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 
 # Univariate Statistical Models
@@ -26,7 +24,6 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.vector_ar.var_model import VAR
 from statsmodels.tsa.statespace.varmax import VARMAX
 
-import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
@@ -235,7 +232,7 @@ class ModelStats(object):
 
         print("Forecast results are saved\n")
 
-    def get_best_models(self, df, time_type: str) -> list:
+    def get_best_models(self, df, time_type: str) -> tuple:
         best_models = []
         for model in config.MODEL_CANDIDATES[self.model_type]:
             score = 0
@@ -257,7 +254,10 @@ class ModelStats(object):
 
                 score = self.lstml_train(train=df, units=config.LSTM_UNIT)
 
-            best_models.append([model, round(score)])
+            if self.model_type != 'exg':
+                best_models.append([model, round(score)])
+            else:
+                best_models.append([model, score])
 
         # prophet model
         # score = self.prophet(history=df, n_test=config.N_TEST)
@@ -273,6 +273,7 @@ class ModelStats(object):
         :param model_cfg: configuration
         :param data: time series data
         :param n_test: number of test data
+        :param time_type: Data Time range
         :return:
         """
         # split dataset
@@ -338,7 +339,7 @@ class ModelStats(object):
         # convert config to a key
         key = str(cfg)
         result = self.walk_fwd_validation_univ(model=model, data=data, n_test=n_test,
-                                               model_cfg=cfg)
+                                               model_cfg=cfg, time_type=config.RESAMPLE_RULE)
         return model, key, result
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
@@ -366,6 +367,10 @@ class ModelStats(object):
                     nc: No Constant
                 s: seasonal (bool)
                 p: period (Only used if seasonal is True)
+        :param time_type: Data Time range
+                M: month
+                W: week
+                D: day
         :param pred_step: prediction steps
         :return: forecast result
         """
@@ -393,6 +398,10 @@ class ModelStats(object):
                 t: trend ('c', 'nc')
                     c: Constant
                     nc: No constant
+        :param time_type: Data Time range
+                M: month
+                W: week
+                D: day
         :param pred_step: prediction steps
         :return: forecast result
         """
@@ -425,6 +434,10 @@ class ModelStats(object):
                     c: Constant only
                     t: Time trend only
                     ct: Constant and time trend
+        :param time_type: Data Time range
+                M: month
+                W: week
+                D: day
         :param pred_step: prediction steps
         :return: forecast result
         """
@@ -450,10 +463,15 @@ class ModelStats(object):
                     - Method for initialize the recursions
                 l: smoothing level (float)
                 o: optimized or not (bool)
+        :param time_type: Data Time range
+                M: month
+                W: week
+                D: day
         :param pred_step: prediction steps
         :return: forecast result
         """
         i, s, o = cfg
+        _ = time_type
         # define model
         model = SimpleExpSmoothing(history, initialization_method=i)
         # fit model
@@ -484,6 +502,10 @@ class ModelStats(object):
                 r: remove_bias (bool)
                     - Remove bias from forecast values and fitted values by enforcing that the average residual is
                       equal to zero
+        :param time_type: Data Time range
+                M: month
+                W: week
+                D: day
         :param pred_step: prediction steps
         :return: forecast result
         """
@@ -534,6 +556,10 @@ class ModelStats(object):
         """
         :param history:
         :param cfg:
+        :param time_type: Data Time range
+                M: month
+                W: week
+                D: day
         :param pred_step:
         :return:
         """
@@ -552,7 +578,8 @@ class ModelStats(object):
         return yhat[:, 0]
 
     # Vector Autoregressive Moving Average model
-    def varma(self, history: pd.DataFrame, cfg, pred_step=0):
+    @staticmethod
+    def varma(history: pd.DataFrame, cfg, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -578,10 +605,11 @@ class ModelStats(object):
         # Make multi-step forecast
         yhat = model_fit.forecast(y=history.values, steps=pred_step)
 
-        return yhat.iloc[:, 0]
+        return yhat[:, 0]
 
     # Vector Autoregressive Moving Average with eXogenous regressors model
-    def varmax(self, history: pd.DataFrame, data_exog: pd.DataFrame, cfg, pred_step=0):
+    @staticmethod
+    def varmax(history: pd.DataFrame, data_exog: pd.DataFrame, cfg, pred_step=0):
         """
         :param history: time series data
         :param data_exog: exogenous data
@@ -637,7 +665,7 @@ class ModelStats(object):
                             verbose=0)
         self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
 
-        rmse = np.mean(history.history['loss'])
+        rmse = min(history.history['val_loss'])
 
         return rmse
 
@@ -675,10 +703,6 @@ class ModelStats(object):
     @staticmethod
     def lstm_data_reshape(data: np.array, n_feature: int):
         return data.reshape((data.shape[0], data.shape[1], n_feature))
-
-    @staticmethod
-    def calc_sqrt_mse(actual, predicted):
-        return sqrt(mean_squared_error(actual, predicted))
 
     @staticmethod
     def root_mean_squared_error(y_true, y_pred):

@@ -12,7 +12,7 @@ if config.BEST_OR_ALL == "all":
     forecast = model_stats.forecast_all()
     model_stats.save_result_all(forecast=forecast)
 
-#Results of best Model
+# Results of best Model
 elif config.BEST_OR_ALL == 'best':
     best_models = model_stats.train()
     forecast = model_stats.forecast(best_models=best_models)
