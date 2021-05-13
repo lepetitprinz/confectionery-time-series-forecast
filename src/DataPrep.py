@@ -25,6 +25,7 @@ class DataPrep(object):
         # Dataset
         self.sell_in_prep = None
         self.sell_out_prep = None
+        self.prod_group = config.PROD_GROUP
 
         # Smoothing
         self.smooth_yn = config.SMOOTH_YN
@@ -46,6 +47,7 @@ class DataPrep(object):
         sell_in = self.prep_sales(df=sell_in)
         sell_out = self.prep_sales(df=sell_out)
 
+        # convert target data type to float
         sell_in[config.COL_TARGET] = sell_in[config.COL_TARGET].astype(float)
         sell_out[config.COL_TARGET] = sell_out[config.COL_TARGET].astype(float)
 
@@ -80,6 +82,10 @@ class DataPrep(object):
         if config.CRT_TARGET_YN:
             df = self.correct_target(df=df)
 
+        # add product group column
+        group_func = np.vectorize(self.group_product)
+        df['prod_group'] = group_func(df['pd_nm'].to_numpy())
+
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.COL_DROP_SELL)
 
@@ -108,27 +114,65 @@ class DataPrep(object):
 
         return df
 
+    def group_product(self, prod):
+        return self.prod_group[prod]
+
     @staticmethod
     def group(df: pd.DataFrame) -> dict:
-        df_group = defaultdict(dict)
+        df_group = defaultdict(lambda: defaultdict(dict))
         cust_list = list(df['cust_cd'].unique())
         cust_list.append('all')
 
+        # Split customer group
         for cust in cust_list:
             if cust != 'all':
                 filtered_cust = df[df['cust_cd'] == cust]
             else:
                 filtered_cust = df
-            pd_list = list(filtered_cust['pd_nm'].unique())
-            pd_list.append('all')
-            for prod in pd_list:
-                if prod == 'all':
-                    filtered_pd = filtered_cust
+
+            # Split product group
+            pd_group_list = list(filtered_cust['prod_group'].unique())
+            pd_group_list.append('all')
+            for prod_group in pd_group_list:
+                if prod_group == 'all':
+                    filtered_prod_group = filtered_cust
                 else:
-                    filtered_pd = filtered_cust[filtered_cust['pd_nm'] == prod]
-                df_group[cust].update({prod: filtered_pd})
+                    filtered_prod_group = filtered_cust[filtered_cust['prod_group'] == prod_group]
+
+                # Split product
+                pd_list = list(filtered_prod_group['pd_nm'].unique())
+                if len(pd_list) > 1:
+                    pd_list.append('all')
+                for prod in pd_list:
+                    if prod == 'all':
+                        filtered_pd = filtered_prod_group
+                    else:
+                        filtered_pd = filtered_prod_group[filtered_prod_group['pd_nm'] == prod]
+                    df_group[cust][prod_group].update({prod: filtered_pd})
 
         return df_group
+
+    # @staticmethod
+    # def group_bak(df: pd.DataFrame) -> dict:
+    #     df_group = defaultdict(dict)
+    #     cust_list = list(df['cust_cd'].unique())
+    #     cust_list.append('all')
+    #
+    #     for cust in cust_list:
+    #         if cust != 'all':
+    #             filtered_cust = df[df['cust_cd'] == cust]
+    #         else:
+    #             filtered_cust = df
+    #         pd_list = list(filtered_cust['pd_nm'].unique())
+    #         pd_list.append('all')
+    #         for prod in pd_list:
+    #             if prod == 'all':
+    #                 filtered_pd = filtered_cust
+    #             else:
+    #                 filtered_pd = filtered_cust[filtered_cust['pd_nm'] == prod]
+    #             df_group[cust].update({prod: filtered_pd})
+    #
+    #     return df_group
 
     def set_features(self, df_group: dict) -> dict:
         for group in df_group.values():

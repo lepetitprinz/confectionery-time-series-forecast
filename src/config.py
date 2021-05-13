@@ -12,7 +12,11 @@ CRT_TARGET_YN = True    # Correct target variable or not
 COL_TOTAL = {'univ': ['dt', COL_TARGET],    # univ: datetime + target
              'multi': ['dt', COL_TARGET, 'sales'],
              'exg': ['dt', COL_TARGET, 'sales']}
+
 COL_EXO = ['dc']    # Exogenous variables
+
+# Product group configuration
+PROD_GROUP = {'가': 'g1', '나': 'g1', '다': 'g2', '라': 'g2', '마': 'g3', '바': 'g3'}
 
 # Outlier handling configuration
 SMOOTH_YN = True    # True / False    Smoothing or not
