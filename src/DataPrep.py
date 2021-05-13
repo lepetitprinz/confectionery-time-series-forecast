@@ -6,13 +6,7 @@ import numpy as np
 
 
 class DataPrep(object):
-    COL_TARGET = 'amt'
-    COL_DATETIME = 'dt'
     COL_DROP_SELL = ['pd_cd']
-    COL_VARIABLE = {'univ': ['dt', 'amt'],
-                    'multi':  ['dt', 'amt', 'sales'],
-                    'exg': ['dt', 'amt', 'sales']}
-    COL_EXO = ['dc']
     COL_TYPE_NUM = ['amt', 'sales', 'unit_price', 'store_price']
     COL_TYPE_POS = ['amt', 'sales', 'unit_price', 'store_price']
 
@@ -46,8 +40,8 @@ class DataPrep(object):
         sell_in = self.prep_sales(df=sell_in)
         sell_out = self.prep_sales(df=sell_out)
 
-        sell_in[self.__class__.COL_TARGET] = sell_in[self.__class__.COL_TARGET].astype(float)
-        sell_out[self.__class__.COL_TARGET] = sell_out[self.__class__.COL_TARGET].astype(float)
+        sell_in[config.COL_TARGET] = sell_in[config.COL_TARGET].astype(float)
+        sell_out[config.COL_TARGET] = sell_out[config.COL_TARGET].astype(float)
 
         # Grouping
         sell_in_group = self.group(df=sell_in)
@@ -74,7 +68,7 @@ class DataPrep(object):
         df = df.drop(columns=self.__class__.COL_DROP_SELL)
 
         # convert date column to datetime
-        df[self.__class__.COL_DATETIME] = pd.to_datetime(df[self.__class__.COL_DATETIME], format='%Y%m%d')
+        df[config.COL_DATETIME] = pd.to_datetime(df[config.COL_DATETIME], format='%Y%m%d')
 
         # remove ',' from numbers and
         # for col in self.__class__.COL_TYPE_NUM:
@@ -123,7 +117,7 @@ class DataPrep(object):
     def set_features(self, df_group: dict) -> dict:
         for group in df_group.values():
             for key, val in group.items():
-                val = val[self.__class__.COL_VARIABLE[self.variable_type]]
+                val = val[config.COL_TOTAL[self.variable_type]]
                 group[key] = val
 
         return df_group
@@ -138,7 +132,7 @@ class DataPrep(object):
             for key, val in group.items():
                 resampled = defaultdict(dict)
                 for rule in self.time_rule:
-                    val_dt = val.set_index(self.__class__.COL_DATETIME)
+                    val_dt = val.set_index(config.COL_DATETIME)
                     val_dt = val_dt.resample(rule=rule).sum()
                     resampled[rule] = val_dt
                 group[key] = resampled

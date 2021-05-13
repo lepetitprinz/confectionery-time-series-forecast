@@ -58,8 +58,6 @@ class ModelStats(object):
     """
 
     def __init__(self, sell_in, sell_out):
-        # path
-        self.save_path = os.path.join('..', 'result', 'forecast')
         # model type
         self.model_type = config.VAR_TYPE
 
@@ -119,7 +117,7 @@ class ModelStats(object):
                                                  'rmse': np.array(models)[:, 1]})
                             scores = pd.concat([scores, temp])
 
-        scores.to_csv(os.path.join(self.save_path, 'scores_' + self.model_type + '.csv'),
+        scores.to_csv(os.path.join(config.SAVE_DIR, 'scores_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
         print("Training model is finished\n")
 
@@ -204,7 +202,7 @@ class ModelStats(object):
                                              'prediction': prediction})
                         result = pd.concat([result, temp])
 
-        result.to_csv(os.path.join(self.save_path, 'forecast_' + self.model_type + '.csv'),
+        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
         print("Forecast results are saved\n")
 
@@ -227,7 +225,7 @@ class ModelStats(object):
                                                  'prediction': pred_result})
                             result = pd.concat([result, temp])
 
-        result.to_csv(os.path.join(self.save_path, 'forecast_all_' + self.model_type + '.csv'),
+        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast_all_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
 
         print("Forecast results are saved\n")
@@ -308,7 +306,7 @@ class ModelStats(object):
                                            time_type=time_type,
                                            pred_step=n_test)
             # store err in list of predictions
-            err = self.calc_sqrt_mse(test[config.TARGET_COL][i: i+n_test], yhat)
+            err = self.calc_sqrt_mse(test[config.COL_TARGET][i: i + n_test], yhat)
             predictions.append(err)
 
             # add actual observation to history for the next loop
