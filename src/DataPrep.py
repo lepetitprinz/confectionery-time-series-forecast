@@ -1,5 +1,6 @@
 import config
 
+import copy
 from collections import defaultdict
 import pandas as pd
 import numpy as np
@@ -24,6 +25,11 @@ class DataPrep(object):
         # Dataset
         self.sell_in_prep = None
         self.sell_out_prep = None
+
+        # Smoothing
+        self.smooth_yn = config.SMOOTH_YN
+        self.smooth_method = config.SMOOTH_METHOD
+        self.smooth_rate = config.SMOOTH_RATE
 
         # run data preprocessing
         self.preprocess()
@@ -144,13 +150,33 @@ class DataPrep(object):
                 for rule in self.time_rule:
                     val_dt = val.set_index(config.COL_DATETIME)
                     val_dt = val_dt.resample(rule=rule).sum()
+                    if self.smooth_yn:
+                        val_dt = self.smoothing(df=val_dt)
                     resampled[rule] = val_dt
                 group[key] = resampled
 
         return df_group
 
+    def smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
+        for i, col in enumerate(df.columns):
+            min_val = 0
+            max_val = 0
+            if self.smooth_method == 'quantile':
+                min_val = df[col].quantile(self.smooth_rate)
+                max_val = df[col].quantile(1 - self.smooth_rate)
+            elif self.smooth_method == 'sigma':
+                mean = np.mean(df[col].values)
+                std = np.std(df[col].values)
+                min_val = mean - 2 * std
+                max_val = mean + 2 * std
+
+            df[col] = np.where(df[col].values < min_val, min_val, df[col].values)
+            df[col] = np.where(df[col].values > max_val, max_val, df[col].values)
+
+        return df
+
     @staticmethod
-    def split_sequence(df, n_steps_in, n_steps_out):
+    def split_sequence(df, n_steps_in, n_steps_out) -> tuple:
         """
         Split univariate sequence data
         :param df: Time series data

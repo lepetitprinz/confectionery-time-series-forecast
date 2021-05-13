@@ -57,7 +57,7 @@ class ModelStats(object):
         - VARMAX model (Vector Autoregressive Moving Average with eXogenous regressors model)
     """
 
-    def __init__(self, sell_in, sell_out):
+    def __init__(self, sell_in: dict, sell_out: dict):
         # model type
         self.model_type = config.VAR_TYPE
 
@@ -65,7 +65,11 @@ class ModelStats(object):
         self.df_sell = {'sell_in': sell_in,
                         'sell_out': sell_out}
 
-        self.scenario = ''
+        # set scenario
+        if not config.CRT_TARGET_YN:
+            self.scenario = 's1'
+        else:
+            self.scenario = 's2'
 
         # model
         self.model_univ: Dict[str, stats_method] = {'ar': self.ar,
@@ -103,12 +107,6 @@ class ModelStats(object):
         scores = pd.DataFrame()
         best_models = deepcopy(self.df_sell)
 
-        # set scenario
-        if not config.CRT_TARGET_YN:
-            self.scenario = 's1'
-        else:
-            self.scenario = 's2'
-
         for sell_type, cust in best_models.items():   # sell type: sell-in / sell-out
             for cust_type, prod in cust.items():    # customer type: all / A / B / C
                 for prod_type, time in prod.items():    # product type: all / 가 / 나 / 다 / 라 / 바
@@ -123,7 +121,8 @@ class ModelStats(object):
                                                  'time_type': time_type,
                                                  'model': np.array(models)[:, 0],
                                                  'rmse': np.array(models)[:, 1],
-                                                 'scenario': self.scenario})
+                                                 'scenario': self.scenario,
+                                                 'smoothing': config.SMOOTH_YN})
                             scores = pd.concat([scores, temp])
 
         scores.to_csv(os.path.join(config.SAVE_DIR, 'scores_' + self.model_type + '.csv'),
@@ -208,7 +207,9 @@ class ModelStats(object):
                                              'time_type': time_type,
                                              'model': best_model,
                                              'dt': dt,
-                                             'prediction': prediction})
+                                             'prediction': prediction,
+                                             'scenario': self.scenario,
+                                             'smoothing': config.SMOOTH_YN})
                         result = pd.concat([result, temp])
 
         result.to_csv(os.path.join(config.SAVE_DIR, 'forecast_' + self.model_type + '.csv'),
@@ -231,7 +232,9 @@ class ModelStats(object):
                                                  'time_type': time_type,
                                                  'model': model,
                                                  'dt': dt,
-                                                 'prediction': pred_result})
+                                                 'prediction': pred_result,
+                                                 'scenario': self.scenario,
+                                                 'smoothing': config.SMOOTH_YN})
                             result = pd.concat([result, temp])
 
         result.to_csv(os.path.join(config.SAVE_DIR, 'forecast_all_' + self.model_type + '.csv'),
@@ -335,10 +338,10 @@ class ModelStats(object):
             return data.iloc[:int(data_length * train_size), :], data.iloc[int(data_length * train_size):, :]
 
     @staticmethod
-    def calc_sqrt_mse(actual, predicted):
+    def calc_sqrt_mse(actual, predicted) -> float:
         return sqrt(mean_squared_error(actual, predicted))
 
-    def score_model(self, model: str, data, n_test, cfg):
+    def score_model(self, model: str, data, n_test, cfg) -> tuple:
         # convert config to a key
         key = str(cfg)
         result = self.walk_fwd_validation_univ(model=model, data=data, n_test=n_test,
@@ -641,7 +644,7 @@ class ModelStats(object):
 
         return yhat[:, 0]
 
-    def lstm_train(self, train: pd.DataFrame, units: int):
+    def lstm_train(self, train: pd.DataFrame, units: int) -> float:
         # scaling
         scaler = MinMaxScaler()
         train_scaled = scaler.fit_transform(train)
@@ -672,7 +675,7 @@ class ModelStats(object):
 
         return rmse
 
-    def lstm_predict(self, train: pd.DataFrame, units: int):
+    def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
         # scaling
         scaler = MinMaxScaler()
         train_scaled = scaler.fit_transform(train)
@@ -704,7 +707,7 @@ class ModelStats(object):
         return predictions[:, 0]
 
     @staticmethod
-    def lstm_data_reshape(data: np.array, n_feature: int):
+    def lstm_data_reshape(data: np.array, n_feature: int) -> np.array:
         return data.reshape((data.shape[0], data.shape[1], n_feature))
 
     @staticmethod
