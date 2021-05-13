@@ -8,10 +8,14 @@ SAVE_DIR = os.path.join('..', 'result', 'forecast')
 
 # Data configuration
 COL_TARGET = 'amt'    # Target variable
+CRT_TARGET_YN = True    # Correct raget variable or not
 COL_TOTAL = {'univ': ['dt', COL_TARGET],    # univ: datetime + target
              'multi': ['dt', COL_TARGET, 'sales'],
              'exg': ['dt', COL_TARGET, 'sales']}
 COL_EXO = ['dc']    # Exogenous variables
+
+# Outlier configuration (Smoothing)
+SMOOTH_YN = True
 
 # Datetime configuration
 COL_DATETIME = 'dt'    # Datetime format column

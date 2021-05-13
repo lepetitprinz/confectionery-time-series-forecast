@@ -65,6 +65,8 @@ class ModelStats(object):
         self.df_sell = {'sell_in': sell_in,
                         'sell_out': sell_out}
 
+        self.scenario = ''
+
         # model
         self.model_univ: Dict[str, stats_method] = {'ar': self.ar,
                                                     'arma': self.arma,
@@ -101,6 +103,12 @@ class ModelStats(object):
         scores = pd.DataFrame()
         best_models = deepcopy(self.df_sell)
 
+        # set scenario
+        if not config.CRT_TARGET_YN:
+            self.scenario = 's1'
+        else:
+            self.scenario = 's2'
+
         for sell_type, cust in best_models.items():   # sell type: sell-in / sell-out
             for cust_type, prod in cust.items():    # customer type: all / A / B / C
                 for prod_type, time in prod.items():    # product type: all / 가 / 나 / 다 / 라 / 바
@@ -114,7 +122,8 @@ class ModelStats(object):
                                                  'prod_type': prod_type,
                                                  'time_type': time_type,
                                                  'model': np.array(models)[:, 0],
-                                                 'rmse': np.array(models)[:, 1]})
+                                                 'rmse': np.array(models)[:, 1],
+                                                 'scenario': self.scenario})
                             scores = pd.concat([scores, temp])
 
         scores.to_csv(os.path.join(config.SAVE_DIR, 'scores_' + self.model_type + '.csv'),

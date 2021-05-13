@@ -60,9 +60,19 @@ class DataPrep(object):
 
         print("Data preprocessing is finished\n")
 
+    @ staticmethod
+    def correct_target(df: pd.DataFrame) -> pd.DataFrame:
+        df[config.COL_TARGET] = np.round(df['sales'] / df['store_price'])
+
+        return df
+
     def prep_sales(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert columns to lower case
         df.columns = [col.lower() for col in df.columns]
+
+        # Correct target or not
+        if config.CRT_TARGET_YN:
+            df = self.correct_target(df=df)
 
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.COL_DROP_SELL)
