@@ -5,10 +5,10 @@ from typing import Dict, Callable, Any
 import os
 import warnings
 
-from copy import deepcopy
 import numpy as np
 import pandas as pd
 from math import sqrt
+from copy import deepcopy
 from datetime import timedelta
 
 from sklearn.metrics import mean_squared_error
@@ -74,7 +74,7 @@ class ModelStats(object):
                                                     'ses': self.ses,
                                                     'hw': self.hw}
         self.model_multi: Dict[str, stats_method] = {'var': self.var}
-        self.model_exg: Dict[str, stats_method] = {'lstm_vn': self.lstml_train}
+        self.model_exg: Dict[str, stats_method] = {'lstm_vn': self.lstm_train}
 
         # hyper-parameters
         self.cfg_ar = (config.LAG, config.TREND, config.SEASONAL, config.PERIOD)
@@ -145,7 +145,7 @@ class ModelStats(object):
                                                                       time_type=time_type,
                                                                       pred_step=config.N_TEST)
                         elif self.model_type == 'exg':
-                            prediction = self.lstml_predict(train=df, units=config.LSTM_UNIT)
+                            prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
 
                         time[time_type] = np.round(prediction)
 
@@ -176,7 +176,7 @@ class ModelStats(object):
                                                                      pred_step=config.N_TEST)
                                 pred_all[model] = np.round(prediction)
                         elif self.model_type == 'exg':
-                            prediction = self.lstml_predict(train=df, units=config.LSTM_UNIT)
+                            prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
                             pred_all['lstm'] = np.round(prediction)
 
                         time[time_type] = pred_all
@@ -248,11 +248,7 @@ class ModelStats(object):
                                                        data=df, n_test=config.N_TEST, time_type=time_type)
 
             elif self.model_type == 'exg':
-                # train_size = int(len(df) * config.TRAIN_RATE)
-                # train = df.iloc[:train_size, :]
-                # val = df.iloc[train_size:, :]
-
-                score = self.lstml_train(train=df, units=config.LSTM_UNIT)
+                score = self.lstm_train(train=df, units=config.LSTM_UNIT)
 
             if self.model_type != 'exg':
                 best_models.append([model, round(score)])
@@ -638,7 +634,7 @@ class ModelStats(object):
 
         return yhat[:, 0]
 
-    def lstml_train(self, train: pd.DataFrame, units: int):
+    def lstm_train(self, train: pd.DataFrame, units: int):
         # scaling
         scaler = MinMaxScaler()
         train_scaled = scaler.fit_transform(train)
@@ -669,7 +665,7 @@ class ModelStats(object):
 
         return rmse
 
-    def lstml_predict(self, train: pd.DataFrame, units: int):
+    def lstm_predict(self, train: pd.DataFrame, units: int):
         # scaling
         scaler = MinMaxScaler()
         train_scaled = scaler.fit_transform(train)
