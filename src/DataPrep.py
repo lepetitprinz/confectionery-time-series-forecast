@@ -1,6 +1,5 @@
 import config
 
-import copy
 from collections import defaultdict
 import pandas as pd
 import numpy as np
@@ -19,7 +18,6 @@ class DataPrep(object):
 
         # Condition
         self.variable_type = config.VAR_TYPE
-        self.group_type = config.GROUP_TYPE
         self.time_rule = config.RESAMPLE_RULE
 
         # Dataset
@@ -78,7 +76,7 @@ class DataPrep(object):
         # convert columns to lower case
         df.columns = [col.lower() for col in df.columns]
 
-        # Correct target or not
+        # correct target or not
         if config.CRT_TARGET_YN:
             df = self.correct_target(df=df)
 
@@ -112,8 +110,13 @@ class DataPrep(object):
             if col in df.columns:
                 df = df[df[col] >= 0].reset_index(drop=True)
 
+        # add noise feature
+        if config.ADD_EXO_YN:
+            df = self.add_noise_feat(df=df)
+
         return df
 
+    # Group mapping function
     def group_product(self, prod):
         return self.prod_group[prod]
 
@@ -121,27 +124,29 @@ class DataPrep(object):
     def group(df: pd.DataFrame) -> dict:
         df_group = defaultdict(lambda: defaultdict(dict))
         cust_list = list(df['cust_cd'].unique())
-        cust_list.append('all')
+        if len(cust_list) > 1:    # if number of customers is more than 2
+            cust_list.append('all')
 
-        # Split customer group
+        # Split customer groups
         for cust in cust_list:
             if cust != 'all':
                 filtered_cust = df[df['cust_cd'] == cust]
             else:
                 filtered_cust = df
 
-            # Split product group
+            # Split product groups
             pd_group_list = list(filtered_cust['prod_group'].unique())
-            pd_group_list.append('all')
+            if len(pd_group_list) > 1:    # if number of product groups is more than 2
+                pd_group_list.append('all')
             for prod_group in pd_group_list:
                 if prod_group == 'all':
                     filtered_prod_group = filtered_cust
                 else:
                     filtered_prod_group = filtered_cust[filtered_cust['prod_group'] == prod_group]
 
-                # Split product
+                # Split products
                 pd_list = list(filtered_prod_group['pd_nm'].unique())
-                if len(pd_list) > 1:
+                if len(pd_list) > 1:    # if number of products is more than 2
                     pd_list.append('all')
                 for prod in pd_list:
                     if prod == 'all':
@@ -173,14 +178,32 @@ class DataPrep(object):
     #             df_group[cust].update({prod: filtered_pd})
     #
     #     return df_group
+    @staticmethod
+    def add_noise_feat(df: pd.DataFrame) -> pd.DataFrame:
+        vals = df[config.COL_TARGET].values * 0.05
+        vals = vals.astype(int)
+        vals = np.where(vals == 0, 1, vals)
+        noise = np.random.randint(-vals, vals)
+        df['exo'] = df[config.COL_TARGET].values + noise
+
+        return df
 
     def set_features(self, df_group: dict) -> dict:
-        for group in df_group.values():
-            for key, val in group.items():
-                val = val[config.COL_TOTAL[self.variable_type]]
-                group[key] = val
+        for customers in df_group.values():
+            for prod_group, products in customers.items():
+                for product, df in products.items():
+                    df = df[config.COL_TOTAL[self.variable_type]]
+                    customers[prod_group][product] = df
 
         return df_group
+
+    # def set_features_bak(self, df_group: dict) -> dict:
+    #     for group in df_group.values():
+    #         for key, val in group.items():
+    #             val = val[config.COL_TOTAL[self.variable_type]]
+    #             group[key] = val
+    #
+    #     return df_group
 
     def resample(self, df_group: dict) -> dict:
         """
@@ -188,18 +211,38 @@ class DataPrep(object):
         :param df_group: time series dataset
         :return:
         """
-        for group in df_group.values():
-            for key, val in group.items():
-                resampled = defaultdict(dict)
-                for rule in self.time_rule:
-                    val_dt = val.set_index(config.COL_DATETIME)
-                    val_dt = val_dt.resample(rule=rule).sum()
-                    if self.smooth_yn:
-                        val_dt = self.smoothing(df=val_dt)
-                    resampled[rule] = val_dt
-                group[key] = resampled
+        for customers in df_group.values():
+            for prod_group, products in customers.items():
+                for product, df in products.items():
+                    resampled = defaultdict(dict)
+                    for rule in self.time_rule:
+                        df_resampled = df.set_index(config.COL_DATETIME)
+                        df_resampled = df_resampled.resample(rule=rule).sum()
+                        if self.smooth_yn:
+                            df_resampled = self.smoothing(df=df_resampled)
+                        resampled[rule] = df_resampled
+                    customers[prod_group][product] = resampled
 
         return df_group
+
+    # def resample_bak(self, df_group: dict) -> dict:
+    #     """
+    #     Data Resampling
+    #     :param df_group: time series dataset
+    #     :return:
+    #     """
+    #     for group in df_group.values():
+    #         for key, val in group.items():
+    #             resampled = defaultdict(dict)
+    #             for rule in self.time_rule:
+    #                 val_dt = val.set_index(config.COL_DATETIME)
+    #                 val_dt = val_dt.resample(rule=rule).sum()
+    #                 if self.smooth_yn:
+    #                     val_dt = self.smoothing(df=val_dt)
+    #                 resampled[rule] = val_dt
+    #             group[key] = resampled
+    #
+    #     return df_group
 
     def smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
         for i, col in enumerate(df.columns):

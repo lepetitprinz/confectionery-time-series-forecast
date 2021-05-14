@@ -15,15 +15,14 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
 # Univariate Statistical Models
-from statsmodels.tsa.ar_model import AutoReg    # Auto regression
-from statsmodels.tsa.arima_model import ARMA    # Auto regressive moving average
-from statsmodels.tsa.arima.model import ARIMA    # Auto regressive integrated moving average
-from statsmodels.tsa.holtwinters import SimpleExpSmoothing    # Simple Exponential Smoothing
-from statsmodels.tsa.holtwinters import ExponentialSmoothing    # Holt-winters Exponential Smoothing
+from statsmodels.tsa.ar_model import AutoReg
+from statsmodels.tsa.arima_model import ARMA
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-from statsmodels.tsa.vector_ar.var_model import VAR    # Vector Auto regression
-from statsmodels.tsa.statespace.varmax import VARMAX    # Vector Autoregressive Moving Average with
-                                                        # eXogenous regressors model
+from statsmodels.tsa.vector_ar.var_model import VAR
+from statsmodels.tsa.statespace.varmax import VARMAX
 
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
@@ -59,23 +58,27 @@ class Model(object):
     """
 
     def __init__(self, sell_in: dict, sell_out: dict):
-        # dataset
-        self.df_sell = {'sell_in': sell_in, 'sell_out': sell_out}
-
-        # scenario
-        self.scenario = config.SCENARIO
-        self.smooth_yn = config.SMOOTH_YN
-
-        # model configuration
+        # model type
         self.model_type = config.VAR_TYPE
-        self.n_test = config.N_TEST
+
+        # dataset
+        self.df_sell = {'sell_in': sell_in,
+                        'sell_out': sell_out}
+
+        # set scenario
+        if not config.CRT_TARGET_YN:
+            self.scenario = 's1'
+        else:
+            self.scenario = 's2'
 
         # model
-        self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
-                                                    'ses': self.ses, 'hw': self.hw}
+        self.model_univ: Dict[str, stats_method] = {'ar': self.ar,
+                                                    'arma': self.arma,
+                                                    'arima': self.arima,
+                                                    'ses': self.ses,
+                                                    'hw': self.hw}
         self.model_multi: Dict[str, stats_method] = {'var': self.var}
         self.model_exg: Dict[str, stats_method] = {'lstm_vn': self.lstm_train}
-        self.epoch_best = 0
 
         # hyper-parameters
         self.cfg_ar = (config.LAG, config.TREND, config.SEASONAL, config.PERIOD)
@@ -97,32 +100,32 @@ class Model(object):
                          'varma': self.cfg_varma,
                          'varmax': self.cfg_varmax}
 
+        self.epoch_best = 0
+
     def train(self) -> dict:
         print("Implement model training")
         scores = pd.DataFrame()
         best_models = deepcopy(self.df_sell)
 
-        for sell_type, customers in best_models.items():   # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():    # customer: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product group: all / g1 / g2 / g3
-                    for prod_type, times in products.items():    # product: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, df in times.items():    # time: D / W / M
-                            if len(df) > 0:
-                                best_model, models = self.get_best_models(df=df, time_type=time_type)
-                                times[time_type] = best_model
-                                # Make accuracy score dataframe
-                                temp = pd.DataFrame({'sell_type': sell_type,
-                                                     'cust_type': cust_type,
-                                                     'prod_group_type': prod_group_type,
-                                                     'prod_type': prod_type,
-                                                     'time_type': time_type,
-                                                     'model': np.array(models)[:, 0],
-                                                     'rmse': np.array(models)[:, 1],
-                                                     'scenario': self.scenario,
-                                                     'smoothing': self.smooth_yn})
-                                scores = pd.concat([scores, temp])
+        for sell_type, cust in best_models.items():   # sell type: sell-in / sell-out
+            for cust_type, prod in cust.items():    # customer type: all / A / B / C
+                for prod_type, time in prod.items():    # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, df in time.items():    # time type: D / W / M
+                        if len(df) > 0:
+                            best_model, models = self.get_best_models(df=df, time_type=time_type)
+                            time[time_type] = best_model
+                            # Make accuracy score dataframe
+                            temp = pd.DataFrame({'sell_type': sell_type,
+                                                 'cust_type': cust_type,
+                                                 'prod_type': prod_type,
+                                                 'time_type': time_type,
+                                                 'model': np.array(models)[:, 0],
+                                                 'rmse': np.array(models)[:, 1],
+                                                 'scenario': self.scenario,
+                                                 'smoothing': config.SMOOTH_YN})
+                            scores = pd.concat([scores, temp])
 
-        scores.to_csv(os.path.join(config.SAVE_DIR, 'scores', self.scenario, 'scores_' + self.model_type + '.csv'),
+        scores.to_csv(os.path.join(config.SAVE_DIR, 'scores_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
         print("Training model is finished\n")
 
@@ -131,27 +134,26 @@ class Model(object):
     def forecast(self, best_models: dict) -> dict:
         print("Implement model prediction")
         forecast = deepcopy(self.df_sell)
-        for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():    # customer: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product group: all/ g1 / g2 / g3
-                    for prod_type, times in products.items():    # product: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, df in times.items():    # time: D / W / M
-                            best_model = best_models[sell_type][cust_type][prod_group_type][prod_type][time_type][0]
-                            prediction = None
-                            if self.model_type == 'univ':
-                                prediction = self.model_univ[best_model](history=df,
-                                                                         cfg=self.cfg_dict[best_model],
-                                                                         time_type=time_type,
-                                                                         pred_step=self.n_test)
-                            elif self.model_type == 'multi':
-                                prediction = self.model_multi[best_model](history=df,
-                                                                          cfg=self.cfg_dict[best_model],
-                                                                          time_type=time_type,
-                                                                          pred_step=self.n_test)
-                            elif self.model_type == 'exg':
-                                prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
+        for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, df in time.items():  # time type: D / W
+                        best_model = best_models[sell_type][cust_type][prod_type][time_type][0]
+                        prediction = None
+                        if self.model_type == 'univ':
+                            prediction = self.model_univ[best_model](history=df,
+                                                                     cfg=self.cfg_dict[best_model],
+                                                                     time_type=time_type,
+                                                                     pred_step=config.N_TEST)
+                        elif self.model_type == 'multi':
+                            prediction = self.model_multi[best_model](history=df,
+                                                                      cfg=self.cfg_dict[best_model],
+                                                                      time_type=time_type,
+                                                                      pred_step=config.N_TEST)
+                        elif self.model_type == 'exg':
+                            prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
 
-                            times[time_type] = np.round(prediction)
+                        time[time_type] = np.round(prediction)
 
         print("Model prediction is finished\n")
 
@@ -160,31 +162,30 @@ class Model(object):
     def forecast_all(self) -> dict:
         print("Implement model prediction")
         forecast = deepcopy(self.df_sell)
-        for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():    # customer: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product group: all/ g1 / g2 / g3
-                    for prod_type, times in products.items():    # product: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, df in times.items():    # time: D / W / M
-                            pred_all = {}
-                            if self.model_type == 'univ':
-                                for model in self.model_univ:
-                                    prediction = self.model_univ[model](history=df,
-                                                                        cfg=self.cfg_dict[model],
-                                                                        time_type=time_type,
-                                                                        pred_step=self.n_test)
-                                    pred_all[model] = np.round(prediction)
-                            elif self.model_type == 'multi':
-                                for model in self.model_multi:
-                                    prediction = self.model_multi[model](history=df,
-                                                                         cfg=self.cfg_dict[model],
-                                                                         time_type=time_type,
-                                                                         pred_step=self.n_test)
-                                    pred_all[model] = np.round(prediction)
-                            elif self.model_type == 'exg':
-                                prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
-                                pred_all['lstm'] = np.round(prediction)
+        for sell_type, cust in forecast.items():  # sell type: sell-in / sell-out
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, df in time.items():  # time type: D / W
+                        pred_all = {}
+                        if self.model_type == 'univ':
+                            for model in self.model_univ:
+                                prediction = self.model_univ[model](history=df,
+                                                                    cfg=self.cfg_dict[model],
+                                                                    time_type=time_type,
+                                                                    pred_step=config.N_TEST)
+                                pred_all[model] = np.round(prediction)
+                        elif self.model_type == 'multi':
+                            for model in self.model_multi:
+                                prediction = self.model_multi[model](history=df,
+                                                                     cfg=self.cfg_dict[model],
+                                                                     time_type=time_type,
+                                                                     pred_step=config.N_TEST)
+                                pred_all[model] = np.round(prediction)
+                        elif self.model_type == 'exg':
+                            prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
+                            pred_all['lstm'] = np.round(prediction)
 
-                            times[time_type] = pred_all
+                        time[time_type] = pred_all
 
         print("Model prediction is finished\n")
 
@@ -192,55 +193,51 @@ class Model(object):
 
     def save_result(self, forecast: dict, best_models) -> None:
         result = pd.DataFrame()
-        for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():    # customer: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product: all/ g1 / g2 / g3
-                    for prod_type, times in products.items():    # product: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, prediction in times.items():    # time: D / W
-                            start_dt = self.df_sell[sell_type][cust_type][prod_group_type][prod_type][time_type].index[-1]
-                            start_dt += timedelta(days=1)
-                            dt = pd.date_range(start=start_dt, periods=self.n_test, freq=time_type)
-                            best_model = best_models[sell_type][cust_type][prod_group_type][prod_type][time_type][0]
-                            temp = pd.DataFrame({'sell_type': sell_type,
-                                                 'cust_type': cust_type,
-                                                 'prod_group_type': prod_group_type,
-                                                 'prod_type': prod_type,
-                                                 'time_type': time_type,
-                                                 'model': best_model,
-                                                 'dt': dt,
-                                                 'prediction': prediction,
-                                                 'scenario': self.scenario,
-                                                 'smoothing': self.smooth_yn})
-                            result = pd.concat([result, temp])
+        for sell_type, cust in forecast.items():
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, prediction in time.items():  # time type: D / W
+                        start_dt = self.df_sell[sell_type][cust_type][prod_type][time_type].index[-1]
+                        start_dt += timedelta(days=1)
+                        dt = pd.date_range(start=start_dt, periods=config.N_TEST, freq=time_type)
+                        best_model = best_models[sell_type][cust_type][prod_type][time_type][0]
+                        temp = pd.DataFrame({'sell_type': sell_type,
+                                             'cust_type': cust_type,
+                                             'prod_type': prod_type,
+                                             'time_type': time_type,
+                                             'model': best_model,
+                                             'dt': dt,
+                                             'prediction': prediction,
+                                             'scenario': self.scenario,
+                                             'smoothing': config.SMOOTH_YN})
+                        result = pd.concat([result, temp])
 
-        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast', self.scenario, 'fcst_' + self.model_type + '.csv'),
+        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
         print("Forecast results are saved\n")
 
     def save_result_all(self, forecast: dict) -> None:
         result = pd.DataFrame()
-        for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():  # customer type: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product: all/ g1 / g2 / g3
-                    for prod_type, times in products.items():  # product type: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, predictions in times.items():  # time type: D / W
-                            for model, pred_result in predictions.items():
-                                start_dt = self.df_sell[sell_type][cust_type][prod_group_type][prod_type][time_type].index[-1]
-                                start_dt += timedelta(days=1)
-                                dt = pd.date_range(start=start_dt, periods=self.n_test, freq=time_type)
-                                temp = pd.DataFrame({'sell_type': sell_type,
-                                                     'cust_type': cust_type,
-                                                     'prod_group_type': prod_group_type,
-                                                     'prod_type': prod_type,
-                                                     'time_type': time_type,
-                                                     'model': model,
-                                                     'dt': dt,
-                                                     'prediction': pred_result,
-                                                     'scenario': self.scenario,
-                                                     'smoothing': self.smooth_yn})
-                                result = pd.concat([result, temp])
+        for sell_type, cust in forecast.items():
+            for cust_type, prod in cust.items():  # customer type: all / A / B / C
+                for prod_type, time in prod.items():  # product type: all / 가 / 나 / 다 / 라 / 바
+                    for time_type, prediction in time.items():  # time type: D / W
+                        for model, pred_result in prediction.items():
+                            start_dt = self.df_sell[sell_type][cust_type][prod_type][time_type].index[-1]
+                            start_dt += timedelta(days=1)
+                            dt = pd.date_range(start=start_dt, periods=config.N_TEST, freq=time_type)
+                            temp = pd.DataFrame({'sell_type': sell_type,
+                                                 'cust_type': cust_type,
+                                                 'prod_type': prod_type,
+                                                 'time_type': time_type,
+                                                 'model': model,
+                                                 'dt': dt,
+                                                 'prediction': pred_result,
+                                                 'scenario': self.scenario,
+                                                 'smoothing': config.SMOOTH_YN})
+                            result = pd.concat([result, temp])
 
-        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast', self.scenario, 'fcst_all_' + self.model_type + '.csv'),
+        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast_all_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
 
         print("Forecast results are saved\n")
@@ -252,13 +249,14 @@ class Model(object):
             if self.model_type == 'univ':
                 if isinstance(df, pd.DataFrame):
                     data = df.values
-                else:    # numpy array
+                else:
                     data = df.tolist()
                 score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
-                                                      data=data, n_test=self.n_test, time_type=time_type)
+                                                      data=data, n_test=config.N_TEST, time_type=time_type)
             elif self.model_type == 'multi':
                 score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
-                                                       data=df, n_test=self.n_test, time_type=time_type)
+                                                       data=df, n_test=config.N_TEST, time_type=time_type)
+
             elif self.model_type == 'exg':
                 score = self.lstm_train(train=df, units=config.LSTM_UNIT)
 
@@ -268,7 +266,7 @@ class Model(object):
                 best_models.append([model, score])
 
         # prophet model
-        # score = self.prophet(history=df, n_test=self.n_test)
+        # score = self.prophet(history=df, n_test=config.N_TEST)
         # best_models.append(['prophet', score])
 
         best_models = sorted(best_models, key=lambda x: x[1])
@@ -653,14 +651,14 @@ class Model(object):
         train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
 
         x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-                                                   n_steps_out=self.n_test)
+                                                   n_steps_out=config.N_TEST)
 
         n_features = x_train.shape[2]
 
         # Build model
         model = Sequential()
         model.add(LSTM(units=units, activation='relu', return_sequences=True,
-                  input_shape=(self.n_test, n_features)))
+                  input_shape=(config.N_TEST, n_features)))
         # model.add(LSTM(units=units, activation='relu'))
         model.add(Dense(n_features))
         model.compile(optimizer='adam', loss=self.root_mean_squared_error)
@@ -684,13 +682,13 @@ class Model(object):
         train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
 
         x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-                                                   n_steps_out=self.n_test)
+                                                   n_steps_out=config.N_TEST)
         n_features = x_train.shape[2]
 
         # Build model
         model = Sequential()
         model.add(LSTM(units=units, activation='relu', return_sequences=True,
-                  input_shape=(self.n_test, n_features)))
+                  input_shape=(config.N_TEST, n_features)))
         # model.add(LSTM(units=units, activation='relu'))
         model.add(Dense(n_features))
         model.compile(optimizer='adam', loss=self.root_mean_squared_error)
