@@ -16,14 +16,14 @@ SAVE_DIR = os.path.join('..', 'result')
 # s2: change target variable (datetime + revised target)
 # s3: add "discount" variable (multivariate time series)
 # s4: add "exogenous variable (add random noise)
-SCENARIO = 's1'    # s1 / s2 / s3 / s4
+SCENARIO = 's2'    # s1 / s2 / s3 / s4
 
 # Result configuration
 BEST_OR_ALL = 'best'    # all / best
-VAR_TYPE = 'exg'    # univ / multi / exg
+VAR_TYPE = 'univ'    # univ / multi / exg
 
 COL_TARGET = 'amt'    # Target variable
-CRT_TARGET_YN = False    # Correct target variable or not
+CRT_TARGET_YN = True    # Correct target variable or not
 ADD_EXO_YN = False    # Exogenous variable (True / False)
 COL_TOTAL = {'univ': ['dt', COL_TARGET],    # univ: datetime + target
              'multi': ['dt', COL_TARGET, 'sales'],
@@ -34,7 +34,7 @@ PROD_GROUP = {'가': 'g1', '나': 'g1', '다': 'g2',
               '라': 'g2', '마': 'g3', '바': 'g3'}
 
 # Outlier handling configuration
-SMOOTH_YN = False    # Smoothing or not (True / False)
+SMOOTH_YN = True    # Smoothing or not (True / False)
 SMOOTH_METHOD = 'quantile'    # quantile / sigma
 SMOOTH_RATE = 0.05    # Quantile rate
 

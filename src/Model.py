@@ -65,7 +65,7 @@ class Model(object):
         # scenario
         self.scenario = config.SCENARIO
         self.smooth_yn = config.SMOOTH_YN
-
+        self.smooth_dir = {True: 'smooth_y', False: 'smooth_n'}
         # model configuration
         self.model_type = config.VAR_TYPE
         self.n_test = config.N_TEST
@@ -122,7 +122,8 @@ class Model(object):
                                                      'smoothing': self.smooth_yn})
                                 scores = pd.concat([scores, temp])
 
-        scores.to_csv(os.path.join(config.SAVE_DIR, 'scores', self.scenario, 'scores_' + self.model_type + '.csv'),
+        scores.to_csv(os.path.join(config.SAVE_DIR, 'scores', self.scenario, self.smooth_dir[self.smooth_yn],
+                                   'scores_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
         print("Training model is finished\n")
 
@@ -213,7 +214,8 @@ class Model(object):
                                                  'smoothing': self.smooth_yn})
                             result = pd.concat([result, temp])
 
-        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast', self.scenario, 'fcst_' + self.model_type + '.csv'),
+        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast', self.scenario, self.smooth_dir[self.smooth_yn],
+                                   'fcst_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
         print("Forecast results are saved\n")
 
@@ -240,7 +242,8 @@ class Model(object):
                                                      'smoothing': self.smooth_yn})
                                 result = pd.concat([result, temp])
 
-        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast', self.scenario, 'fcst_all_' + self.model_type + '.csv'),
+        result.to_csv(os.path.join(config.SAVE_DIR, 'forecast', self.scenario, self.smooth_dir[self.smooth_yn],
+                                   'fcst_all_' + self.model_type + '.csv'),
                       index=False, encoding='utf-8-sig')
 
         print("Forecast results are saved\n")
