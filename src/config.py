@@ -19,10 +19,10 @@ SAVE_DIR = os.path.join('..', 'result')
 SCENARIO = 's4'    # s1 / s2 / s3 / s4
 
 # Result configuration
-BEST_OR_ALL = 'all'    # all / best
+BEST_OR_ALL = 'best'    # all / best
 VAR_TYPE = 'exg'    # univ / multi / exg
 
-FILTER_MINUS_YN = True    # Remove minus values or not
+FILTER_MINUS_YN = False    # Remove minus values or not
 CONV_TARGET_YN = False    # Convert target variable or not
 ADD_EXO_YN = True    # Exogenous variable (True / False)
 

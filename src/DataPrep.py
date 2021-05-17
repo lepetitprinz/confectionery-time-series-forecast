@@ -184,6 +184,7 @@ class DataPrep(object):
         vals = df[config.COL_TARGET].values * 0.05
         vals = vals.astype(int)
         vals = np.where(vals == 0, 1, vals)
+        vals = np.where(vals < 0, vals * -1, vals)
         noise = np.random.randint(-vals, vals)
         df['exo'] = df[config.COL_TARGET].values + noise
 
