@@ -19,7 +19,7 @@ SAVE_DIR = os.path.join('..', 'result')
 SCENARIO = 's4'    # s1 / s2 / s3 / s4
 
 # Result configuration
-BEST_OR_ALL = 'best'    # all / best
+BEST_OR_ALL = 'all'    # all / best
 VAR_TYPE = 'exg'    # univ / multi / exg
 
 FILTER_MINUS_YN = False    # Remove minus values or not
@@ -36,7 +36,7 @@ PROD_GROUP = {'가': 'g1', '나': 'g1', '다': 'g2',
               '라': 'g2', '마': 'g3', '바': 'g3'}
 
 # Outlier handling configuration
-SMOOTH_YN = False    # Smoothing or not (True / False)
+SMOOTH_YN = True    # Smoothing or not (True / False)
 SMOOTH_METHOD = 'quantile'    # quantile / sigma
 SMOOTH_RATE = 0.05    # Quantile rate
 
