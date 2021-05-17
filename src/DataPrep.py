@@ -77,7 +77,7 @@ class DataPrep(object):
         df.columns = [col.lower() for col in df.columns]
 
         # correct target or not
-        if config.CRT_TARGET_YN:
+        if config.CONV_TARGET_YN:
             df = self.correct_target(df=df)
 
         # add product group column
@@ -106,9 +106,10 @@ class DataPrep(object):
                 df[col] = df[col].astype(int)
 
         # Filter minus values from dataset
-        for col in self.__class__.COL_TYPE_POS:
-            if col in df.columns:
-                df = df[df[col] >= 0].reset_index(drop=True)
+        if config.FILTER_MINUS_YN:
+            for col in self.__class__.COL_TYPE_POS:
+                if col in df.columns:
+                    df = df[df[col] >= 0].reset_index(drop=True)
 
         # add noise feature
         if config.ADD_EXO_YN:

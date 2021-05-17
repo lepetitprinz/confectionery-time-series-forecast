@@ -66,7 +66,7 @@ class Model(object):
                         'sell_out': sell_out}
 
         # set scenario
-        if not config.CRT_TARGET_YN:
+        if not config.CONV_TARGET_YN:
             self.scenario = 's1'
         else:
             self.scenario = 's2'
