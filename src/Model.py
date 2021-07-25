@@ -253,7 +253,7 @@ class Model(object):
         for model in config.MODEL_CANDIDATES[self.model_type]:
             score = 0
             if self.model_type == 'univ':
-                if isinstance(df, pd.DataFrame):
+                if isinstance(df, pd.DataFrame):    # pandas Dataframe
                     data = df.values
                 else:    # numpy array
                     data = df.tolist()

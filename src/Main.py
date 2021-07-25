@@ -5,7 +5,7 @@ from Model import Model
 # Data Preprocessing
 data_prep = DataPrep()
 
-model = Model(sell_in=data_prep.sell_in_prep,
+model = Model(sell_in=data_prep.sell_prep,
               sell_out=data_prep.sell_out_prep)
 
 # Results of All Model

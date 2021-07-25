@@ -20,7 +20,7 @@ SCENARIO = 's4'    # s1 / s2 / s3 / s4
 
 # Result configuration
 BEST_OR_ALL = 'all'    # all / best
-VAR_TYPE = 'exg'    # univ / multi / exg
+VAR_TYPE = 'univ'    # univ / multi / exg
 
 FILTER_MINUS_YN = False    # Remove minus values or not
 CONV_TARGET_YN = False    # Convert target variable or not
@@ -42,7 +42,7 @@ SMOOTH_RATE = 0.05    # Quantile rate
 
 # Datetime configuration
 COL_DATETIME = 'dt'    # Datetime format column
-RESAMPLE_RULE = ['W']    # Data resampling rule (D / W / M)
+RESAMPLE_RULE = 'W'    # Data resampling rule (D / W / M)
 
 ###########################
 # Model configuration

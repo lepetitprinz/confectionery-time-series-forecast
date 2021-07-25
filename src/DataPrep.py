@@ -1,8 +1,10 @@
 import config
 
-from collections import defaultdict
-import pandas as pd
 import numpy as np
+import pandas as pd
+from typing import List, Tuple
+from collections import defaultdict
+from copy import deepcopy
 
 
 class DataPrep(object):
@@ -21,9 +23,14 @@ class DataPrep(object):
         self.time_rule = config.RESAMPLE_RULE
 
         # Dataset
-        self.sell_in_prep = None
+        self.sell_prep = None
         self.sell_out_prep = None
         self.prod_group = config.PROD_GROUP
+
+        # Hierarchy
+        self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd'),  (3, 'pd_nm')]
+        # self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd')]
+        self.hrchy_level = len(self.hrchy) - 1
 
         # Smoothing
         self.smooth_yn = config.SMOOTH_YN
@@ -35,34 +42,36 @@ class DataPrep(object):
 
     def preprocess(self) -> None:
         print("Implement data preprocessing")
-        # Sell in dataset
 
         # load dataset
         sell_in = pd.read_csv(self.sell_in_dir, delimiter='\t', thousands=',')
         sell_out = pd.read_csv(self.sell_out_dir, delimiter='\t', thousands=',')
 
+        cols_sell_in = set(sell_in.columns)
+        cols_sell_out = set(sell_out.columns)
+        cols_intersect = list(cols_sell_in.intersection(cols_sell_out))
+
+        sell_in = sell_in[cols_intersect]
+        sell_out = sell_out[cols_intersect]
+
+        sell = pd.concat([sell_in, sell_out], axis=0)
+
         # preprocess sales dataset
-        sell_in = self.prep_sales(df=sell_in)
-        sell_out = self.prep_sales(df=sell_out)
+        sell = self.prep_sales(df=sell)
 
         # convert target data type to float
-        sell_in[config.COL_TARGET] = sell_in[config.COL_TARGET].astype(float)
-        sell_out[config.COL_TARGET] = sell_out[config.COL_TARGET].astype(float)
+        sell[config.COL_TARGET] = sell[config.COL_TARGET].astype(float)
 
         # Grouping
-        sell_in_group = self.group(df=sell_in)
-        sell_out_group = self.group(df=sell_out)
+        sell_group = self.group(data=sell)
 
         # Univariate or Multivariate dataset
-        sell_in_group = self.set_features(df_group=sell_in_group)
-        sell_out_group = self.set_features(df_group=sell_out_group)
+        sell_group = self.set_features(df=sell_group)
 
         # resampling
-        resampled_sell_in = self.resample(df_group=sell_in_group)
-        resampled_sell_out = self.resample(df_group=sell_out_group)
+        resampled_sell = self.resample(df=sell_group)
 
-        self.sell_in_prep = resampled_sell_in
-        self.sell_out_prep = resampled_sell_out
+        self.sell_prep = resampled_sell
 
         print("Data preprocessing is finished\n")
 
@@ -76,24 +85,11 @@ class DataPrep(object):
         # convert columns to lower case
         df.columns = [col.lower() for col in df.columns]
 
-        # correct target or not
-        if config.CONV_TARGET_YN:
-            df = self.correct_target(df=df)
-
-        # add product group column
-        group_func = np.vectorize(self.group_product)
-        df['prod_group'] = group_func(df['pd_nm'].to_numpy())
-
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.COL_DROP_SELL)
 
         # convert date column to datetime
         df[config.COL_DATETIME] = pd.to_datetime(df[config.COL_DATETIME], format='%Y%m%d')
-
-        # remove ',' from numbers and
-        # for col in self.__class__.COL_TYPE_NUM:
-        #     if col in df.columns and df[col].dtype != int:
-        #         df[col] = df[col].str.replace(',', '')
 
         # fill NaN
         is_null_col = [col for col, is_null in zip(df.columns, df.isnull().sum()) if is_null > 0]
@@ -106,14 +102,14 @@ class DataPrep(object):
                 df[col] = df[col].astype(int)
 
         # Filter minus values from dataset
-        if config.FILTER_MINUS_YN:
-            for col in self.__class__.COL_TYPE_POS:
-                if col in df.columns:
-                    df = df[df[col] >= 0].reset_index(drop=True)
+        # if config.FILTER_MINUS_YN:
+        #     for col in self.__class__.COL_TYPE_POS:
+        #         if col in df.columns:
+        #             df = df[df[col] >= 0].reset_index(drop=True)
 
         # add noise feature
-        if config.ADD_EXO_YN:
-            df = self.add_noise_feat(df=df)
+        # if config.ADD_EXO_YN:
+        #     df = self.add_noise_feat(df=df)
 
         return df
 
@@ -121,64 +117,96 @@ class DataPrep(object):
     def group_product(self, prod):
         return self.prod_group[prod]
 
-    @staticmethod
-    def group(df: pd.DataFrame) -> dict:
-        df_group = defaultdict(lambda: defaultdict(dict))
-        cust_list = list(df['cust_cd'].unique())
-        if len(cust_list) > 1:    # if number of customers is more than 2
-            cust_list.append('all')
+    def group(self, data, cd=None, lvl=0) -> dict:
+        grp = {}
+        col = self.hrchy[lvl][1]
 
-        # Split customer groups
-        for cust in cust_list:
-            if cust != 'all':
-                filtered_cust = df[df['cust_cd'] == cust]
-            else:
-                filtered_cust = df
+        code_list = None
+        if isinstance(data, pd.DataFrame):
+            code_list = list(data[col].unique())
 
-            # Split product groups
-            pd_group_list = list(filtered_cust['prod_group'].unique())
-            if len(pd_group_list) > 1:    # if number of product groups is more than 2
-                pd_group_list.append('all')
-            for prod_group in pd_group_list:
-                if prod_group == 'all':
-                    filtered_prod_group = filtered_cust
-                else:
-                    filtered_prod_group = filtered_cust[filtered_cust['prod_group'] == prod_group]
+        elif isinstance(data, dict):
+            code_list = list(data[cd][col].unique())
 
-                # Split products
-                pd_list = list(filtered_prod_group['pd_nm'].unique())
-                if len(pd_list) > 1:    # if number of products is more than 2
-                    pd_list.append('all')
-                for prod in pd_list:
-                    if prod == 'all':
-                        filtered_pd = filtered_prod_group
-                    else:
-                        filtered_pd = filtered_prod_group[filtered_prod_group['pd_nm'] == prod]
-                    df_group[cust][prod_group].update({prod: filtered_pd})
+        if lvl < self.hrchy_level:
+            for code in code_list:
+                sliced = None
+                if isinstance(data, pd.DataFrame):
+                    sliced = data[data[col] == code]
+                elif isinstance(data, dict):
+                    sliced = data[cd][data[cd][col] == code]
+                result = self.group(data={code: sliced}, cd=code, lvl=lvl + 1)
+                grp[code] = result
 
-        return df_group
+        elif lvl == self.hrchy_level:
+            temp = {}
+            for code in code_list:
+                sliced = None
+                if isinstance(data, pd.DataFrame):
+                    sliced = data[data[col] == code]
+                elif isinstance(data, dict):
+                    sliced = data[cd][data[cd][col] == code]
+                temp[code] = sliced
 
-    # @staticmethod
-    # def group_bak(df: pd.DataFrame) -> dict:
-    #     df_group = defaultdict(dict)
-    #     cust_list = list(df['cust_cd'].unique())
-    #     cust_list.append('all')
-    #
-    #     for cust in cust_list:
-    #         if cust != 'all':
-    #             filtered_cust = df[df['cust_cd'] == cust]
-    #         else:
-    #             filtered_cust = df
-    #         pd_list = list(filtered_cust['pd_nm'].unique())
-    #         pd_list.append('all')
-    #         for prod in pd_list:
-    #             if prod == 'all':
-    #                 filtered_pd = filtered_cust
-    #             else:
-    #                 filtered_pd = filtered_cust[filtered_cust['pd_nm'] == prod]
-    #             df_group[cust].update({prod: filtered_pd})
-    #
-    #     return df_group
+            return temp
+
+        return grp
+
+    def set_features(self, df=None, val=None, lvl=0) -> dict:
+        temp = None
+        if lvl == 0:
+            temp = {}
+            for key, val in df.items():
+                result = self.set_features(val=val, lvl=lvl+1)
+                temp[key] = result
+
+        elif lvl < self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                result = self.set_features(val=val_hrchy, lvl=lvl+1)
+                temp[key_hrchy] = result
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                val_hrchy = val_hrchy[config.COL_TOTAL[self.variable_type]]
+                temp[key_hrchy] = val_hrchy
+
+            return temp
+
+        return temp
+
+    def resample(self, df=None, val=None, lvl=0):
+        temp = None
+        if lvl == 0:
+            temp = {}
+            for key, val in df.items():
+                result = self.resample(val=val, lvl=lvl+1)
+                temp[key] = result
+
+        elif lvl < self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                result = self.resample(val=val_hrchy, lvl=lvl+1)
+                temp[key_hrchy] = result
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                val_hrchy = val_hrchy.set_index(config.COL_DATETIME)
+                val_hrchy = val_hrchy.resample(rule=self.time_rule).sum()
+                if self.smooth_yn:
+                    val_hrchy = self.smoothing(df=val_hrchy)
+                temp[key_hrchy] = val_hrchy
+
+            return temp
+
+        return temp
+
     @staticmethod
     def add_noise_feat(df: pd.DataFrame) -> pd.DataFrame:
         vals = df[config.COL_TARGET].values * 0.05
@@ -189,62 +217,6 @@ class DataPrep(object):
         df['exo'] = df[config.COL_TARGET].values + noise
 
         return df
-
-    def set_features(self, df_group: dict) -> dict:
-        for customers in df_group.values():
-            for prod_group, products in customers.items():
-                for product, df in products.items():
-                    df = df[config.COL_TOTAL[self.variable_type]]
-                    customers[prod_group][product] = df
-
-        return df_group
-
-    # def set_features_bak(self, df_group: dict) -> dict:
-    #     for group in df_group.values():
-    #         for key, val in group.items():
-    #             val = val[config.COL_TOTAL[self.variable_type]]
-    #             group[key] = val
-    #
-    #     return df_group
-
-    def resample(self, df_group: dict) -> dict:
-        """
-        Data Resampling
-        :param df_group: time series dataset
-        :return:
-        """
-        for customers in df_group.values():
-            for prod_group, products in customers.items():
-                for product, df in products.items():
-                    resampled = defaultdict(dict)
-                    for rule in self.time_rule:
-                        df_resampled = df.set_index(config.COL_DATETIME)
-                        df_resampled = df_resampled.resample(rule=rule).sum()
-                        if self.smooth_yn:
-                            df_resampled = self.smoothing(df=df_resampled)
-                        resampled[rule] = df_resampled
-                    customers[prod_group][product] = resampled
-
-        return df_group
-
-    # def resample_bak(self, df_group: dict) -> dict:
-    #     """
-    #     Data Resampling
-    #     :param df_group: time series dataset
-    #     :return:
-    #     """
-    #     for group in df_group.values():
-    #         for key, val in group.items():
-    #             resampled = defaultdict(dict)
-    #             for rule in self.time_rule:
-    #                 val_dt = val.set_index(config.COL_DATETIME)
-    #                 val_dt = val_dt.resample(rule=rule).sum()
-    #                 if self.smooth_yn:
-    #                     val_dt = self.smoothing(df=val_dt)
-    #                 resampled[rule] = val_dt
-    #             group[key] = resampled
-    #
-    #     return df_group
 
     def smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
         for i, col in enumerate(df.columns):
