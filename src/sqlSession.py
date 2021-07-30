@@ -1,10 +1,10 @@
 import config
 import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy import text
-from sqlalchemy import select, insert
-from sqlalchemy import Table, MetaData
+from sqlalchemy import Table, MetaData, insert
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+
 
 class SqlSession(object):
     def __init__(self):
@@ -19,6 +19,7 @@ class SqlSession(object):
         """
         self.engine = self.create_engine()
         self._connection = self.get_connection()
+        print("Connect the DB")
 
     def set_data(self, data_source):
         self._data = data_source
@@ -86,3 +87,15 @@ class SqlSession(object):
 
         finally:
             self.close()
+
+    def insert_two(self, table, value):
+        ins = insert(table)
+        ins = ins.values(value)
+        session = sessionmaker(bind=self.engine)
+        sess = session()
+        sess.execute(ins)
+
+    def get_table_info(self, tb_name: str):
+        meta = MetaData(bind=self.engine)
+
+        return Table(tb_name, meta)

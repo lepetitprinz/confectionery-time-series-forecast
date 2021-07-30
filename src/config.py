@@ -1,5 +1,13 @@
 import os
 
+# Database Configuration
+RDMS = 'mssql+pymssql'
+HOST = 'localhost'    # Database IP adress
+DATABASE = 'BISCM'      # Database name
+
+USER = 'matrixadm'    # User name
+PASSWORD = 'matrixadm'     # User password
+
 ###########################
 # Path configuration
 ###########################
