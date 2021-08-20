@@ -8,18 +8,22 @@ from sqlalchemy.orm import sessionmaker
 
 class SqlSession(object):
     def __init__(self):
+        # Create Engine Format(Microsoft SQL Server)
+        self.url = config.RDMS + '://' + config.USER + ':' + config.PASSWORD + \
+                   '@' + config.HOST + ':' + config.PORT + '/' + config.DATABASE
+
         self.engine = None
         self._connection = None
         self._data = None
-        self.url = config.RDMS + '://' + config.USER + ':' + config.PASSWORD + '@' + config.HOST + '/' + config.DATABASE
 
     def init(self):
         """
         Initialize Data Source, Connection object
         """
+        print("Connect the DB")
         self.engine = self.create_engine()
         self._connection = self.get_connection()
-        print("Connect the DB")
+        print("Connected")
 
     def set_data(self, data_source):
         self._data = data_source

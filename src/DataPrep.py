@@ -1,10 +1,10 @@
 import config
+from SqlSession import SqlSession
+from SqlConfig import SqlConfig
 
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
-from collections import defaultdict
-from copy import deepcopy
 
 
 class DataPrep(object):
@@ -37,8 +37,23 @@ class DataPrep(object):
         self.smooth_method = config.SMOOTH_METHOD
         self.smooth_rate = config.SMOOTH_RATE
 
-        # run data preprocessing
-        self.preprocess()
+    def load_dataset(self):
+        query_sell_in = config
+        query_sell_out = None
+        query_ = None
+
+        # Connect to the DB
+        session = SqlSession()
+        session.init()
+
+    def consistency_check(self):
+        pass
+
+    def check_nan_data(self):
+        pass
+
+    def check_code_map(self):
+        pass
 
     def preprocess(self) -> None:
         print("Implement data preprocessing")

@@ -1,11 +1,13 @@
 import os
 
+###########################
 # Database Configuration
+###########################
 RDMS = 'mssql+pymssql'
-HOST = 'localhost'    # Database IP adress
+HOST = '10.112.33.101'    # Database IP adress
 DATABASE = 'BISCM'      # Database name
-
-USER = 'matrixadm'    # User name
+PORT = '1433'
+USER = 'sa'    # User name
 PASSWORD = 'matrixadm'     # User password
 
 ###########################
@@ -19,12 +21,14 @@ SAVE_DIR = os.path.join('..', 'result')
 ###########################
 # Open API Configuration
 ###########################
-URL = 'http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList'
+URL = "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
 SERVICE_KEY = 'UYRNns1wVRWz8MIyaMqUcL%2BHhIsbY0xjNyzRyvBNZRwh9zefraNj4lh9eBLgOw%2B2c8lBV%2Fh1SbzyNV96aO3DUw%3D%3D'
 PAGE = 1
 START_DATE = 20210101    # Start Date
 END_DATE = 20210530      # Emd Date
 STN_ID = 108    # Seoul
+STN_LIST = [108]
+
 
 ###########################
 # Data configuration
