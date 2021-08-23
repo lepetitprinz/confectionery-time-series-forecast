@@ -14,8 +14,6 @@ PASSWORD = 'matrixadm'     # User password
 # Path configuration
 ###########################
 BASE_DIR = os.path.join('..', 'data')
-SELL_IN_DIR = os.path.join(BASE_DIR, 'sales_sell_in.csv')
-SELL_OUT_DIR = os.path.join(BASE_DIR, 'sales_sell_out.csv')
 SAVE_DIR = os.path.join('..', 'result')
 
 ###########################
@@ -28,7 +26,6 @@ START_DATE = 20210101    # Start Date
 END_DATE = 20210530      # Emd Date
 STN_ID = 108    # Seoul
 STN_LIST = [108]
-
 
 ###########################
 # Data configuration
@@ -53,9 +50,7 @@ COL_TOTAL = {'univ': ['dt', COL_TARGET],    # univ: datetime + target
              'multi': ['dt', COL_TARGET, 'sales'],
              'exg': ['dt', COL_TARGET, 'sales']}
 
-# Product group configuration
-PROD_GROUP = {'가': 'g1', '나': 'g1', '다': 'g2',
-              '라': 'g2', '마': 'g3', '바': 'g3'}
+
 
 # Outlier handling configuration
 SMOOTH_YN = True    # Smoothing or not (True / False)

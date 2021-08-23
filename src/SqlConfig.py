@@ -1,10 +1,8 @@
-class SqlConfig(object):
-    def __init__(self, date_from='', date_to=''):
-        self.date_from = date_from
-        self.date_to = date_to
 
+class SqlConfig(object):
     # Item Master Table
-    def get_item_master(self):
+    @staticmethod
+    def get_item_master():
         sql = f"""
             SELECT PROJECT_CD
                  , ITEM_CD
@@ -14,7 +12,8 @@ class SqlConfig(object):
         return sql
 
     # Customer Master Table
-    def get_cust_master(self):
+    @staticmethod
+    def get_cust_master():
         sql = f"""
             SELECT PROJECT_CD
                  , CUST_CD
@@ -24,24 +23,27 @@ class SqlConfig(object):
         return sql
 
     # D
-    def get_comm_master(self):
+    @staticmethod
+    def get_comm_master(option: str):
         sql = f"""
-            SELECT OPTION_CD
-                 , OPTION_VAL
+            SELECT OPTION_VAL
             FROM M4S_I001020
            WHERE 1=1
              AND MDL_CD = 'DF'
+             AND OPTION_CD = '{option}'
         """
         return sql
 
     # SELL-IN Table
-    def get_sell_in(self):
+    @staticmethod
+    def get_sell_in(date_from: str, date_to: str):
         sql = f""" 
             SELECT PROJECT_CD
                  , DIVISION_CD
-                 , SOLD_CUST_GRP_CD
+                 , SOLD_CUST_GRP_CD AS CUST_GRP
                  , ITEM_CD
                  , YYMMDD
+                 , SEQ
                  , FROM_DC_CD
                  , UNIT_PRICE
                  , UNIT_CD
@@ -50,12 +52,13 @@ class SqlConfig(object):
                  , RST_SALES_QTY
              FROM M4S_I002170
             WHERE 1=1
-              AND YYMMDD BETWEEN {self.date_from} AND {self.date_to} 
+              AND YYMMDD BETWEEN {date_from} AND {date_to} 
         """
         return sql
 
     # SELL-OUT Table
-    def get_sell_out(self):
+    @staticmethod
+    def get_sell_out(date_from: str, date_to: str):
         sql = f""" 
             SELECT PROJECT_CD
                  , DIVISION_CD
@@ -70,6 +73,11 @@ class SqlConfig(object):
                  , RST_SALES_QTY
              FROM M4S_I002173
             WHERE 1=1
-              AND YYMMDD BETWEEN {self.date_from} AND {self.date_to} 
+              AND YYMMDD BETWEEN {date_from} AND {date_to} 
         """
+        return sql
+
+    def inst_sell_in(self):
+        sql = f""""""
+
         return sql

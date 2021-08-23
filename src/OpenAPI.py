@@ -34,7 +34,7 @@ class OpenAPI(object):
 
     def get_api_dataset(self) -> pd.DataFrame:
         num_rows = self.count_date_range(start_date=self.start_date, end_date=self.end_date)
-        xml_tree = self.open_url(ulr=self.url, service_key=self.service_key, page=self.page, num_rows=num_rows,
+        xml_tree = self.open_url(url=self.url, service_key=self.service_key, page=self.page, num_rows=num_rows,
                                  start_date=self.start_date, end_date=self.end_date, stn_id=self.stn_id)
         data = self.map_xml_tree(xml_tree=xml_tree)
 

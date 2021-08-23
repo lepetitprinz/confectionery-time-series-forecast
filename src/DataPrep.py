@@ -8,28 +8,27 @@ from typing import List, Tuple
 
 
 class DataPrep(object):
-    COL_DROP_SELL = ['pd_cd']
+    COL_DROP_SELL = ['project_cd', 'division_cd', 'seq', ]
+    COL_DATETIME = ['yymmdd']
+    COL_TARGET = ['']
     COL_TYPE_NUM = ['amt', 'sales', 'unit_price', 'store_price']
     COL_TYPE_POS = ['amt', 'sales', 'unit_price', 'store_price']
 
     def __init__(self):
         # Path
         self.base_dir = config.BASE_DIR
-        self.sell_in_dir = config.SELL_IN_DIR
-        self.sell_out_dir = config.SELL_OUT_DIR
+        self.save_dir = config.SAVE_DIR
 
         # Condition
         self.variable_type = config.VAR_TYPE
         self.time_rule = config.RESAMPLE_RULE
 
         # Dataset
-        self.sell_prep = None
-        self.sell_out_prep = None
-        self.prod_group = config.PROD_GROUP
+        self.data_preped = None
 
         # Hierarchy
-        self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd'),  (3, 'pd_nm')]
-        # self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd')]
+        # self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd'),  (3, 'pd_nm')]
+        self.hrchy: List[Tuple[int, str]] = [(1, 'cust_grp'), (2, 'cust_cd'), (3, 'pd_nm')]
         self.hrchy_level = len(self.hrchy) - 1
 
         # Smoothing
@@ -37,56 +36,22 @@ class DataPrep(object):
         self.smooth_method = config.SMOOTH_METHOD
         self.smooth_rate = config.SMOOTH_RATE
 
-    def load_dataset(self):
-        query_sell_in = config
-        query_sell_out = None
-        query_ = None
-
-        # Connect to the DB
-        session = SqlSession()
-        session.init()
-
-    def consistency_check(self):
-        pass
-
-    def check_nan_data(self):
-        pass
-
-    def check_code_map(self):
-        pass
-
-    def preprocess(self) -> None:
+    def preprocess(self, data: pd.DataFrame) -> None:
         print("Implement data preprocessing")
 
-        # load dataset
-        sell_in = pd.read_csv(self.sell_in_dir, delimiter='\t', thousands=',')
-        sell_out = pd.read_csv(self.sell_out_dir, delimiter='\t', thousands=',')
-
-        cols_sell_in = set(sell_in.columns)
-        cols_sell_out = set(sell_out.columns)
-        cols_intersect = list(cols_sell_in.intersection(cols_sell_out))
-
-        sell_in = sell_in[cols_intersect]
-        sell_out = sell_out[cols_intersect]
-
-        sell = pd.concat([sell_in, sell_out], axis=0)
-
         # preprocess sales dataset
-        sell = self.prep_sales(df=sell)
-
-        # convert target data type to float
-        sell[config.COL_TARGET] = sell[config.COL_TARGET].astype(float)
+        data = self.conv_data_type(df=data)
 
         # Grouping
-        sell_group = self.group(data=sell)
+        data_group = self.group(data=data)
 
         # Univariate or Multivariate dataset
-        sell_group = self.set_features(df=sell_group)
+        data_group = self.set_features(df=data_group)
 
         # resampling
-        resampled_sell = self.resample(df=sell_group)
+        resampled_data = self.resample(df=data_group)
 
-        self.sell_prep = resampled_sell
+        self.data_preped = resampled_data
 
         print("Data preprocessing is finished\n")
 
@@ -96,7 +61,7 @@ class DataPrep(object):
 
         return df
 
-    def prep_sales(self, df: pd.DataFrame) -> pd.DataFrame:
+    def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert columns to lower case
         df.columns = [col.lower() for col in df.columns]
 
@@ -104,33 +69,21 @@ class DataPrep(object):
         df = df.drop(columns=self.__class__.COL_DROP_SELL)
 
         # convert date column to datetime
-        df[config.COL_DATETIME] = pd.to_datetime(df[config.COL_DATETIME], format='%Y%m%d')
+        df[self.__class__.COL_DATETIME] = pd.to_datetime(df[self.__class__.COL_DATETIME], format='%Y%m%d')
 
-        # fill NaN
-        is_null_col = [col for col, is_null in zip(df.columns, df.isnull().sum()) if is_null > 0]
-        for col in is_null_col:
-            df[col] = df[col].fillna(0)
+        # convert target data type to float
+        df[config.COL_TARGET] = df[config.COL_TARGET].astype(float)
 
-        # convert string type to int type
-        for col in self.__class__.COL_TYPE_NUM:
-            if col in df.columns and df[col].dtype != int:
-                df[col] = df[col].astype(int)
-
-        # Filter minus values from dataset
-        # if config.FILTER_MINUS_YN:
-        #     for col in self.__class__.COL_TYPE_POS:
-        #         if col in df.columns:
-        #             df = df[df[col] >= 0].reset_index(drop=True)
+        # # convert string type to int type
+        # for col in self.__class__.COL_TYPE_NUM:
+        #     if col in df.columns and df[col].dtype != int:
+        #         df[col] = df[col].astype(int)
 
         # add noise feature
         # if config.ADD_EXO_YN:
         #     df = self.add_noise_feat(df=df)
 
         return df
-
-    # Group mapping function
-    def group_product(self, prod):
-        return self.prod_group[prod]
 
     def group(self, data, cd=None, lvl=0) -> dict:
         grp = {}

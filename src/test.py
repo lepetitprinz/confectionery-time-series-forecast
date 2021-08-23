@@ -36,7 +36,7 @@ test_df = pd.DataFrame({'PROJECT_CD': ['ENT009', 'ENT009'],
 # Data Preprocessing
 data_prep = DataPrep()
 
-model = Model(sell_in=data_prep.sell_prep,
+model = Model(sell_in=data_prep.data_preped,
               sell_out=data_prep.sell_out_prep)
 
 # Results of All Model
