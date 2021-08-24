@@ -37,16 +37,36 @@ import pandas as pd
 # # Data Preprocessing
 # prep = DataPrep()
 
-save_dir = os.path.join('..', 'result', 'prep_sell_in.pickle')
+# save_dir = os.path.join('..', 'result', 'prep_sell_in.pickle')
 # data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
 
 # with open(save_dir, 'wb') as handle:
 #     pickle.dump(data_preped, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-with open(save_dir, 'rb') as handle:
-    data_preped = pickle.load(handle)
+# with open(save_dir, 'rb') as handle:
+#     data_preped = pickle.load(handle)
 
 # # Modeling
 model = Model(division='SELL-IN')
-scores = model.train(df=data_preped)
-model.save_score(scores=scores)
+# scores = model.train(df=data_preped)
+
+# save_dir = os.path.join('..', 'result', 'score_sell_in.pickle')
+# # with open(save_dir, 'wb') as handle:
+# #     pickle.dump(scores, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#
+# with open(save_dir, 'rb') as handle:
+#     scores = pickle.load(handle)
+#
+# model.save_score(scores=scores)
+
+# prediction = model.forecast(df=data_preped)
+
+save_dir = os.path.join('..', 'result', 'prediction_sell_in.pickle')
+# with open(save_dir, 'wb') as handle:
+#     pickle.dump(prediction, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+with open(save_dir, 'rb') as handle:
+    predictions = pickle.load(handle)
+#
+model.save_prediction(predictions=predictions)
+print('')

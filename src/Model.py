@@ -1,3 +1,6 @@
+
+from SqlSession import SqlSession
+from SqlConfig import SqlConfig
 import config
 
 from typing import Dict, Callable, Any
@@ -9,6 +12,7 @@ import pandas as pd
 from math import sqrt
 from copy import deepcopy
 from datetime import timedelta
+from datetime import datetime
 
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
@@ -58,6 +62,12 @@ class Model(object):
     """
 
     def __init__(self, division: str):
+        self.sql_config = SqlConfig()
+        self.session = SqlSession()
+        self.session.init()
+
+        self.end_date = self.session.select(sql=SqlConfig.get_comm_master(option='RST_END_DAY')).values[0][0]
+
         self.division = division
         # Hierarchy
         self.hrchy_list = config.HRCHY_LIST
@@ -72,6 +82,8 @@ class Model(object):
         self.n_test = config.N_TEST
 
         # model
+        self.model_univ_list = ['ar', 'arma', 'arima', 'hw']
+        # self.model_univ_list = ['arma', 'arima', 'hw']
         self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
                                                     'hw': self.hw}
         # self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
@@ -130,40 +142,104 @@ class Model(object):
     def save_score(self, scores: dict):
         result = self.score_to_df(df=scores)
 
+        result = pd.DataFrame(result)
+        cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']
+        result.columns = cols
 
         result['project_cd'] = 'ENT001'
         result['division'] = self.division
+        result['fkey'] = ['HRCHY' + str(i+1) for i in range(len(result))]
 
-    def score_to_df(self, df=None, val=None, lvl=0) -> dict:
-        temp = []
+        result['rmse'] = result['rmse'].fillna(0)
+
+        self.session.insert(df=result, tb_name='M4S_I110410')
+
+    def score_to_df(self, df=None, val=None, lvl=0, hrchy=[]):
         if lvl == 0:
-            temp = {}
+            temp = []
             for key, val in df.items():
-                result = self.score_to_df(val=val, lvl=lvl+1)
-                temp[key] = result
+                hrchy.append(key)
+                result = self.score_to_df(val=val, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key)
 
         elif lvl < self.hrchy_level:
-            temp = {}
+            temp = []
             for key_hrchy, val_hrchy in val.items():
-                result = self.score_to_df(val=val_hrchy, lvl=lvl+1)
-                temp[key_hrchy] = result
+                hrchy.append(key_hrchy)
+                result = self.score_to_df(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key_hrchy)
 
             return temp
 
         elif lvl == self.hrchy_level:
-            temp = {}
             for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                temp = []
                 for algorithm, score in val_hrchy:
-
-
-                temp[key_hrchy] = models
+                    temp.append(hrchy + [algorithm, score])
+                hrchy.remove(key_hrchy)
 
             return temp
 
         return temp
 
+    def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
+        if lvl == 0:
+            temp = []
+            for key, val in df.items():
+                hrchy.append(key)
+                result = self.forecast(val=val, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key)
 
-    def forecast(self, best_models: dict) -> dict:
+        elif lvl < self.hrchy_level:
+            temp = []
+            for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                result = self.forecast(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key_hrchy)
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            for key_hrchy, val_hrchy in val.items():
+                if len(val_hrchy) > self.n_test:
+                    hrchy.append(key_hrchy)
+                    temp = []
+                    for algorithm in self.model_univ_list:
+                        prediction = self.model_univ[algorithm](history=val_hrchy[self.target_feature].to_numpy(),
+                                                                cfg=self.cfg_dict[algorithm],
+                                                                pred_step=self.n_test)
+                        temp.append(hrchy + [algorithm, prediction])
+                    hrchy.remove(key_hrchy)
+
+            return temp
+
+        return temp
+
+    def save_prediction(self, predictions):
+        end_date = datetime.strptime(self.end_date, '%Y%m%d')
+
+        results = []
+        fkey = ['HRCHY' + str(i+1) for i in range(len(predictions))]
+        for i, pred in enumerate(predictions):
+            for j,  result in enumerate(pred[-1]):
+               results.append([fkey[i]] + pred[:-1] + [datetime.strftime(end_date + timedelta(weeks=(j+1)), '%Y%m%d'),
+                                           result])
+
+        results = pd.DataFrame(results)
+        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'month', 'result_sales']
+        results.columns = cols
+        results['project_cd'] = 'ENT001'
+        results['division'] = self.division
+
+        self.session.insert(df=results, tb_name='M4S_I110400')
+
+
+    def forecast_BAK(self, best_models: dict) -> dict:
         print("Implement model prediction")
         forecast = deepcopy(self.df_sell)
         for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
@@ -487,6 +563,7 @@ class Model(object):
 
         # Make multi-step forecast
         yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
+
 
         return yhat
 

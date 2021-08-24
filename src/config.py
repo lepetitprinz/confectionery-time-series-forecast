@@ -65,17 +65,17 @@ MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'hw'],
 N_TEST = 4    # prediction
 
 LAG = {'D': 7, 'W': 1, 'M': 1}      # AR
-SEASONAL = True                     # AR
-TREND = 'ct'                        # AR / VARMAX / HW
+SEASONAL = False                     # AR
+TREND = 'c'                        # AR / VARMAX / HW
 TREND_ARMA = 'c'                    # ARMA
 PERIOD = {'D': 7, 'W': 2, 'M': 2}   # AR / HW
 FREQUENCY = None                    # ARMA / ARIMA
-TWO_LVL_ORDER = {'D': (7, 0),       # ARMA / VARMAX
+TWO_LVL_ORDER = {'D': (1, 0),       # ARMA / VARMAX
                  'W': (1, 0),
                  'M': (1, 0)}
-THR_LVL_ORDER = {'D': (7, 0, 1),    # ARIMA
-                 'W': (1, 0, 1),
-                 'M': (1, 0, 1)}
+THR_LVL_ORDER = {'D': (1, 0, 0),    # ARIMA
+                 'W': (1, 0, 0),
+                 'M': (1, 0, 0)}
 
 INIT_METHOD = 'estimated'    # Simple Exponential Smoothing
 SMOOTHING = 0.2              # Simple Exponential Smoothing
