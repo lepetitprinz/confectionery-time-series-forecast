@@ -8,11 +8,10 @@ from typing import List, Tuple
 
 
 class DataPrep(object):
-    COL_DROP_SELL = ['project_cd', 'division_cd', 'seq', ]
+    COL_DROP_SELL = ['division_cd', 'seq']
     COL_DATETIME = ['yymmdd']
     COL_TARGET = ['']
-    COL_TYPE_NUM = ['amt', 'sales', 'unit_price', 'store_price']
-    COL_TYPE_POS = ['amt', 'sales', 'unit_price', 'store_price']
+
 
     def __init__(self):
         # Path
@@ -28,7 +27,8 @@ class DataPrep(object):
 
         # Hierarchy
         # self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd'),  (3, 'pd_nm')]
-        self.hrchy: List[Tuple[int, str]] = [(1, 'cust_grp'), (2, 'cust_cd'), (3, 'pd_nm')]
+        self.hrchy: List[Tuple[int, str]] = [(1, 'cust_grp'), (2, 'biz_cd'), (3, 'line_cd'),
+                                             (4, 'brand_Cd'), (5, 'item_ctgr_cd')]
         self.hrchy_level = len(self.hrchy) - 1
 
         # Smoothing

@@ -65,6 +65,7 @@ class SqlSession(object):
         try:
             # result = self._connection.execute(text(sql))
             # columns = [col for col in result.keys()]
+            print("Selection process start")
             data = pd.read_sql_query(sql, self._connection)
 
             return data
@@ -72,25 +73,26 @@ class SqlSession(object):
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
             return error
+    #
+    # def insert(self, df: pd.DataFrame, table: str):
+    #     """
+    #     execute CRUD query
+    #     """
+    #     if self._connection is None:
+    #         raise ConnectionError('Data Source session is not initialized')
+    #     print("Inserting process start")
+    #     df.to_sql(name=table, con=self._connection, if_exists='append',
+    #               schema='dbo',
+    #               index=False, method='multi')
+    #     print("Inserting process is finished")
+    #
+    #     self._connection.commit()
 
-    def insert(self, sql: str, data_list: list):
-        """
-        execute CRUD query
-        """
-        if self._connection is None:
-            raise ConnectionError('Data Source session is not initialized')
-
-        try:
-            # cursor = self._connection.cursor()
-            # sql_exec = cursor.insert(sql)
-            self._connection.execute(sql, data_list)
-
-        except SQLAlchemyError as e:
-            error = str(e.__dict__['orig'])
-            return error
-
-        finally:
-            self.close()
+    def insert(self, df: pd.DataFrame, tb_name: str):
+        table = self.get_table_meta(tb_name=tb_name)
+        with self.engine.connect() as conn:
+            conn.execute(table.insert(), df.to_dict('records'))
+            # conn.commit()
 
     def insert_two(self, table, value):
         ins = insert(table)
@@ -99,7 +101,9 @@ class SqlSession(object):
         sess = session()
         sess.execute(ins)
 
-    def get_table_info(self, tb_name: str):
-        meta = MetaData(bind=self.engine)
+    def get_table_meta(self, tb_name: str):
+        metadata = MetaData(bind=self.engine)
+        metadata.reflect(self.engine, only=[tb_name])
+        table = Table(tb_name, metadata, autoload=True, autoload_with=self.engine)
 
-        return Table(tb_name, meta)
+        return table

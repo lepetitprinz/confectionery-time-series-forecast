@@ -17,7 +17,7 @@ sess.init()
 
 # Insert Test
 table_name = "M4S_O110800"
-table_meta = sess.get_table_info(tb_name=table_name)
+table_meta = sess.get_table_meta(tb_name=table_name)
 
 sql_ist = f'INSERT INTO {table_name} ' \
           '(PROJECT_CD, DIVISION, MONTH, FKEY, RESULT_SALES, SEASON_VAL, TREND_VAL, RANDOM_VAL)' \
