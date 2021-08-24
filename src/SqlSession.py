@@ -1,7 +1,7 @@
 import config
 import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy import Table, MetaData, insert
+from sqlalchemy import Table, MetaData, insert, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -73,33 +73,16 @@ class SqlSession(object):
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
             return error
-    #
-    # def insert(self, df: pd.DataFrame, table: str):
-    #     """
-    #     execute CRUD query
-    #     """
-    #     if self._connection is None:
-    #         raise ConnectionError('Data Source session is not initialized')
-    #     print("Inserting process start")
-    #     df.to_sql(name=table, con=self._connection, if_exists='append',
-    #               schema='dbo',
-    #               index=False, method='multi')
-    #     print("Inserting process is finished")
-    #
-    #     self._connection.commit()
 
     def insert(self, df: pd.DataFrame, tb_name: str):
         table = self.get_table_meta(tb_name=tb_name)
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
-            # conn.commit()
 
-    def insert_two(self, table, value):
-        ins = insert(table)
-        ins = ins.values(value)
-        session = sessionmaker(bind=self.engine)
-        sess = session()
-        sess.execute(ins)
+    def update(self, df: pd.DataFrame, tb_name: str):
+        table = self.get_table_meta(tb_name=tb_name)
+        with self.engine.connect() as conn:
+            conn.execute(table.update(), df.to_dict('records'))
 
     def get_table_meta(self, tb_name: str):
         metadata = MetaData(bind=self.engine)

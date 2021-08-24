@@ -2,7 +2,7 @@ import pandas as pd
 
 import config
 from DataPrep import DataPrep
-from Model import Model
+from Model_BAK import Model
 from SqlSession import SqlSession
 from sqlalchemy import Table, MetaData, Column, String, Integer, Float, Date
 

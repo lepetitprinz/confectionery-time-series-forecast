@@ -30,27 +30,12 @@ STN_LIST = [108]
 ###########################
 # Data configuration
 ###########################
-# Scenario
-# s1: univariate time series (datetime + target)
-# s2: change target variable (datetime + revised target)
-# s3: add "discount" variable (multivariate time series)
-# s4: add "exogenous variable (add random noise)
-SCENARIO = 's4'    # s1 / s2 / s3 / s4
+HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']
+HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_ctgr_cd')]
+HRCHY_LEVEL = len(HRCHY) - 1
 
-# Result configuration
-BEST_OR_ALL = 'all'    # all / best
-VAR_TYPE = 'univ'    # univ / multi / exg
-
-FILTER_MINUS_YN = False    # Remove minus values or not
-CONV_TARGET_YN = False    # Convert target variable or not
-ADD_EXO_YN = True    # Exogenous variable (True / False)
-
-COL_TARGET = 'amt'    # Target variable
-COL_TOTAL = {'univ': ['dt', COL_TARGET],    # univ: datetime + target
-             'multi': ['dt', COL_TARGET, 'sales'],
-             'exg': ['dt', COL_TARGET, 'sales']}
-
-
+#
+TIME_TYPE = 'W'
 
 # Outlier handling configuration
 SMOOTH_YN = True    # Smoothing or not (True / False)
@@ -65,7 +50,11 @@ RESAMPLE_RULE = 'W'    # Data resampling rule (D / W / M)
 # Model configuration
 ###########################
 TRAIN_RATE = 0.7    # Train / Test split rate
-MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'ses', 'hw'],
+# MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'ses', 'hw'],
+#                     'multi': ['var'],
+#                     'exg': ['lstm_vn']}
+
+MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'hw'],
                     'multi': ['var'],
                     'exg': ['lstm_vn']}
 
@@ -73,7 +62,7 @@ MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'ses', 'hw'],
 #  Model Hyper-parameters
 #####################################
 # Statistical model hyper-parameters
-N_TEST = 12    # prediction
+N_TEST = 4    # prediction
 
 LAG = {'D': 7, 'W': 1, 'M': 1}      # AR
 SEASONAL = True                     # AR

@@ -74,7 +74,7 @@ class SqlConfig(object):
                          , CREATE_DATE
                       FROM M4S_I002170
                      WHERE 1=1
-                       AND YYMMDD BETWEEN 20210101 AND 20210107
+                       AND YYMMDD BETWEEN 20210101 AND 20210531
                     ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM.PROJECT_CD

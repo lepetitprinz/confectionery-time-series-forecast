@@ -2,16 +2,15 @@ import config
 from SqlSession import SqlSession
 from SqlConfig import SqlConfig
 
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
 
 
 class DataPrep(object):
-    COL_DROP_SELL = ['division_cd', 'seq']
-    COL_DATETIME = ['yymmdd']
-    COL_TARGET = ['']
-
+    COL_DROP_SELL = ['division_cd', 'yymmdd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
+    COL_TARGET = ['qty']
 
     def __init__(self):
         # Path
@@ -19,25 +18,26 @@ class DataPrep(object):
         self.save_dir = config.SAVE_DIR
 
         # Condition
-        self.variable_type = config.VAR_TYPE
         self.time_rule = config.RESAMPLE_RULE
 
         # Dataset
-        self.data_preped = None
+        self.division = ''
 
         # Hierarchy
-        # self.hrchy: List[Tuple[int, str]] = [(1, 'chnl_cd'), (2, 'cust_cd'),  (3, 'pd_nm')]
-        self.hrchy: List[Tuple[int, str]] = [(1, 'cust_grp'), (2, 'biz_cd'), (3, 'line_cd'),
-                                             (4, 'brand_Cd'), (5, 'item_ctgr_cd')]
-        self.hrchy_level = len(self.hrchy) - 1
+        self.hrchy_list = config.HRCHY_LIST
+        self.hrchy = config.HRCHY
+        self.hrchy_level = config.HRCHY_LEVEL
 
         # Smoothing
         self.smooth_yn = config.SMOOTH_YN
         self.smooth_method = config.SMOOTH_METHOD
         self.smooth_rate = config.SMOOTH_RATE
 
-    def preprocess(self, data: pd.DataFrame) -> None:
+    def preprocess(self, data: pd.DataFrame, division: str) -> dict:
         print("Implement data preprocessing")
+
+        # set dataset division
+        self.division = division
 
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
@@ -45,15 +45,15 @@ class DataPrep(object):
         # Grouping
         data_group = self.group(data=data)
 
-        # Univariate or Multivariate dataset
-        data_group = self.set_features(df=data_group)
-
         # resampling
-        resampled_data = self.resample(df=data_group)
+        data_resample = self.resample(df=data_group)
 
-        self.data_preped = resampled_data
+        # Univariate or Multivariate dataset
+        # data_featured = self.set_features(df=data_resample)
 
         print("Data preprocessing is finished\n")
+
+        return data_resample
 
     @ staticmethod
     def correct_target(df: pd.DataFrame) -> pd.DataFrame:
@@ -66,13 +66,21 @@ class DataPrep(object):
         df.columns = [col.lower() for col in df.columns]
 
         # drop unnecessary columns
-        df = df.drop(columns=self.__class__.COL_DROP_SELL)
+        df = df.drop(columns=self.__class__.COL_DROP_SELL, errors='ignore')
 
-        # convert date column to datetime
-        df[self.__class__.COL_DATETIME] = pd.to_datetime(df[self.__class__.COL_DATETIME], format='%Y%m%d')
+        #
+        conditions = [df['unit_cd'] == 'EA ',
+                      df['unit_cd'] == 'BOL',
+                      df['unit_cd'] == 'BOX']
+
+        values = [df['box_ea'], df['box_bol'], 1]
+        unit_map = np.select(conditions, values)
+        df['qty'] = df['qty'].to_numpy() / unit_map
+
+        df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
 
         # convert target data type to float
-        df[config.COL_TARGET] = df[config.COL_TARGET].astype(float)
+        df['sold_cust_grp_cd'] = df['sold_cust_grp_cd'].astype(str)
 
         # # convert string type to int type
         # for col in self.__class__.COL_TYPE_NUM:
@@ -147,6 +155,39 @@ class DataPrep(object):
         return temp
 
     def resample(self, df=None, val=None, lvl=0):
+        group_list = deepcopy(self.hrchy_list)
+        group_list.append('week')
+
+        temp = None
+        if lvl == 0:
+            temp = {}
+            for key, val in df.items():
+                result = self.resample(val=val, lvl=lvl+1)
+                temp[key] = result
+
+        elif lvl < self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                result = self.resample(val=val_hrchy, lvl=lvl+1)
+                temp[key_hrchy] = result
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                val_hrchy = val_hrchy.groupby(by=group_list).sum()
+                # if self.smooth_yn:
+                #     val_hrchy = self.smoothing(df=val_hrchy)
+                val_hrchy = val_hrchy.reset_index()
+                val_hrchy = val_hrchy.drop(columns=['discount'])    # Todo: Exception
+                temp[key_hrchy] = val_hrchy
+
+            return temp
+
+        return temp
+
+    def resample_bak(self, df=None, val=None, lvl=0):
         temp = None
         if lvl == 0:
             temp = {}

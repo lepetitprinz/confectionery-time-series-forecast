@@ -1,9 +1,11 @@
+from Model import Model
 from DataPrep import DataPrep
 from SqlConfig import SqlConfig
 from SqlSession import SqlSession
 from ConsistencyCheck import ConsistencyCheck
 
 import os
+import pickle
 import pandas as pd
 
 # Connect to the DB
@@ -17,20 +19,34 @@ import pandas as pd
 # session.close()
 
 # Temp
-save_dir = os.path.join('..', 'result', 'test_sell_in.csv')
+# save_dir = os.path.join('..', 'result', 'test_sell_in.csv')
 # sell_in.to_csv(save_dir, index=False)
-sell_in = pd.read_csv(save_dir)
+# sell_in = pd.read_csv(save_dir)
+#
+# # sell_out = session.select(sql=sql_config.get_sell_out(date_from=date_from, date_to=date_to))
+#
+# # Consistency Check
+# # Sell-int
+# save_dir = os.path.join('..', 'result', 'check_sell_in.csv')
+# cns_check = ConsistencyCheck(division='sell_in', save_yn=False)
+# sell_in_checked = cns_check.check(df=sell_in)
+# sell_in_checked.to_csv(save_dir, index=False)
 
-# sell_out = session.select(sql=sql_config.get_sell_out(date_from=date_from, date_to=date_to))
+# sell_in_checked = pd.read_csv(save_dir)
 
-# Consistency Check
-# Sell-int
-cns_check = ConsistencyCheck(division='sell_in')
-cns_check.check(df=sell_in)
-# session.close()
+# # Data Preprocessing
+# prep = DataPrep()
 
+save_dir = os.path.join('..', 'result', 'prep_sell_in.pickle')
+# data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
 
+# with open(save_dir, 'wb') as handle:
+#     pickle.dump(data_preped, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-# Data Preprocessing
-prep = DataPrep()
-prep.preprocess(data=sell_in)
+with open(save_dir, 'rb') as handle:
+    data_preped = pickle.load(handle)
+
+# # Modeling
+model = Model(division='SELL-IN')
+scores = model.train(df=data_preped)
+model.save_score(scores=scores)
