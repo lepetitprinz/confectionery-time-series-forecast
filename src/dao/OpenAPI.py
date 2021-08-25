@@ -23,7 +23,7 @@ class OpenAPI(object):
         sql_conf = SqlConfig()
         sess = SqlSession()
         sess.init()
-        info = sess.select(sql=sql_conf.get_comm_master())
+        info = sess.select(sql=sql_conf.sql_comm_master())
         sess.close()
         info_dict = dict(zip(info['OPTION_CD'], info['OPTION_VAL']))
 

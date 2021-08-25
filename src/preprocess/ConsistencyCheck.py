@@ -69,7 +69,7 @@ class ConsistencyCheck(object):
 
     # Error 3
     def check_unit_code_map(self, df: pd.DataFrame):
-        unit_code_map = self.session.select(sql=self.sql_config.get_unit_map())
+        unit_code_map = self.session.select(sql=self.sql_config.sql_unit_map())
         unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
         df['item_cd'] = df['item_cd'].astype(str)
         merged = pd.merge(df, unit_code_map, how='left', on='item_cd')

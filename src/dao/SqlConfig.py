@@ -2,7 +2,7 @@
 class SqlConfig(object):
     # Item Master Table
     @staticmethod
-    def get_item_master():
+    def sql_item_master():
         sql = f"""
             SELECT PROJECT_CD
                  , ITEM_CD
@@ -13,7 +13,7 @@ class SqlConfig(object):
 
     # Customer Master Table
     @staticmethod
-    def get_cust_master():
+    def sql_cust_master():
         sql = f"""
             SELECT PROJECT_CD
                  , CUST_CD
@@ -24,19 +24,19 @@ class SqlConfig(object):
 
     # D
     @staticmethod
-    def get_comm_master(option: str):
+    def sql_comm_master():
         sql = f"""
-            SELECT OPTION_VAL
+            SELECT OPTION_CD
+                 , OPTION_VAL
             FROM M4S_I001020
            WHERE 1=1
              AND MDL_CD = 'DF'
-             AND OPTION_CD = '{option}'
         """
         return sql
 
     # SELL-IN Table
     @staticmethod
-    def get_sell_in(date_from: str, date_to: str):
+    def sql_sell_in(date_from: int, date_to: int):
         sql = f""" 
             SELECT DIVISION_CD
                  , SOLD_CUST_GRP_CD
@@ -108,16 +108,13 @@ class SqlConfig(object):
 
     # SELL-OUT Table
     @staticmethod
-    def get_sell_out(date_from: str, date_to: str):
+    def sql_sell_out(date_from: int, date_to: int):
         sql = f""" 
             SELECT PROJECT_CD
                  , DIVISION_CD
                  , SOLD_CUST_GRP_CD
                  , ITEM_CD
                  , YYMMDD
-                 , FROM_DC_CD
-                 , UNIT_PRICE
-                 , UNIT_CD
                  , DISCOUNT
                  , WEEK
                  , RST_SALES_QTY
@@ -128,7 +125,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def get_unit_map():
+    def sql_unit_map():
         sql = """
             SELECT BOX.ITEM_CD
                  , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL

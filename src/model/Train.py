@@ -26,7 +26,7 @@ class Train(object):
         self.session = SqlSession()
         self.session.init()
 
-        self.end_date = self.session.select(sql=SqlConfig.get_comm_master(option='RST_END_DAY')).values[0][0]
+        self.end_date = self.session.select(sql=SqlConfig.sql_comm_master(option='RST_END_DAY')).values[0][0]
 
         self.division = division
         # Hierarchy
