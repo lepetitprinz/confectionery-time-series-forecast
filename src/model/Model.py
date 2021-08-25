@@ -1,5 +1,6 @@
-from DataPrep import DataPrep
-import config
+from dao.SqlSession import SqlSession
+from dao.SqlConfig import SqlConfig
+import common.config as config
 
 from typing import Dict, Callable, Any
 import os
@@ -10,6 +11,7 @@ import pandas as pd
 from math import sqrt
 from copy import deepcopy
 from datetime import timedelta
+from datetime import datetime
 
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
@@ -25,18 +27,18 @@ from statsmodels.tsa.vector_ar.var_model import VAR    # Vector Auto regression
 from statsmodels.tsa.statespace.varmax import VARMAX    # Vector Autoregressive Moving Average with
                                                         # eXogenous regressors model
 
-from tensorflow.keras import backend as K
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+# from tensorflow.keras import backend as K
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import LSTM, Dense
 
 # from prophet import Prophet
 warnings.filterwarnings('ignore')
 
 
 # Model Decorator
-def stats_method(func: Callable) -> Callable[[object, list, tuple, int, str], Any]:
-    def wrapper(obj: object, history: list, cfg: tuple, time_type: str, pred_step: int):
-        return func(obj, history, cfg, time_type, pred_step)
+def stats_method(func: Callable) -> Callable[[object, list, tuple, int], Any]:
+    def wrapper(obj: object, history: list, cfg: tuple, pred_step: int):
+        return func(obj, history, cfg, pred_step)
     return wrapper
 
 
@@ -58,23 +60,35 @@ class Model(object):
         - VARMAX model (Vector Autoregressive Moving Average with eXogenous regressors model)
     """
 
-    def __init__(self, sell_in: dict, sell_out: dict):
-        # dataset
-        self.df_sell = {'sell_in': sell_in, 'sell_out': sell_out}
+    def __init__(self, division: str):
+        self.sql_config = SqlConfig()
+        self.session = SqlSession()
+        self.session.init()
 
-        # scenario
-        self.scenario = config.SCENARIO
-        self.smooth_yn = config.SMOOTH_YN
-        self.smooth_dir = {True: 'smooth_y', False: 'smooth_n'}
-        # model configuration
-        self.model_type = config.VAR_TYPE
+        self.end_date = self.session.select(sql=SqlConfig.get_comm_master(option='RST_END_DAY')).values[0][0]
+
+        self.division = division
+        # Hierarchy
+        self.hrchy_list = config.HRCHY_LIST
+        self.hrchy = config.HRCHY
+        self.hrchy_level = config.HRCHY_LEVEL
+
+        # temp information
+        self.model_type = 'univ'
+        self.time_type = 'W'
+        self.target_feature = 'qty'
+
         self.n_test = config.N_TEST
 
         # model
+        self.model_univ_list = ['ar', 'arma', 'arima', 'hw']
+        # self.model_univ_list = ['arma', 'arima', 'hw']
         self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
-                                                    'ses': self.ses, 'hw': self.hw}
+                                                    'hw': self.hw}
+        # self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
+        #                                             'ses': self.ses, 'hw': self.hw}
         self.model_multi: Dict[str, stats_method] = {'var': self.var}
-        self.model_exg: Dict[str, stats_method] = {'lstm_vn': self.lstm_train}
+        # self.model_exg: Dict[str, stats_method] = {'lstm_vn': self.lstm_train}
         self.epoch_best = 0
 
         # hyper-parameters
@@ -97,39 +111,134 @@ class Model(object):
                          'varma': self.cfg_varma,
                          'varmax': self.cfg_varmax}
 
-    def train(self) -> dict:
-        print("Implement model training")
-        scores = pd.DataFrame()
-        best_models = deepcopy(self.df_sell)
+    def train(self, df=None, val=None, lvl=0) -> dict:
+        temp = None
+        if lvl == 0:
+            temp = {}
+            for key, val in df.items():
+                result = self.train(val=val, lvl=lvl+1)
+                temp[key] = result
 
-        for sell_type, customers in best_models.items():   # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():    # customer: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product group: all / g1 / g2 / g3
-                    for prod_type, times in products.items():    # product: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, df in times.items():    # time: D / W / M
-                            if len(df) > 0:
-                                best_model, models = self.get_best_models(df=df, time_type=time_type)
-                                times[time_type] = best_model
-                                # Make accuracy score dataframe
-                                temp = pd.DataFrame({'sell_type': sell_type,
-                                                     'cust_type': cust_type,
-                                                     'prod_group_type': prod_group_type,
-                                                     'prod_type': prod_type,
-                                                     'time_type': time_type,
-                                                     'model': np.array(models)[:, 0],
-                                                     'rmse': np.array(models)[:, 1],
-                                                     'scenario': self.scenario,
-                                                     'smoothing': self.smooth_yn})
-                                scores = pd.concat([scores, temp])
+        elif lvl < self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                result = self.train(val=val_hrchy, lvl=lvl+1)
+                temp[key_hrchy] = result
 
-        scores.to_csv(os.path.join(config.SAVE_DIR, 'scores', self.scenario, self.smooth_dir[self.smooth_yn],
-                                   'scores_' + self.model_type + '.csv'),
-                      index=False, encoding='utf-8-sig')
-        print("Training model is finished\n")
+            return temp
 
-        return best_models
+        elif lvl == self.hrchy_level:
+            temp = {}
+            for key_hrchy, val_hrchy in val.items():
+                if len(val_hrchy):
+                    models = self.train_model(df=val_hrchy[self.target_feature])
+                temp[key_hrchy] = models
 
-    def forecast(self, best_models: dict) -> dict:
+            return temp
+
+        return temp
+
+    def save_score(self, scores: dict):
+        result = self.score_to_df(df=scores)
+
+        result = pd.DataFrame(result)
+        cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']
+        result.columns = cols
+
+        result['project_cd'] = 'ENT001'
+        result['division'] = self.division
+        result['fkey'] = ['HRCHY' + str(i+1) for i in range(len(result))]
+
+        result['rmse'] = result['rmse'].fillna(0)
+
+        self.session.insert(df=result, tb_name='M4S_I110410')
+
+    def score_to_df(self, df=None, val=None, lvl=0, hrchy=[]):
+        if lvl == 0:
+            temp = []
+            for key, val in df.items():
+                hrchy.append(key)
+                result = self.score_to_df(val=val, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key)
+
+        elif lvl < self.hrchy_level:
+            temp = []
+            for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                result = self.score_to_df(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key_hrchy)
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                temp = []
+                for algorithm, score in val_hrchy:
+                    temp.append(hrchy + [algorithm, score])
+                hrchy.remove(key_hrchy)
+
+            return temp
+
+        return temp
+
+    def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
+        if lvl == 0:
+            temp = []
+            for key, val in df.items():
+                hrchy.append(key)
+                result = self.forecast(val=val, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key)
+
+        elif lvl < self.hrchy_level:
+            temp = []
+            for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                result = self.forecast(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key_hrchy)
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            for key_hrchy, val_hrchy in val.items():
+                if len(val_hrchy) > self.n_test:
+                    hrchy.append(key_hrchy)
+                    temp = []
+                    for algorithm in self.model_univ_list:
+                        prediction = self.model_univ[algorithm](history=val_hrchy[self.target_feature].to_numpy(),
+                                                                cfg=self.cfg_dict[algorithm],
+                                                                pred_step=self.n_test)
+                        temp.append(hrchy + [algorithm, prediction])
+                    hrchy.remove(key_hrchy)
+
+            return temp
+
+        return temp
+
+    def save_prediction(self, predictions):
+        end_date = datetime.strptime(self.end_date, '%Y%m%d')
+
+        results = []
+        fkey = ['HRCHY' + str(i+1) for i in range(len(predictions))]
+        for i, pred in enumerate(predictions):
+            for j,  result in enumerate(pred[-1]):
+               results.append([fkey[i]] + pred[:-1] + [datetime.strftime(end_date + timedelta(weeks=(j+1)), '%Y%m%d'),
+                                           result])
+
+        results = pd.DataFrame(results)
+        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'month', 'result_sales']
+        results.columns = cols
+        results['project_cd'] = 'ENT001'
+        results['division'] = self.division
+
+        self.session.insert(df=results, tb_name='M4S_I110400')
+
+
+    def forecast_BAK(self, best_models: dict) -> dict:
         print("Implement model prediction")
         forecast = deepcopy(self.df_sell)
         for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
@@ -248,8 +357,8 @@ class Model(object):
 
         print("Forecast results are saved\n")
 
-    def get_best_models(self, df, time_type: str) -> tuple:
-        best_models = []
+    def train_model(self, df) -> tuple:
+        models = []
         for model in config.MODEL_CANDIDATES[self.model_type]:
             score = 0
             if self.model_type == 'univ':
@@ -258,27 +367,20 @@ class Model(object):
                 else:    # numpy array
                     data = df.tolist()
                 score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
-                                                      data=data, n_test=self.n_test, time_type=time_type)
-            elif self.model_type == 'multi':
-                score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
-                                                       data=df, n_test=self.n_test, time_type=time_type)
-            elif self.model_type == 'exg':
-                score = self.lstm_train(train=df, units=config.LSTM_UNIT)
+                                                      data=data, n_test=self.n_test)
+            # elif self.model_type == 'multi':
+            #     score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
+            #                                            data=df, n_test=self.n_test)
+            # elif self.model_type == 'exg':
+            #     score = self.lstm_train(train=df, units=config.LSTM_UNIT)
 
-            if self.model_type != 'exg':
-                best_models.append([model, round(score)])
-            else:
-                best_models.append([model, score])
+            models.append([model, round(score, 2)])
 
-        # prophet model
-        # score = self.prophet(history=df, n_test=self.n_test)
-        # best_models.append(['prophet', score])
+        models = sorted(models, key=lambda x: x[1])
 
-        best_models = sorted(best_models, key=lambda x: x[1])
+        return models
 
-        return best_models[0], best_models
-
-    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test, time_type) -> np.array:
+    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test) -> np.array:
         """
         :param model: Statistical model
         :param model_cfg: configuration
@@ -296,21 +398,20 @@ class Model(object):
             # fit model and make forecast for history
             yhat = self.model_univ[model](history=train,
                                           cfg=model_cfg,
-                                          pred_step=n_test,
-                                          time_type=time_type)
+                                          pred_step=n_test)
             # store err in list of predictions
             err = self.calc_sqrt_mse(test[i: i+n_test], yhat)
             predictions.append(err)
 
             # add actual observation to history for the next loop
-            train = np.append(train, test[i])
+            # train = np.append(train, test[i])
 
         # estimate prediction error
         rmse = np.mean(predictions)
 
         return rmse
 
-    def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test, time_type) -> np.array:
+    def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test) -> np.array:
         # split dataset
         train, test = self.train_test_split(data=data, train_size=config.TRAIN_RATE)
         # history = data.values  # seed history with training dataset
@@ -320,7 +421,6 @@ class Model(object):
             # fit model and make forecast for history
             yhat = self.model_multi[model](history=train,
                                            cfg=model_cfg,
-                                           time_type=time_type,
                                            pred_step=n_test)
             # store err in list of predictions
             err = self.calc_sqrt_mse(test[config.COL_TARGET][i: i + n_test], yhat)
@@ -350,7 +450,7 @@ class Model(object):
         # convert config to a key
         key = str(cfg)
         result = self.walk_fwd_validation_univ(model=model, data=data, n_test=n_test,
-                                               model_cfg=cfg, time_type=config.RESAMPLE_RULE)
+                                               model_cfg=cfg, time_type=self.time_type)
         return model, key, result
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
@@ -368,7 +468,7 @@ class Model(object):
     #############################
     # Auto-regressive Model
     @stats_method
-    def ar(self, history, cfg: tuple, time_type, pred_step=0):
+    def ar(self, history, cfg: tuple, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -386,7 +486,7 @@ class Model(object):
         :return: forecast result
         """
         lag, t, s, p = cfg
-        model = AutoReg(endog=history, lags=lag[time_type], trend=t, seasonal=s, period=p[time_type])
+        model = AutoReg(endog=history, lags=lag[self.time_type], trend=t, seasonal=s, period=p[self.time_type])
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
@@ -398,7 +498,7 @@ class Model(object):
 
     # Auto regressive moving average model
     @stats_method
-    def arma(self, history, cfg: tuple, time_type, pred_step=0):
+    def arma(self, history, cfg: tuple, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -418,7 +518,7 @@ class Model(object):
         """
         o, f, t = cfg
         # define model
-        model = ARMA(endog=history, order=o[time_type], freq=f)
+        model = ARMA(endog=history, order=o[self.time_type], freq=f)
         # fit model
         model_fit = model.fit(trend=t, disp=0)
         # print('Coefficients: {}'.format(model_fit.params))
@@ -431,7 +531,7 @@ class Model(object):
 
     # Autoregressive integrated moving average model
     @stats_method
-    def arima(self, history, cfg: tuple, time_type, pred_step=0):
+    def arima(self, history, cfg: tuple, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -454,7 +554,7 @@ class Model(object):
         """
         o, f, t = cfg
         # define model
-        model = ARIMA(history, order=o[time_type], trend=t, freq=f)
+        model = ARIMA(history, order=o[self.time_type], trend=t, freq=f)
         # fit model
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
@@ -463,10 +563,11 @@ class Model(object):
         # Make multi-step forecast
         yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
 
+
         return yhat
 
     @stats_method
-    def ses(self, history, cfg: tuple, time_type, pred_step=0):
+    def ses(self, history, cfg: tuple, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -482,7 +583,7 @@ class Model(object):
         :return: forecast result
         """
         i, s, o = cfg
-        _ = time_type
+        _ = self.time_type
         # define model
         model = SimpleExpSmoothing(history, initialization_method=i)
         # fit model
@@ -496,7 +597,7 @@ class Model(object):
         return yhat
 
     @stats_method
-    def hw(self, history, cfg: tuple, time_type, pred_step=0):
+    def hw(self, history, cfg: tuple, pred_step=0):
         """
         :param history: time series data
         :param cfg:
@@ -523,7 +624,7 @@ class Model(object):
         t, d, s, p, b, r = cfg
         # define model
         model = ExponentialSmoothing(history, trend=t, damped_trend=d, seasonal=s,
-                                     seasonal_periods=p[time_type], use_boxcox=b)
+                                     seasonal_periods=p[self.time_type], use_boxcox=b)
         # fit model
         model_fit = model.fit(optimized=True, remove_bias=r)     # fit model
         # print('Coefficients: {}'.format(model_fit.params))
@@ -563,7 +664,7 @@ class Model(object):
     # Multi-variate Model
     #############################
     @stats_method
-    def var(self, history: pd.DataFrame, cfg, time_type, pred_step=0):
+    def var(self, history: pd.DataFrame, cfg, pred_step=0):
         """
         :param history:
         :param cfg:
@@ -578,7 +679,7 @@ class Model(object):
         # define model
         model = VAR(history)
         # fit model
-        model_fit = model.fit(lag[time_type])
+        model_fit = model.fit(lag[self.time_type])
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
@@ -649,72 +750,72 @@ class Model(object):
 
         return yhat[:, 0]
 
-    def lstm_train(self, train: pd.DataFrame, units: int) -> float:
-        # scaling
-        scaler = MinMaxScaler()
-        train_scaled = scaler.fit_transform(train)
-        train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
-
-        x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-                                                   n_steps_out=self.n_test)
-
-        n_features = x_train.shape[2]
-
-        # Build model
-        model = Sequential()
-        model.add(LSTM(units=units, activation='relu', return_sequences=True,
-                  input_shape=(self.n_test, n_features)))
-        # model.add(LSTM(units=units, activation='relu'))
-        model.add(Dense(n_features))
-        model.compile(optimizer='adam', loss=self.root_mean_squared_error)
-
-        history = model.fit(x_train, y_train,
-                            epochs=config.EPOCHS,
-                            batch_size=config.BATCH_SIZE,
-                            validation_split=1-config.TRAIN_RATE,
-                            shuffle=False,
-                            verbose=0)
-        self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
-
-        rmse = min(history.history['val_loss'])
-
-        return rmse
-
-    def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
-        # scaling
-        scaler = MinMaxScaler()
-        train_scaled = scaler.fit_transform(train)
-        train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
-
-        x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-                                                   n_steps_out=self.n_test)
-        n_features = x_train.shape[2]
-
-        # Build model
-        model = Sequential()
-        model.add(LSTM(units=units, activation='relu', return_sequences=True,
-                  input_shape=(self.n_test, n_features)))
-        # model.add(LSTM(units=units, activation='relu'))
-        model.add(Dense(n_features))
-        model.compile(optimizer='adam', loss=self.root_mean_squared_error)
-
-        model.fit(x_train, y_train,
-                  epochs=self.epoch_best,
-                  batch_size=config.BATCH_SIZE,
-                  shuffle=False,
-                  verbose=0)
-        test = x_train[-1]
-        test = test.reshape(1, test.shape[0], test.shape[1])
-
-        predictions = model.predict(test, verbose=0)
-        predictions = scaler.inverse_transform(predictions[0])
-
-        return predictions[:, 0]
+    # def lstm_train(self, train: pd.DataFrame, units: int) -> float:
+    #     # scaling
+    #     scaler = MinMaxScaler()
+    #     train_scaled = scaler.fit_transform(train)
+    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
+    #
+    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
+    #                                                n_steps_out=self.n_test)
+    #
+    #     n_features = x_train.shape[2]
+    #
+    #     # Build model
+    #     model = Sequential()
+    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
+    #               input_shape=(self.n_test, n_features)))
+    #     # model.add(LSTM(units=units, activation='relu'))
+    #     model.add(Dense(n_features))
+    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
+    #
+    #     history = model.fit(x_train, y_train,
+    #                         epochs=config.EPOCHS,
+    #                         batch_size=config.BATCH_SIZE,
+    #                         validation_split=1-config.TRAIN_RATE,
+    #                         shuffle=False,
+    #                         verbose=0)
+    #     self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
+    #
+    #     rmse = min(history.history['val_loss'])
+    #
+    #     return rmse
+    #
+    # def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
+    #     # scaling
+    #     scaler = MinMaxScaler()
+    #     train_scaled = scaler.fit_transform(train)
+    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
+    #
+    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
+    #                                                n_steps_out=self.n_test)
+    #     n_features = x_train.shape[2]
+    #
+    #     # Build model
+    #     model = Sequential()
+    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
+    #               input_shape=(self.n_test, n_features)))
+    #     # model.add(LSTM(units=units, activation='relu'))
+    #     model.add(Dense(n_features))
+    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
+    #
+    #     model.fit(x_train, y_train,
+    #               epochs=self.epoch_best,
+    #               batch_size=config.BATCH_SIZE,
+    #               shuffle=False,
+    #               verbose=0)
+    #     test = x_train[-1]
+    #     test = test.reshape(1, test.shape[0], test.shape[1])
+    #
+    #     predictions = model.predict(test, verbose=0)
+    #     predictions = scaler.inverse_transform(predictions[0])
+    #
+    #     return predictions[:, 0]
 
     @staticmethod
     def lstm_data_reshape(data: np.array, n_feature: int) -> np.array:
         return data.reshape((data.shape[0], data.shape[1], n_feature))
 
-    @staticmethod
-    def root_mean_squared_error(y_true, y_pred):
-        return K.sqrt(K.mean(K.square(y_pred - y_true)))
+    # @staticmethod
+    # def root_mean_squared_error(y_true, y_pred):
+    #     return K.sqrt(K.mean(K.square(y_pred - y_true)))

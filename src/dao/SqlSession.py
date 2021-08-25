@@ -1,9 +1,10 @@
-import config
+
+import common.config as config
+
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy import Table, MetaData, insert, update
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
 
 
 class SqlSession(object):

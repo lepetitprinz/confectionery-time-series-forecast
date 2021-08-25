@@ -1,11 +1,9 @@
-import config
-from SqlSession import SqlSession
-from SqlConfig import SqlConfig
+
+import common.config as config
 
 from copy import deepcopy
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
 
 
 class DataPrep(object):
@@ -54,12 +52,6 @@ class DataPrep(object):
         print("Data preprocessing is finished\n")
 
         return data_resample
-
-    @ staticmethod
-    def correct_target(df: pd.DataFrame) -> pd.DataFrame:
-        df[config.COL_TARGET] = np.round(df['sales'] / df['store_price'])
-
-        return df
 
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert columns to lower case
@@ -181,35 +173,6 @@ class DataPrep(object):
                 #     val_hrchy = self.smoothing(df=val_hrchy)
                 val_hrchy = val_hrchy.reset_index()
                 val_hrchy = val_hrchy.drop(columns=['discount'])    # Todo: Exception
-                temp[key_hrchy] = val_hrchy
-
-            return temp
-
-        return temp
-
-    def resample_bak(self, df=None, val=None, lvl=0):
-        temp = None
-        if lvl == 0:
-            temp = {}
-            for key, val in df.items():
-                result = self.resample(val=val, lvl=lvl+1)
-                temp[key] = result
-
-        elif lvl < self.hrchy_level:
-            temp = {}
-            for key_hrchy, val_hrchy in val.items():
-                result = self.resample(val=val_hrchy, lvl=lvl+1)
-                temp[key_hrchy] = result
-
-            return temp
-
-        elif lvl == self.hrchy_level:
-            temp = {}
-            for key_hrchy, val_hrchy in val.items():
-                val_hrchy = val_hrchy.set_index(config.COL_DATETIME)
-                val_hrchy = val_hrchy.resample(rule=self.time_rule).sum()
-                if self.smooth_yn:
-                    val_hrchy = self.smoothing(df=val_hrchy)
                 temp[key_hrchy] = val_hrchy
 
             return temp

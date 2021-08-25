@@ -1,50 +1,50 @@
-from Model import Model
-from DataPrep import DataPrep
-from SqlConfig import SqlConfig
-from SqlSession import SqlSession
-from ConsistencyCheck import ConsistencyCheck
+from model.Model import Model
+from preprocess.DataPrep import DataPrep
+from dao.SqlConfig import SqlConfig
+from dao.SqlSession import SqlSession
+from preprocess.ConsistencyCheck import ConsistencyCheck
 
 import os
 import pickle
 import pandas as pd
 
 # Connect to the DB
-# sql_conf = SqlConfig()
-# session = SqlSession()
-# session.init()
-#
-# date_from = session.select(sql=sql_conf.get_comm_master(option='RST_START_DAY')).values[0][0]
-# date_to = session.select(sql=sql_conf.get_comm_master(option='RST_END_DAY')).values[0][0]
-# sell_in = session.select(sql=sql_conf.get_sell_in(date_from=date_from, date_to=date_to))
-# session.close()
+sql_conf = SqlConfig()
+session = SqlSession()
+session.init()
+
+date_from = session.select(sql=sql_conf.get_comm_master(option='RST_START_DAY')).values[0][0]
+date_to = session.select(sql=sql_conf.get_comm_master(option='RST_END_DAY')).values[0][0]
+sell_in = session.select(sql=sql_conf.get_sell_in(date_from=date_from, date_to=date_to))
+session.close()
 
 # Temp
-# save_dir = os.path.join('..', 'result', 'test_sell_in.csv')
-# sell_in.to_csv(save_dir, index=False)
-# sell_in = pd.read_csv(save_dir)
-#
-# # sell_out = session.select(sql=sql_config.get_sell_out(date_from=date_from, date_to=date_to))
-#
-# # Consistency Check
-# # Sell-int
-# save_dir = os.path.join('..', 'result', 'check_sell_in.csv')
-# cns_check = ConsistencyCheck(division='sell_in', save_yn=False)
-# sell_in_checked = cns_check.check(df=sell_in)
-# sell_in_checked.to_csv(save_dir, index=False)
+save_dir = os.path.join('..', 'result', 'test_sell_in.csv')
+sell_in.to_csv(save_dir, index=False)
+sell_in = pd.read_csv(save_dir)
 
-# sell_in_checked = pd.read_csv(save_dir)
+# sell_out = session.select(sql=sql_config.get_sell_out(date_from=date_from, date_to=date_to))
 
-# # Data Preprocessing
-# prep = DataPrep()
+# Consistency Check
+# Sell-int
+save_dir = os.path.join('..', 'result', 'check_sell_in.csv')
+cns_check = ConsistencyCheck(division='sell_in', save_yn=False)
+sell_in_checked = cns_check.check(df=sell_in)
+sell_in_checked.to_csv(save_dir, index=False)
 
-# save_dir = os.path.join('..', 'result', 'prep_sell_in.pickle')
-# data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
+sell_in_checked = pd.read_csv(save_dir)
 
-# with open(save_dir, 'wb') as handle:
-#     pickle.dump(data_preped, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# Data Preprocessing
+prep = DataPrep()
 
-# with open(save_dir, 'rb') as handle:
-#     data_preped = pickle.load(handle)
+save_dir = os.path.join('..', 'result', 'prep_sell_in.pickle')
+data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
+
+with open(save_dir, 'wb') as handle:
+    pickle.dump(data_preped, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+with open(save_dir, 'rb') as handle:
+    data_preped = pickle.load(handle)
 
 # # Modeling
 model = Model(division='SELL-IN')

@@ -1,5 +1,5 @@
-from SqlSession import SqlSession
-from SqlConfig import SqlConfig
+from dao.SqlSession import SqlSession
+from dao.SqlConfig import SqlConfig
 
 from copy import deepcopy
 import pandas as pd

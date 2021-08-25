@@ -1,4 +1,5 @@
-import config
+
+import common.config as config
 from SqlConfig import SqlConfig
 from SqlSession import SqlSession
 
