@@ -1,7 +1,7 @@
 from dao.DataIO import DataIO
-from preprocess.DataPrep import DataPrep
-from preprocess.ConsistencyCheck import ConsistencyCheck
-from model.Model import Model
+from baseline.preprocess.DataPrep import DataPrep
+from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
+from baseline.model.Model import Model
 
 import os
 ###################

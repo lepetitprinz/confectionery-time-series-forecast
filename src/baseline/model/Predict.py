@@ -1,5 +1,8 @@
 
+
 class Predict(object):
+    def __init__(self):
+        self.model_list = []
 
     def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
         if lvl == 0:

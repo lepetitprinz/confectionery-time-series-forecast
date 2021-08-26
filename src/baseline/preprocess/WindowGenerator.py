@@ -1,4 +1,4 @@
-import config
+import common.config as config
 
 import numpy as np
 import tensorflow as tf
