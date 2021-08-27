@@ -1,7 +1,7 @@
 
 import common.config as config
-from SqlConfig import SqlConfig
-from SqlSession import SqlSession
+from common.SqlConfig import SqlConfig
+from common.SqlSession import SqlSession
 
 import pandas as pd
 from datetime import datetime

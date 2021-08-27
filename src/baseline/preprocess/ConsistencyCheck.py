@@ -1,5 +1,5 @@
-from dao.SqlSession import SqlSession
-from dao.SqlConfig import SqlConfig
+from common.SqlConfig import SqlConfig
+from dao.DataIO import DataIO
 
 from copy import deepcopy
 import pandas as pd
@@ -22,8 +22,7 @@ class ConsistencyCheck(object):
                                'yymmdd', 'seq', 'from_dc_cd', 'unit_price', 'unit_cd', 'discount', 'week',
                                'qty', 'create_user_cd', 'create_date', 'modify_user_cd', 'modify_date']
         self.sql_config = SqlConfig()
-        self.session = SqlSession()
-        self.session.init()
+        self.io = DataIO
 
     def check(self, df: pd.DataFrame):
         # convert to lowercase columns
@@ -52,7 +51,7 @@ class ConsistencyCheck(object):
         # save the error data
         err = self.make_err_format(df=err, err_cd='ERR001')
         if len(err) > 0 and self.save_yn:
-            self.session.update(df=err, tb_name=self.cns_tb_name)
+            self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
 
         return normal
 
@@ -63,13 +62,13 @@ class ConsistencyCheck(object):
 
         err = self.make_err_format(df=err, err_cd='ERR002')
         if len(err) > 0 and self.save_yn:
-            self.session.update(df=err, tb_name=self.cns_tb_name)
+            self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
 
         return normal
 
     # Error 3
     def check_unit_code_map(self, df: pd.DataFrame):
-        unit_code_map = self.session.select(sql=self.sql_config.sql_unit_map())
+        unit_code_map = self.io.select_from_db(sql=self.sql_config.sql_unit_map())
         unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
         df['item_cd'] = df['item_cd'].astype(str)
         merged = pd.merge(df, unit_code_map, how='left', on='item_cd')
@@ -79,7 +78,7 @@ class ConsistencyCheck(object):
         # Save Error
         err = self.make_err_format(df=err, err_cd='ERR003')
         if len(err) > 0 and self.save_yn:
-            self.session.update(df=err, tb_name=self.cns_tb_name)
+            self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
 
         return normal
 

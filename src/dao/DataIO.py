@@ -1,5 +1,5 @@
-from dao.SqlSession import SqlSession
-from dao.SqlConfig import SqlConfig
+from common.SqlSession import SqlSession
+from common.SqlConfig import SqlConfig
 
 import pickle
 import pandas as pd
@@ -33,6 +33,15 @@ class DataIO(object):
         sell_out = self.session.select(sql=self.sql_conf.sql_sell_out(date_from=date_from, date_to=date_to))
 
         return sell_out
+
+    def select_from_db(self, sql):
+        return self.session.select(sql=sql)
+
+    def load_from_db(self, sql):
+        data = self.session.select(sql=sql)
+
+    def update_to_db(self, df: pd.DataFrame, tb_name: str):
+        self.session.update(df=df, tb_name=tb_name)
 
     @staticmethod
     def save_object(data, file_path: str, kind: str):

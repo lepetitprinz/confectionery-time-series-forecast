@@ -1,5 +1,5 @@
-from dao.SqlSession import SqlSession
-from dao.SqlConfig import SqlConfig
+from common.SqlSession import SqlSession
+from common.SqlConfig import SqlConfig
 import common.config as config
 
 from typing import Dict, Callable, Any
@@ -14,7 +14,6 @@ from datetime import timedelta
 from datetime import datetime
 
 from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import MinMaxScaler
 
 # Univariate Statistical Models
 from statsmodels.tsa.ar_model import AutoReg    # Auto regression

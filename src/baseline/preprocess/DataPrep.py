@@ -1,4 +1,4 @@
-
+from baseline.analysis.Decomposition import Decomposition
 import common.config as config
 
 from copy import deepcopy
@@ -7,7 +7,7 @@ import pandas as pd
 
 
 class DataPrep(object):
-    COL_DROP_SELL = ['division_cd', 'yymmdd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
+    COL_DROP_SELL = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     COL_TARGET = ['qty']
 
     def __init__(self):
@@ -42,6 +42,10 @@ class DataPrep(object):
 
         # Grouping
         data_group = self.group(data=data)
+
+        # Decomposition
+        decompose = Decomposition()
+        decomposed = decompose.decompose(df=data_group)
 
         # resampling
         data_resample = self.resample(df=data_group)

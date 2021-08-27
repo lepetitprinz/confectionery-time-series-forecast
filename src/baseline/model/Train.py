@@ -1,5 +1,5 @@
-from dao.SqlConfig import SqlConfig
-from dao.SqlSession import SqlSession
+from common.SqlConfig import SqlConfig
+from common.SqlSession import SqlSession
 from baseline.model.Algorithm import Algorithm
 import common.config as config
 
