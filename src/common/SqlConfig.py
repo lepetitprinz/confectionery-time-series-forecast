@@ -36,7 +36,7 @@ class SqlConfig(object):
 
     # SELL-IN Table
     @staticmethod
-    def sql_sell_in(date_from: int, date_to: int):
+    def sql_sell_in(**kwargs):
         sql = f""" 
             SELECT DIVISION_CD
                  , SOLD_CUST_GRP_CD
@@ -74,7 +74,7 @@ class SqlConfig(object):
                          , CREATE_DATE
                       FROM M4S_I002170
                      WHERE 1=1
-                       AND YYMMDD BETWEEN 20210101 AND 20210531
+                       AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
                     ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM.PROJECT_CD
@@ -103,25 +103,73 @@ class SqlConfig(object):
                                ) ITEM
                 ON SALES.PROJECT_CD = ITEM.PROJECT_CD
                AND SALES.ITEM_CD = ITEM.ITEM_CD
-        """
+               """
         return sql
 
     # SELL-OUT Table
     @staticmethod
-    def sql_sell_out(date_from: int, date_to: int):
+    def sql_sell_out(**kwargs):
         sql = f""" 
-            SELECT PROJECT_CD
-                 , DIVISION_CD
+            SELECT DIVISION_CD
                  , SOLD_CUST_GRP_CD
-                 , ITEM_CD
+                 , SALES.ITEM_CD
+                 , BIZ_CD
+                 --, BIZ_NM
+                 , LINE_CD
+                 --, LINE_NM
+                 , BRAND_CD
+                 --, BRAND_NM
+                 , ITEM_CTGR_CD
+                 --, ITEM_CTGR_NM
                  , YYMMDD
+                 , SEQ
                  , DISCOUNT
                  , WEEK
-                 , RST_SALES_QTY
-             FROM M4S_I002173
-            WHERE 1=1
-              AND YYMMDD BETWEEN {date_from} AND {date_to} 
-        """
+                 , QTY
+                 , CREATE_DATE
+              FROM (
+                   SELECT PROJECT_CD
+                        , DIVISION_CD
+                        , SOLD_CUST_GRP_CD
+                        , ITEM_CD
+                        , YYMMDD
+                        , SEQ
+                        , DISCOUNT
+                        , WEEK
+                        , RST_SALES_QTY AS QTY
+                        , CREATE_DATE
+                   FROM M4S_I002173
+                   WHERE 1 = 1
+                     AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']} 
+                   ) SALES
+              LEFT OUTER JOIN (
+                               SELECT ITEM.PROJECT_CD
+                                    , ITEM.ITEM_CD
+                                    , ITEM.ITEM_ATTR01_CD AS BIZ_CD
+                                    , COMM1.COMM_DTL_CD_NM AS BIZ_NM
+                                    , ITEM.ITEM_ATTR02_CD AS LINE_CD
+                                    , COMM2.COMM_DTL_CD_NM AS LINE_NM
+                                    , ITEM.ITEM_ATTR03_CD AS BRAND_CD
+                                    , COMM3.COMM_DTL_CD_NM AS BRAND_NM
+                                    , ITEM.ITEM_ATTR04_CD AS ITEM_CTGR_CD
+                                    , COMM4.COMM_DTL_CD_NM AS ITEM_CTGR_NM
+                                 FROM M4S_I002040 ITEM
+                                 LEFT OUTER JOIN M4S_I002011 COMM1
+                                   ON ITEM.PROJECT_CD = COMM1.PROJECT_CD
+                                  AND ITEM.ITEM_ATTR01_CD = COMM1.COMM_DTL_CD
+                                 LEFT OUTER JOIN M4S_I002011 COMM2
+                                   ON ITEM.PROJECT_CD = COMM2.PROJECT_CD
+                                  AND ITEM.ITEM_ATTR02_CD = COMM2.COMM_DTL_CD
+                                 LEFT OUTER JOIN M4S_I002011 COMM3
+                                   ON ITEM.PROJECT_CD = COMM3.PROJECT_CD
+                                  AND ITEM.ITEM_ATTR03_CD = COMM3.COMM_DTL_CD
+                                 LEFT OUTER JOIN M4S_I002011 COMM4
+                                   ON ITEM.PROJECT_CD = COMM4.PROJECT_CD
+                                  AND ITEM.ITEM_ATTR04_CD = COMM4.COMM_DTL_CD
+                               ) ITEM
+                           ON SALES.PROJECT_CD = ITEM.PROJECT_CD
+                          AND SALES.ITEM_CD = ITEM.ITEM_CD
+                          """
         return sql
 
     @staticmethod

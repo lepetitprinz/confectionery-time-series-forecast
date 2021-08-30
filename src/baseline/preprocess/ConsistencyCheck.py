@@ -22,7 +22,7 @@ class ConsistencyCheck(object):
                                'yymmdd', 'seq', 'from_dc_cd', 'unit_price', 'unit_cd', 'discount', 'week',
                                'qty', 'create_user_cd', 'create_date', 'modify_user_cd', 'modify_date']
         self.sql_config = SqlConfig()
-        self.io = DataIO
+        self.io = DataIO()
 
     def check(self, df: pd.DataFrame):
         # convert to lowercase columns
@@ -68,7 +68,7 @@ class ConsistencyCheck(object):
 
     # Error 3
     def check_unit_code_map(self, df: pd.DataFrame):
-        unit_code_map = self.io.select_from_db(sql=self.sql_config.sql_unit_map())
+        unit_code_map = self.io.get_df_from_db(sql=self.sql_config.sql_unit_map())
         unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
         df['item_cd'] = df['item_cd'].astype(str)
         merged = pd.merge(df, unit_code_map, how='left', on='item_cd')

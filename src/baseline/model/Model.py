@@ -25,11 +25,6 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing    # Holt-winters E
 from statsmodels.tsa.vector_ar.var_model import VAR    # Vector Auto regression
 from statsmodels.tsa.statespace.varmax import VARMAX    # Vector Autoregressive Moving Average with
                                                         # eXogenous regressors model
-
-# from tensorflow.keras import backend as K
-# from tensorflow.keras.models import Sequential
-# from tensorflow.keras.layers import LSTM, Dense
-
 # from prophet import Prophet
 warnings.filterwarnings('ignore')
 

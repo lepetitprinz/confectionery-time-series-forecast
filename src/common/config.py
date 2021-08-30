@@ -34,17 +34,10 @@ HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']
 HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_ctgr_cd')]
 HRCHY_LEVEL = len(HRCHY) - 1
 
-#
-TIME_TYPE = 'W'
-
 # Outlier handling configuration
 SMOOTH_YN = True    # Smoothing or not (True / False)
 SMOOTH_METHOD = 'quantile'    # quantile / sigma
 SMOOTH_RATE = 0.05    # Quantile rate
-
-# Datetime configuration
-COL_DATETIME = 'dt'    # Datetime format column
-RESAMPLE_RULE = 'W'    # Data resampling rule (D / W / M)
 
 ###########################
 # Model configuration

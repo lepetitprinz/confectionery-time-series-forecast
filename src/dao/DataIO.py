@@ -11,40 +11,24 @@ class DataIO(object):
         self.session = SqlSession()
         self.session.init()
 
-    def get_date_range(self):
-        date_from = self.session.select(sql=self.sql_conf.sql_comm_master(option='RST_START_DAY')).values[0][0]
-        date_to = self.session.select(sql=self.sql_conf.sql_comm_master(option='RST_END_DAY')).values[0][0]
-
-        return date_from, date_to
-
-    def get_comm_info(self):
-        common = self.session.select(sql=self.sql_conf.sql_comm_master())
-        common['OPTION_CD'] = common['OPTION_CD'].apply(str.lower)
-        common = common.set_index(keys='OPTION_CD').to_dict()['OPTION_VAL']
-
-        return common
-
-    def get_sell_in(self, date_from: int, date_to: int):
-        sell_in = self.session.select(sql=self.sql_conf.sql_sell_in(date_from=date_from, date_to=date_to))
-
-        return sell_in
-
-    def get_sell_out(self, date_from: int, date_to: int):
-        sell_out = self.session.select(sql=self.sql_conf.sql_sell_out(date_from=date_from, date_to=date_to))
-
-        return sell_out
-
-    def select_from_db(self, sql):
+    def get_df_from_db(self, sql) -> pd.DataFrame:
         return self.session.select(sql=sql)
 
-    def load_from_db(self, sql):
-        data = self.session.select(sql=sql)
+    def get_dict_from_db(self, sql, key, val) -> dict:
+        df = self.session.select(sql=sql)
+        df[key] = df[key].apply(str.lower)
+        result = df.set_index(keys=key).to_dict()[val]
+
+        return result
+
+    def insert_to_db(self, df: pd.DataFrame, tb_name: str):
+        self.session.insert(df=df, tb_name=tb_name)
 
     def update_to_db(self, df: pd.DataFrame, tb_name: str):
         self.session.update(df=df, tb_name=tb_name)
 
     @staticmethod
-    def save_object(data, file_path: str, kind: str):
+    def save_object(data, kind: str, file_path: str):
         if kind == 'csv':
             data.to_csv(file_path, )
 
