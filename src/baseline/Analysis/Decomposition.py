@@ -37,4 +37,4 @@ class Decomposition(object):
              'create_user_cd': 'SYSTEM',
              'create_date': datetime.now()})
 
-        self.dao.insert_to_db(df=result, tb_name=self.tb_name)
+        # self.dao.update_to_db(df=result, tb_name=self.tb_name)

@@ -1,6 +1,5 @@
-from common.SqlSession import SqlSession
-from common.SqlConfig import SqlConfig
 import common.config as config
+import common.util as util
 
 from typing import Dict, Callable, Any
 import os
@@ -54,14 +53,10 @@ class Model(object):
         - VARMAX model (Vector Autoregressive Moving Average with eXogenous regressors model)
     """
 
-    def __init__(self, division: str):
-        self.sql_config = SqlConfig()
-        self.session = SqlSession()
-        self.session.init()
+    def __init__(self, division: str, cand_models: list, end_date):
+        self.division = division    # SELL-IN / SELL-OUT
+        self.end_date = end_date
 
-        self.end_date = self.session.select(sql=SqlConfig.sql_comm_master(option='RST_END_DAY')).values[0][0]
-
-        self.division = division
         # Hierarchy
         self.hrchy_list = config.HRCHY_LIST
         self.hrchy = config.HRCHY
@@ -75,6 +70,7 @@ class Model(object):
         self.n_test = config.N_TEST
 
         # model
+        self.cand_models = cand_models
         self.model_univ_list = ['ar', 'arma', 'arima', 'hw']
         # self.model_univ_list = ['arma', 'arima', 'hw']
         self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
@@ -105,32 +101,10 @@ class Model(object):
                          'varma': self.cfg_varma,
                          'varmax': self.cfg_varmax}
 
-    def train(self, df=None, val=None, lvl=0) -> dict:
-        temp = None
-        if lvl == 0:
-            temp = {}
-            for key, val in df.items():
-                result = self.train(val=val, lvl=lvl+1)
-                temp[key] = result
-
-        elif lvl < self.hrchy_level:
-            temp = {}
-            for key_hrchy, val_hrchy in val.items():
-                result = self.train(val=val_hrchy, lvl=lvl+1)
-                temp[key_hrchy] = result
-
-            return temp
-
-        elif lvl == self.hrchy_level:
-            temp = {}
-            for key_hrchy, val_hrchy in val.items():
-                if len(val_hrchy):
-                    models = self.train_model(df=val_hrchy[self.target_feature])
-                temp[key_hrchy] = models
-
-            return temp
-
-        return temp
+    def train(self, df):
+        trained = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
+                                       fn=self.train_model,
+                                       df=df)
 
     def save_score(self, scores: dict):
         result = self.score_to_df(df=scores)
@@ -231,36 +205,6 @@ class Model(object):
 
         self.session.insert(df=results, tb_name='M4S_I110400')
 
-
-    def forecast_BAK(self, best_models: dict) -> dict:
-        print("Implement model prediction")
-        forecast = deepcopy(self.df_sell)
-        for sell_type, customers in forecast.items():    # sell: sell-in / sell-out
-            for cust_type, prod_groups in customers.items():    # customer: all / A / B / C
-                for prod_group_type, products in prod_groups.items():    # product group: all/ g1 / g2 / g3
-                    for prod_type, times in products.items():    # product: all / 가 / 나 / 다 / 라 / 바
-                        for time_type, df in times.items():    # time: D / W / M
-                            best_model = best_models[sell_type][cust_type][prod_group_type][prod_type][time_type][0]
-                            prediction = None
-                            if self.model_type == 'univ':
-                                prediction = self.model_univ[best_model](history=df,
-                                                                         cfg=self.cfg_dict[best_model],
-                                                                         time_type=time_type,
-                                                                         pred_step=self.n_test)
-                            elif self.model_type == 'multi':
-                                prediction = self.model_multi[best_model](history=df,
-                                                                          cfg=self.cfg_dict[best_model],
-                                                                          time_type=time_type,
-                                                                          pred_step=self.n_test)
-                            elif self.model_type == 'exg':
-                                prediction = self.lstm_predict(train=df, units=config.LSTM_UNIT)
-
-                            times[time_type] = np.round(prediction)
-
-        print("Model prediction is finished\n")
-
-        return forecast
-
     def forecast_all(self) -> dict:
         print("Implement model prediction")
         forecast = deepcopy(self.df_sell)
@@ -352,6 +296,30 @@ class Model(object):
         print("Forecast results are saved\n")
 
     def train_model(self, df) -> tuple:
+        models = []
+        for model in config.MODEL_CANDIDATES[self.model_type]:
+            score = 0
+            if self.model_type == 'univ':
+                if isinstance(df, pd.DataFrame):    # pandas Dataframe
+                    data = df.values
+                else:    # numpy array
+                    data = df.tolist()
+                score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
+                                                      data=data, n_test=self.n_test)
+            # elif self.model_type == 'multi':
+            #     score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
+            #                                            data=df, n_test=self.n_test)
+            # elif self.model_type == 'exg':
+            #     score = self.lstm_train(train=df, units=config.LSTM_UNIT)
+
+            models.append([model, round(score, 2)])
+
+        models = sorted(models, key=lambda x: x[1])
+
+        return models
+
+
+    def train_model_bak(self, df) -> tuple:
         models = []
         for model in config.MODEL_CANDIDATES[self.model_type]:
             score = 0

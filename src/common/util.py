@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-
+from collections import defaultdict
 
 def group(hrchy, hrchy_lvl, data, cd=None, lvl=0) -> dict:
     grp = {}
@@ -66,7 +66,50 @@ def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
     return temp
 
 
+def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
+    if lvl == 0:
+        temp = []
+        for key, val in df.items():
+            hrchy.append(key)
+            result = hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val,
+                                              lvl=lvl+1, hrchy=hrchy)
+            temp.extend(result)
+            hrchy.remove(key)
+
+    elif lvl < hrchy_lvl:
+        temp = []
+        for key_hrchy, val_hrchy in val.items():
+            hrchy.append(key_hrchy)
+            result = hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy,
+                                              lvl=lvl+1, hrchy=hrchy)
+            temp.extend(result)
+            hrchy.remove(key_hrchy)
+
+        return temp
+
+    elif lvl == hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            if len(val_hrchy) > 2:
+                hrchy.append(key_hrchy)
+                temp = []
+                result = fn(val_hrchy)
+                temp.append(hrchy + result)
+                hrchy.remove(key_hrchy)
+        return temp
+
+    return temp
+
+
 def make_path(module: str, division: str, hrchy_lvl: int, step: str, data_type: str):
-    path = os.path.join('..', module + '_' + division + '_' + hrchy_lvl + '_' + step + '.' + data_type)
+    path = os.path.join('..', module, division + '_' + str(hrchy_lvl) + '_' + step + '.' + data_type)
 
     return path
+
+
+def hrchy_dict(hrchy_lvl, df=None, lvl=0):
+    temp = defaultdict(list)
+    if lvl < hrchy_lvl:
+        temp[].append
+
+

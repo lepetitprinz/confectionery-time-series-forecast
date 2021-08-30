@@ -217,7 +217,23 @@ class SqlConfig(object):
         """
         return sql
 
-    def inst_sell_in(self):
-        sql = f""""""
+    @staticmethod
+    def sql_algorithm(**kwargs):
+        sql = f"""
+            SELECT LOWER(STAT)
+              FROM M4S_I103010
+             WHERE 1=1
+               AND USE_YN = 'Y'
+               AND DIVISION = '{kwargs['division']}'           
+        """
+        return sql
 
+    @staticmethod
+    def sql_best_hyper_param_grid():
+        sql = """
+            SELECT STAT
+                 , OPTION_CD
+                 , OPTION_VAL
+              FROM M4S_I103011
+        """
         return sql
