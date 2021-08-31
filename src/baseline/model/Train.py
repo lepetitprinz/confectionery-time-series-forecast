@@ -13,6 +13,10 @@ from datetime import timedelta
 from datetime import datetime
 from sklearn.metrics import mean_squared_error
 
+# Tensorflow library
+# from tensorflow.keras import backend as K
+# from tensorflow.keras.callbacks import EarlyStopping
+
 warnings.filterwarnings('ignore')
 
 
@@ -112,14 +116,14 @@ class Train(object):
 
         return results
 
-    def train_model(self, df) -> tuple:
+    def train_model(self, df) -> list:
         models = []
         for model in self.cand_models:
             data = self.filter_data(df=df, model=model)
             score = self.walk_fwd_validation(model=model, cfg=self.param_grid[model],
                                              data=data, n_test=self.n_test)
 
-            models.append([model, round(score, 2)])
+            models.append([model, np.round(score, 2)])
 
         models = sorted(models, key=lambda x: x[1])
 
@@ -216,3 +220,34 @@ class Train(object):
     #     scores.sort(key=lambda tup: tup[2])
     #
     #     return scores
+
+    # def lstm_train(self, train: pd.DataFrame, units: int) -> float:
+    #     # scaling
+    #     scaler = MinMaxScaler()
+    #     train_scaled = scaler.fit_transform(train)
+    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
+    #
+    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
+    #                                                n_steps_out=self.n_test)
+    #
+    #     n_features = x_train.shape[2]
+    #
+    #     # Build model
+    #     model = Sequential()
+    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
+    #               input_shape=(self.n_test, n_features)))
+    #     # model.add(LSTM(units=units, activation='relu'))
+    #     model.add(Dense(n_features))
+    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
+    #
+    #     history = model.fit(x_train, y_train,
+    #                         epochs=config.EPOCHS,
+    #                         batch_size=config.BATCH_SIZE,
+    #                         validation_split=1-config.TRAIN_RATE,
+    #                         shuffle=False,
+    #                         verbose=0)
+    #     self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
+    #
+    #     rmse = min(history.history['val_loss'])
+    #
+    #     return rmse

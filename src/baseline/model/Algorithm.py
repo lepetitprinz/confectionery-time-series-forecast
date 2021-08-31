@@ -1,10 +1,7 @@
-from typing import Dict, Callable, Any
 import numpy as np
-import pandas as pd
 
 # Univariate Statistical Models
 from statsmodels.tsa.ar_model import AutoReg    # Auto Regression
-from statsmodels.tsa.arima_model import ARMA    # Auto Regressive Moving Average
 from statsmodels.tsa.arima.model import ARIMA    # Auto Regressive Integrated Moving Average
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing    # Simple Exponential Smoothing
 from statsmodels.tsa.holtwinters import ExponentialSmoothing    # Holt-winters Exponential Smoothing
@@ -14,16 +11,12 @@ from statsmodels.tsa.statespace.varmax import VARMAX    # Vector Autoregressive 
                                                         # eXogenous regressors model
 from statsmodels.tsa.statespace.sarimax import SARIMAX    # Seasonal Auto regressive integrated moving average
 
-# Tensorflow library
 import tensorflow as tf
-from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import LSTM, Dense, Input, BatchNormalization
 from tensorflow.keras.layers import Lambda, Conv1D, Reshape
 from tensorflow.keras.layers import RepeatVector, TimeDistributed
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-
 
 # Model Decorator
 # def stats_method(func: Callable) -> Callable[[object, list, tuple, int], Any]:
@@ -39,14 +32,12 @@ class Algorithm(object):
     # Model List
     1. Uni-variate Model
         - AR model (Autoregressive model)
-        - ARMA model (Autoregressive moving average model)
         - ARIMA model (Autoregressive integrated moving average model)
         - SES model (Simple Exponential Smoothing model)
         - HWES model (Holt Winters Exponential Smoothing model)
 
     2. Multivariate Model
         - VAR model (Vector Autoregressive model)
-        - VARMA model (Vector Autoregressive Moving Average model)
         - VARMAX model (Vector Autoregressive Moving Average with eXogenous regressors model)
     """
 
@@ -55,21 +46,24 @@ class Algorithm(object):
     #############################
     # Auto-regressive Model
     @staticmethod
-    def ar(history, cfg: tuple, pred_step=0):
+    def ar(history, cfg: dict, pred_step=0):
         """
         :param history: time series data
         :param cfg:
                 l: lags (int)
-                t: trend ('c', 'nc')
-                    c: Constant
-                    nc: No Constant
+                t: trend ('n', 'c', 't', 'ct)
+                    n: No trend
+                    c: Constant only
+                    t: Time trend only
+                    ct: No Constant and time trend
                 s: seasonal (bool)
                 p: period (Only used if seasonal is True)
         :param pred_step: prediction steps
         :return: forecast result
         """
-        lag, t, s, p = cfg
-        model = AutoReg(endog=history, lags=lag, trend=t, seasonal=s, period=p)
+        model = AutoReg(endog=history, lags=cfg['lags'], trend=cfg['trend'],
+                        seasonal=cfg['seasonal'], period=cfg['period'])
+
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
@@ -79,47 +73,18 @@ class Algorithm(object):
 
         return yhat
 
-    # Auto regressive moving average model
-    @staticmethod
-    def arma(history, cfg: tuple, pred_step=0):
-        """
-        :param history: time series data
-        :param cfg:
-                o: order (p, q)
-                    p: Trend autoregression order
-                    q: Trend moving average order
-                f: frequency of the time series (‘B’, ‘D’, ‘W’, ‘M’, ‘A’, ‘Q)
-                t: trend ('c', 'nc')
-                    c: Constant
-                    nc: No constant
-        :param pred_step: prediction steps
-        :return: forecast result
-        """
-        o, f, t = cfg
-        # define model
-        model = ARMA(endog=history, order=o, freq=f)
-        # fit model
-        model_fit = model.fit(trend=t, disp=0)
-        # print('Coefficients: {}'.format(model_fit.params))
-        # print(model_fit.summary())
-
-        # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
-
-        return yhat
-
     # Autoregressive integrated moving average model
     @staticmethod
-    def arima(history, cfg: tuple, pred_step=0):
+    def arima(history, cfg: dict, pred_step=0):
         """
         :param history: time series data
         :param cfg:
-                o: order (p, d, q)
+                order: (p, d, q)
                     p: Trend autoregression order
-                    d; Trend difference order
+                    d: Trend difference order
                     q: Trend moving average order
-                f: frequency of the time series (‘B’, ‘D’, ‘W’, ‘M’, ‘A’, ‘Q)
-                t: trend ('n', 'c', 't', 'ct')
+                freq: frequency of the time series (‘B’, ‘D’, ‘W’, ‘M’, ‘A’, ‘Q)
+                trend: 'n', 'c', 't', 'ct'
                     n: No trend
                     c: Constant only
                     t: Time trend only
@@ -127,9 +92,10 @@ class Algorithm(object):
         :param pred_step: prediction steps
         :return: forecast result
         """
-        o, f, t = cfg
         # define model
-        model = ARIMA(history, order=o, trend=t, freq=f)
+        order = (cfg['p'], cfg['d'], cfg['q'])
+        model = ARIMA(history, order=order, trend=cfg['trend'], freq=cfg['freq'])
+
         # fit model
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
@@ -141,22 +107,22 @@ class Algorithm(object):
         return yhat
 
     @staticmethod
-    def ses(history, cfg: tuple, pred_step=0):
+    def ses(history, cfg: dict, pred_step=0):
         """
         :param history: time series data
         :param cfg:
-                i: initialization_method (None, 'estimated', 'heuristic', 'legacy-heuristic', 'known')
+                initialization_method: None, 'estimated', 'heuristic', 'legacy-heuristic', 'known'
                     - Method for initialize the recursions
-                l: smoothing level (float)
-                o: optimized or not (bool)
+                smoothing_level: smoothing level (float)
+                optimized: optimized not (bool)
         :param pred_step: prediction steps
         :return: forecast result
         """
-        i, s, o = cfg
         # define model
-        model = SimpleExpSmoothing(history, initialization_method=i)
+        model = SimpleExpSmoothing(history, initialization_method=cfg['initialization_method'])
+
         # fit model
-        model_fit = model.fit(smoothing_level=s, optimized=o)  # fit model
+        model_fit = model.fit(smoothing_level=cfg['smoothing_level'], optimized=cfg['optimized'])  # fit model
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
@@ -166,32 +132,33 @@ class Algorithm(object):
         return yhat
 
     @staticmethod
-    def hw(history, cfg: tuple, pred_step=0):
+    def hw(history, cfg: dict, pred_step=0):
         """
         :param history: time series data
         :param cfg:
-                t: trend ('add', 'mul', 'additive', 'multiplicative')
+                trend: 'add', 'mul', 'additive', 'multiplicative'
                     - type of trend component
-                d: damped_trend (bool)
+                damped_trend: bool
                     - should the trend component be damped
-                s: seasonal ('add', 'mul', 'additive', 'multiplicative', None)
+                seasonal: 'add', 'mul', 'additive', 'multiplicative', None
                     - Type of seasonal component
-                p: seasonal_periods (int)
+                seasonal_periods: int
                     - The number of periods in a complete seasonal cycle
-                b: use_boxcox (True, False, ‘log’, float)
+                use_boxcox : True, False, ‘log’, float
                     - Should the Box-Cox transform be applied to the data first?
-                r: remove_bias (bool)
+                remove_bias : bool
                     - Remove bias from forecast values and fitted values by enforcing that the average residual is
                       equal to zero
         :param pred_step: prediction steps
         :return: forecast result
         """
-        t, d, s, p, b, r = cfg
         # define model
-        model = ExponentialSmoothing(history, trend=t, damped_trend=d, seasonal=s,
-                                     seasonal_periods=p, use_boxcox=b)
+        model = ExponentialSmoothing(history, trend=cfg['trend'], damped_trend=cfg['damped_trend'],
+                                     seasonal=cfg['seasonal'], seasonal_periods=cfg['seasonal_period'],
+                                     use_boxcox=cfg['use_boxcox'])
+
         # fit model
-        model_fit = model.fit(optimized=True, remove_bias=r)  # fit model
+        model_fit = model.fit(optimized=True, remove_bias=cfg['remove_bias'])  # fit model
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
@@ -200,97 +167,57 @@ class Algorithm(object):
 
         return yhat
 
-    # def prophet(self, history, n_test, forecast=False):
-    #
-    #     data = history.reset_index(level=0)
-    #     data = data.rename(columns={'dt': 'ds', 'sales': 'y'})
-    #
-    #     model = Prophet()
-    #     if not forecast:
-    #         train = data.iloc[:-n_test, :]
-    #         test = data.iloc[-n_test:, :]
-    #
-    #         model.fit(train)
-    #         future = model.make_future_dataframe(periods=n_test)
-    #         forecast = model.predict(future)
-    #
-    #         error = self.calc_sqrt_mse(test['y'], forecast['yhat'][-n_test:])
-    #
-    #         return error
-    #
-    #     else:
-    #         model.fit(history)
-    #         future = model.make_future_dataframe(periods=n_test)
-    #         forecast = model.predict(future)
-    #
-    #         return  forecast['yhat'][-n_test:]
-
     #############################
     # Multi-variate Model
     #############################
     @staticmethod
-    def var(history: np.array, cfg, pred_step=0):
+    def var(endog: np.array, exog: np.array, cfg: dict, pred_step=0):
         """
-        :param history:
+        :param endog: 2-d endogenous response variable
+        :param exog: 2-d exogenous variable
         :param cfg:
+                maxlags: int, None
+                    Maximum number of lags to check for order selection
+                ic: 'aic', 'fpe', 'hqic', 'bic', None
+                    Information criterion to use for VAR order selection
+                        aic: Akaike
+                        fpe: Final prediction error
+                        hqic: Hannan-Quinn
+                        bic: Bayesian a.k.a. Schwarz
+                trend: 'c', 'ct', 'ctt', 'nc', 'n'
+                    c: add constant
+                    ct: constant and trend
+                    ctt: constant, linear and quadratic trend
+                    nc: co constant, no trend
+                    n: no trend
         :param pred_step:
         :return:
         """
-        lag = cfg
         # define model
-        model = VAR(history)
+        model = VAR(endog=endog, exog=exog)
+
         # fit model
-        model_fit = model.fit(lag)
+        model_fit = model.fit(maxlags=cfg['maxlags'], ic=cfg['ic'], trend=cfg['trend'])
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
         # Make multi-step forecast
         # yhat = model.predict(start=len(history), end=len(history) + pred_step - 1)
-        yhat = model_fit.forecast(y=history.values, steps=pred_step)
-
-        return yhat[:, 0]
-
-    # Vector Autoregressive Moving Average model
-    @staticmethod
-    def varma(history: np.array, cfg, pred_step=0):
-        """
-        :param history: time series data
-        :param cfg:
-                o: order (p, q)
-                    p: Trend autoregression order
-                    q: Trend moving average order
-                t: trend ('n', 'c', 't', 'ct')
-                    n: No trend
-                    c: Constant only
-                    t: Time trend only
-                    ct: Constant and time trend
-        :param pred_step: prediction steps
-        :return: forecast result
-        """
-        o, t = cfg
-        # define model
-        model = VARMAX(history.astype(float), order=o, trend=t)
-        # fit model
-        model_fit = model.fit()
-        # print('Coefficients: {}'.format(model_fit.params))
-        # print(model_fit.summary())
-
-        # Make multi-step forecast
-        yhat = model_fit.forecast(y=history.values, steps=pred_step)
+        yhat = model_fit.forecast(y=endog.values, steps=pred_step)
 
         return yhat[:, 0]
 
     # Vector Autoregressive Moving Average with eXogenous regressors model
     @staticmethod
-    def varmax(history: np.array, data_exog: np.array, cfg, pred_step=0):
+    def varmax(endog: np.array, exog: np.array, cfg: dict, pred_step=0):
         """
-        :param history: time series data
-        :param data_exog: exogenous data
+        :param endog: 2-d endogenous response variable
+        :param exog: 2-d exogenous variable
         :param cfg:
-                o: order (p, q)
+                order: (p, q)
                     p: Trend autoregression order
                     q: Trend moving average order
-                t: trend ('n', 'c', 't', 'ct')
+                trend: 'n', 'c', 't', 'ct'
                     n: No trend
                     c: Constant only
                     t: Time trend only
@@ -298,19 +225,46 @@ class Algorithm(object):
         :param pred_step: prediction steps
         :return: forecast result
         """
-        o, t = cfg
+        order = (cfg['p'], cfg['q'])
+
         # define model
-        model = VARMAX(history, exog=data_exog, order=o, trend=t)
+        model = VARMAX(endog, exog=exog, order=order, trend=cfg['trend'])
+
         # fit model
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.forecast(y=history.values, steps=pred_step)
+        yhat = model_fit.forecast(y=endog.values, steps=pred_step)
 
         return yhat[:, 0]
 
+    @staticmethod
+    def sarimax(endog: np.array, exog: np.array, cfg: dict, pred_step=0):
+        """
+        :param endog: The observed time-series process
+        :param exog: Array of exogenous regressors, shaped [nobs x k]
+        :param cfg:
+                order: (p, d, q)
+                    p: Trend auto-regression order
+                    d: Trend difference order
+                    q: Trend moving average order
+                seasonal_order: (p, d, q, s)
+                    (p, d, q, s) order of the seasonal component of the model for
+                    the AR parameters, differences, MA parameters, and periodicity
+                trend: 'n', 'c', 't', 'ct'
+                    n: No trend
+                    c: Constant only
+                    t: Time trend only
+                    ct: Constant and time trend
+        :param pred_step: prediction steps
+        :return: forecast result
+        """
+        # define
+        model = SARIMAX(endog=endog)
+        pass
+    
     def seq2seq(self) -> Model:
         """
         Sequence to sequence model
@@ -347,8 +301,6 @@ class Algorithm(object):
 
         return model
 
-
-    # @staticmethod
     # def prophet(history, n_test, forecast=False):
     #
     #     data = history.reset_index(level=0)
@@ -373,68 +325,6 @@ class Algorithm(object):
     #         forecast = model.predict(future)
     #
     #         return  forecast['yhat'][-n_test:]
-
-    # def lstm_train(self, train: pd.DataFrame, units: int) -> float:
-    #     # scaling
-    #     scaler = MinMaxScaler()
-    #     train_scaled = scaler.fit_transform(train)
-    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
-    #
-    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-    #                                                n_steps_out=self.n_test)
-    #
-    #     n_features = x_train.shape[2]
-    #
-    #     # Build model
-    #     model = Sequential()
-    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
-    #               input_shape=(self.n_test, n_features)))
-    #     # model.add(LSTM(units=units, activation='relu'))
-    #     model.add(Dense(n_features))
-    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
-    #
-    #     history = model.fit(x_train, y_train,
-    #                         epochs=config.EPOCHS,
-    #                         batch_size=config.BATCH_SIZE,
-    #                         validation_split=1-config.TRAIN_RATE,
-    #                         shuffle=False,
-    #                         verbose=0)
-    #     self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
-    #
-    #     rmse = min(history.history['val_loss'])
-    #
-    #     return rmse
-    #
-    # def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
-    #     # scaling
-    #     scaler = MinMaxScaler()
-    #     train_scaled = scaler.fit_transform(train)
-    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
-    #
-    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-    #                                                n_steps_out=self.n_test)
-    #     n_features = x_train.shape[2]
-    #
-    #     # Build model
-    #     model = Sequential()
-    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
-    #               input_shape=(self.n_test, n_features)))
-    #     # model.add(LSTM(units=units, activation='relu'))
-    #     model.add(Dense(n_features))
-    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
-    #
-    #     model.fit(x_train, y_train,
-    #               epochs=self.epoch_best,
-    #               batch_size=config.BATCH_SIZE,
-    #               shuffle=False,
-    #               verbose=0)
-    #     test = x_train[-1]
-    #     test = test.reshape(1, test.shape[0], test.shape[1])
-    #
-    #     predictions = model.predict(test, verbose=0)
-    #     predictions = scaler.inverse_transform(predictions[0])
-    #
-    #     return predictions[:, 0]
 
     @staticmethod
     def lstm_data_reshape(data: np.array, n_feature: int) -> np.array:
