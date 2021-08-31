@@ -53,7 +53,7 @@ class Model(object):
         - VARMAX model (Vector Autoregressive Moving Average with eXogenous regressors model)
     """
 
-    def __init__(self, division: str, cand_models: list, end_date):
+    def __init__(self, division: str, cand_models: list, param_grid: dict, end_date):
         self.division = division    # SELL-IN / SELL-OUT
         self.end_date = end_date
 
@@ -71,6 +71,7 @@ class Model(object):
 
         # model
         self.cand_models = cand_models
+        self.param_grid = param_grid
         self.model_univ_list = ['ar', 'arma', 'arima', 'hw']
         # self.model_univ_list = ['arma', 'arima', 'hw']
         self.model_univ: Dict[str, stats_method] = {'ar': self.ar, 'arma': self.arma, 'arima': self.arima,
@@ -121,36 +122,14 @@ class Model(object):
 
         self.session.insert(df=result, tb_name='M4S_I110410')
 
-    def score_to_df(self, df=None, val=None, lvl=0, hrchy=[]):
-        if lvl == 0:
-            temp = []
-            for key, val in df.items():
-                hrchy.append(key)
-                result = self.score_to_df(val=val, lvl=lvl+1, hrchy=hrchy)
-                temp.extend(result)
-                hrchy.remove(key)
+    def score_to_df(self, hrchy: list, data):
+        result = []
+        for algorithm, score in data:
+            result.append(hrchy + [algorithm, score])
 
-        elif lvl < self.hrchy_level:
-            temp = []
-            for key_hrchy, val_hrchy in val.items():
-                hrchy.append(key_hrchy)
-                result = self.score_to_df(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
-                temp.extend(result)
-                hrchy.remove(key_hrchy)
+        return result
 
-            return temp
 
-        elif lvl == self.hrchy_level:
-            for key_hrchy, val_hrchy in val.items():
-                hrchy.append(key_hrchy)
-                temp = []
-                for algorithm, score in val_hrchy:
-                    temp.append(hrchy + [algorithm, score])
-                hrchy.remove(key_hrchy)
-
-            return temp
-
-        return temp
 
     def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
         if lvl == 0:
@@ -318,7 +297,6 @@ class Model(object):
 
         return models
 
-
     def train_model_bak(self, df) -> tuple:
         models = []
         for model in config.MODEL_CANDIDATES[self.model_type]:
@@ -341,6 +319,37 @@ class Model(object):
         models = sorted(models, key=lambda x: x[1])
 
         return models
+
+    def score_to_df_bak(self, df=None, val=None, lvl=0, hrchy=[]):
+        if lvl == 0:
+            temp = []
+            for key, val in df.items():
+                hrchy.append(key)
+                result = self.score_to_df_bak(val=val, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key)
+
+        elif lvl < self.hrchy_level:
+            temp = []
+            for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                result = self.score_to_df_bak(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+                temp.extend(result)
+                hrchy.remove(key_hrchy)
+
+            return temp
+
+        elif lvl == self.hrchy_level:
+            for key_hrchy, val_hrchy in val.items():
+                hrchy.append(key_hrchy)
+                temp = []
+                for algorithm, score in val_hrchy:
+                    temp.append(hrchy + [algorithm, score])
+                hrchy.remove(key_hrchy)
+
+            return temp
+
+        return temp
 
     def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test) -> np.array:
         """

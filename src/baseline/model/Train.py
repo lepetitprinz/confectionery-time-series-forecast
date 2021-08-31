@@ -1,7 +1,8 @@
+import common.config as config
+import common.util as util
 from common.SqlConfig import SqlConfig
 from common.SqlSession import SqlSession
 from baseline.model.Algorithm import Algorithm
-import common.config as config
 
 import warnings
 
@@ -10,42 +11,34 @@ import pandas as pd
 from math import sqrt
 from datetime import timedelta
 from datetime import datetime
-
 from sklearn.metrics import mean_squared_error
 
 warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str):
-        self.sql_config = SqlConfig()
-        self.session = SqlSession()
-        self.session.init()
+    def __init__(self, division: str, cand_models: list, param_grid: dict, end_date):
+        # Data Configuration
+        self.division = division    # SELL-IN / SELL-OUT
+        self.end_date = end_date
+        self.target = 'qty'
 
-        self.end_date = self.session.select(sql=SqlConfig.sql_comm_master(option='RST_END_DAY')).values[0][0]
-
-        self.division = division
         # Hierarchy
         self.hrchy_list = config.HRCHY_LIST
         self.hrchy = config.HRCHY
         self.hrchy_level = config.HRCHY_LEVEL
 
-        # temp information
-        self.model_type = 'univ'
-        self.time_type = 'W'
-        self.target_feature = 'qty'
-
         self.n_test = config.N_TEST
 
         # Algorithms
         self.algorithm = Algorithm()
-        self.apply_models = ['ar', 'arma', 'arima', 'hw']
+        self.cand_models = cand_models
+        self.param_grid = param_grid
+        self.model_to_variate = config.MODEL_TO_VARIATE
         self.model_fn = {'ar': self.algorithm.ar,
-                         'arma': self.algorithm.arma,
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
-                         'var': self.algorithm.var,
-                         'varmax': self.algorithm.varmax}
+                         'var': self.algorithm.var}
 
         self.epoch_best = 0
 
@@ -69,35 +62,17 @@ class Train(object):
                          'varma': self.cfg_varma,
                          'varmax': self.cfg_varmax}
 
-    def train(self, df=None, val=None, lvl=0) -> dict:
-        temp = None
-        if lvl == 0:
-            temp = {}
-            for key, val in df.items():
-                result = self.train(val=val, lvl=lvl+1)
-                temp[key] = result
+    def train(self, df) -> dict:
+        scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
+                                      fn=self.train_model,
+                                      df=df)
 
-        elif lvl < self.hrchy_level:
-            temp = {}
-            for key_hrchy, val_hrchy in val.items():
-                result = self.train(val=val_hrchy, lvl=lvl+1)
-                temp[key_hrchy] = result
+        return scores
 
-            return temp
-
-        elif lvl == self.hrchy_level:
-            temp = {}
-            for key_hrchy, val_hrchy in val.items():
-                if len(val_hrchy):
-                    models = self.train_model(df=val_hrchy[self.target_feature])
-                temp[key_hrchy] = models
-
-            return temp
-
-        return temp
-
-    def save_score(self, scores: dict):
-        result = self.score_to_df(df=scores)
+    def make_score_result(self, scores: dict) -> pd.DataFrame:
+        result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
+                                               fn=self.score_to_df,
+                                               df=scores)
 
         result = pd.DataFrame(result)
         cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']
@@ -109,50 +84,25 @@ class Train(object):
 
         result['rmse'] = result['rmse'].fillna(0)
 
-        self.session.insert(df=result, tb_name='M4S_I110410')
+        return result
 
-    def score_to_df(self, df=None, val=None, lvl=0, hrchy=[]):
-        if lvl == 0:
-            temp = []
-            for key, val in df.items():
-                hrchy.append(key)
-                result = self.score_to_df(val=val, lvl=lvl+1, hrchy=hrchy)
-                temp.extend(result)
-                hrchy.remove(key)
+    @staticmethod
+    def score_to_df(hrchy: list, data):
+        result = []
+        for algorithm, score in data:
+            result.append(hrchy + [algorithm, score])
 
-        elif lvl < self.hrchy_level:
-            temp = []
-            for key_hrchy, val_hrchy in val.items():
-                hrchy.append(key_hrchy)
-                result = self.score_to_df(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
-                temp.extend(result)
-                hrchy.remove(key_hrchy)
+        return result
 
-            return temp
-
-        elif lvl == self.hrchy_level:
-            for key_hrchy, val_hrchy in val.items():
-                hrchy.append(key_hrchy)
-                temp = []
-                for algorithm, score in val_hrchy:
-                    temp.append(hrchy + [algorithm, score])
-                hrchy.remove(key_hrchy)
-
-            return temp
-
-        return temp
-
-
-
-    def save_prediction(self, predictions):
+    def make_pred_result(self, predictions):
         end_date = datetime.strptime(self.end_date, '%Y%m%d')
 
         results = []
         fkey = ['HRCHY' + str(i+1) for i in range(len(predictions))]
         for i, pred in enumerate(predictions):
             for j,  result in enumerate(pred[-1]):
-               results.append([fkey[i]] + pred[:-1] + [datetime.strftime(end_date + timedelta(weeks=(j+1)), '%Y%m%d'),
-                                           result])
+                results.append([fkey[i]] + pred[:-1] +
+                              [datetime.strftime(end_date + timedelta(weeks=(j+1)), '%Y%m%d'), result])
 
         results = pd.DataFrame(results)
         cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'month', 'result_sales']
@@ -160,24 +110,14 @@ class Train(object):
         results['project_cd'] = 'ENT001'
         results['division'] = self.division
 
-        self.session.insert(df=results, tb_name='M4S_I110400')
+        return results
 
     def train_model(self, df) -> tuple:
         models = []
-        for model in config.MODEL_CANDIDATES[self.model_type]:
-            score = 0
-            if self.model_type == 'univ':
-                if isinstance(df, pd.DataFrame):    # pandas Dataframe
-                    data = df.values
-                else:    # numpy array
-                    data = df.tolist()
-                score = self.walk_fwd_validation_univ(model=model, model_cfg=self.cfg_dict[model],
-                                                      data=data, n_test=self.n_test)
-            # elif self.model_type == 'multi':
-            #     score = self.walk_fwd_validation_multi(model=model, model_cfg=self.cfg_dict.get(model, None),
-            #                                            data=df, n_test=self.n_test)
-            # elif self.model_type == 'exg':
-            #     score = self.lstm_train(train=df, units=config.LSTM_UNIT)
+        for model in self.cand_models:
+            data = self.filter_data(df=df, model=model)
+            score = self.walk_fwd_validation(model=model, cfg=self.param_grid[model],
+                                             data=data, n_test=self.n_test)
 
             models.append([model, round(score, 2)])
 
@@ -185,10 +125,19 @@ class Train(object):
 
         return models
 
-    def walk_fwd_validation_univ(self, model: str, model_cfg, data, n_test) -> np.array:
+    def filter_data(self, df: pd.DataFrame, model: str):
+        filtered = None
+        if self.model_to_variate[model] == 'univ':
+            filtered = df[self.target]
+        elif self.model_to_variate[model] == 'multi':
+            pass
+
+        return filtered
+
+    def walk_fwd_validation(self, model: str, cfg, data, n_test) -> np.array:
         """
         :param model: Statistical model
-        :param model_cfg: configuration
+        :param cfg: configuration
         :param data: time series data
         :param n_test: number of test data
         :param time_type: Data Time range
@@ -202,7 +151,7 @@ class Train(object):
         for i in range(len(test) - n_test + 1):
             # fit model and make forecast for history
             yhat = self.model_fn[model](history=train,
-                                        cfg=model_cfg,
+                                        cfg=cfg,
                                         pred_step=n_test)
             # store err in list of predictions
             err = self.calc_sqrt_mse(test[i: i+n_test], yhat)
@@ -254,8 +203,8 @@ class Train(object):
     def score_model(self, model: str, data, n_test, cfg) -> tuple:
         # convert config to a key
         key = str(cfg)
-        result = self.walk_fwd_validation_univ(model=model, data=data, n_test=n_test,
-                                               model_cfg=cfg, time_type=self.time_type)
+        result = self.walk_fwd_validation(model=model, data=data, n_test=n_test,
+                                          cfg=cfg, time_type=self.time_type)
         return model, key, result
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):

@@ -6,8 +6,9 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 
 class Decomposition(object):
-    def __init__(self, division: str, hrchy_lvl_cd: str):
+    def __init__(self, division: str, hrchy_list:list, hrchy_lvl_cd: str):
         self.division = division
+        self.hrchy_list = hrchy_list
         self.hrchy_lvl_cd = hrchy_lvl_cd
         self.x = 'qty'
         self.model = 'additive'     # additive / multiplicative
@@ -19,7 +20,7 @@ class Decomposition(object):
         data = pd.Series(data=df[self.x].to_numpy(), index=date.to_numpy())
         data_resampled = data.resample(rule='D').sum()
         decomposed = seasonal_decompose(x=data_resampled, model=self.model)
-        item_info = df[['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']].drop_duplicates()
+        item_info = df[self.hrchy_list].drop_duplicates()
         item_info = item_info.iloc[0].to_dict()
         result = pd.DataFrame(
             {'project_cd': 'ENT001',
@@ -37,4 +38,4 @@ class Decomposition(object):
              'create_user_cd': 'SYSTEM',
              'create_date': datetime.now()})
 
-        # self.dao.update_to_db(df=result, tb_name=self.tb_name)
+        self.dao.insert_to_db(df=result, tb_name=self.tb_name)

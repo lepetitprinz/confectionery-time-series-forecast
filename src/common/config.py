@@ -30,8 +30,10 @@ STN_LIST = [108]
 ###########################
 # Data configuration
 ###########################
-HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']
-HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_ctgr_cd')]
+# HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']
+# HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_ctgr_cd')]
+HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd']
+HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd')]
 HRCHY_LEVEL = len(HRCHY) - 1
 
 # Outlier handling configuration
@@ -43,9 +45,13 @@ SMOOTH_RATE = 0.05    # Quantile rate
 # Model configuration
 ###########################
 TRAIN_RATE = 0.7    # Train / Test split rate
-# MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'ses', 'hw'],
-#                     'multi': ['var'],
-#                     'exg': ['lstm_vn']}
+MODEL_TO_VARIATE = {'ar': 'univ',
+                    'arima': 'univ',
+                    'hw': 'univ',
+                    'var': 'multi',
+                    'varmax': 'multi',
+                    'sarima': 'multi',
+                    'lstm': 'multi'}
 
 MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'hw'],
                     'multi': ['var'],

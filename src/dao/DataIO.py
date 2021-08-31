@@ -12,7 +12,9 @@ class DataIO(object):
         self.session.init()
 
     def get_df_from_db(self, sql) -> pd.DataFrame:
-        return self.session.select(sql=sql)
+        df = self.session.select(sql=sql)
+        df.columns = [col.lower() for col in df.columns]
+        return df
 
     def get_dict_from_db(self, sql, key, val) -> dict:
         df = self.session.select(sql=sql)

@@ -46,7 +46,9 @@ class DataPrep(object):
 
         # Decomposition
         decompose = Decomposition(division=self.division,
+                                  hrchy_list=self.hrchy_list,
                                   hrchy_lvl_cd=self.hrchy_list[self.hrchy_level])
+
         util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
                              fn=decompose.decompose,
                              df=data_group)

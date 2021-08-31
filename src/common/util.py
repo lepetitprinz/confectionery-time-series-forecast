@@ -88,13 +88,10 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
         return temp
 
     elif lvl == hrchy_lvl:
-        temp = {}
         for key_hrchy, val_hrchy in val.items():
             if len(val_hrchy) > 2:
                 hrchy.append(key_hrchy)
-                temp = []
-                result = fn(val_hrchy)
-                temp.append(hrchy + result)
+                temp = fn(hrchy, val_hrchy)
                 hrchy.remove(key_hrchy)
         return temp
 
@@ -107,9 +104,10 @@ def make_path(module: str, division: str, hrchy_lvl: int, step: str, data_type: 
     return path
 
 
-def hrchy_dict(hrchy_lvl, df=None, lvl=0):
-    temp = defaultdict(list)
-    if lvl < hrchy_lvl:
-        temp[].append
+def make_lvl_key_val_map(df: pd.DataFrame, lvl: str, key: str, val: str):
+    result = defaultdict(lambda: defaultdict(dict))
+    for lvl, key, val in zip(df[lvl], df[key], df[val]):
+        result[lvl][key] = val
 
+    return result
 

@@ -1,3 +1,5 @@
+from datetime import datetime
+from datetime import timedelta
 
 
 class Predict(object):
@@ -38,3 +40,22 @@ class Predict(object):
             return temp
 
         return temp
+
+    def make_pred_result(self, df):
+        end_date = datetime.strptime(self.end_date, '%Y%m%d')
+
+        results = []
+        fkey = ['HRCHY' + str(i + 1) for i in range(len(df))]
+        for i, pred in enumerate(df):
+            for j, result in enumerate(pred[-1]):
+                results.append([fkey[i]] + pred[:-1] +
+                               [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), result])
+
+        results = pd.DataFrame(results)
+        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'month',
+                                                                                          'result_sales']
+        results.columns = cols
+        results['project_cd'] = 'ENT001'
+        results['division'] = self.division
+
+        return results
