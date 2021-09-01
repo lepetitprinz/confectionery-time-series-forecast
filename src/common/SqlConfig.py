@@ -220,7 +220,9 @@ class SqlConfig(object):
     @staticmethod
     def sql_algorithm(**kwargs):
         sql = f"""
-            SELECT LOWER(STAT)
+            SELECT LOWER(STAT) AS MODEL
+                 , INPUT_POINT AS INPUT_WIDTH
+                 , PERIOD AS LABEL_WIDTH
               FROM M4S_I103010
              WHERE 1=1
                AND USE_YN = 'Y'

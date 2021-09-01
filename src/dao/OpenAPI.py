@@ -1,7 +1,4 @@
-
 import common.config as config
-from common.SqlConfig import SqlConfig
-from common.SqlSession import SqlSession
 
 import pandas as pd
 from datetime import datetime
@@ -10,36 +7,26 @@ import xml.etree.ElementTree as ET
 
 
 class OpenAPI(object):
-    def __init__(self):
-        self.url = ''
-        self.service_key = ''
-        self.page = ''
-        self.start_date = ''
-        self.end_date = ''
-        self.stn_list = []
-
-    def init(self):
-        # DB Session
-        sql_conf = SqlConfig()
-        sess = SqlSession()
-        sess.init()
-        info = sess.select(sql=sql_conf.sql_comm_master())
-        sess.close()
-        info_dict = dict(zip(info['OPTION_CD'], info['OPTION_VAL']))
-
-        # Initialization
-        self.url = info_dict['WEA_URL']
-        self.service_key = info_dict['WEA_SERVICE_KEY']
-        self.page = info_dict['WEA_PAGE']
+    def __init__(self, info: dict):
+        self.url = info['wea_url']
+        self.service_key = info['wea_service_key']
+        self.page = info['wea_page']
+        self.start_date = info['rst_start_day']
+        self.end_date = info['rst_end_day']
         self.stn_list = config.STN_LIST
+        self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum']
 
     def get_api_dataset(self) -> pd.DataFrame:
-        num_rows = self.count_date_range(start_date=self.start_date, end_date=self.end_date)
-        xml_tree = self.open_url(url=self.url, service_key=self.service_key, page=self.page, num_rows=num_rows,
-                                 start_date=self.start_date, end_date=self.end_date, stn_id=self.stn_id)
-        data = self.map_xml_tree(xml_tree=xml_tree)
+        data_list = []
+        for stn_id in self.stn_list:
+            num_rows = self.count_date_range(start_date=self.start_date, end_date=self.end_date)
+            xml_tree = self.open_url(url=self.url, service_key=self.service_key, page=self.page, num_rows=num_rows,
+                                     start_date=self.start_date, end_date=self.end_date, stn_id=stn_id)
+            data = self.map_xml_tree(xml_tree=xml_tree)
+            data_db = self.conv_data_to_db(data=data)
+            data_list.append(data_db)
 
-        return data
+        return data_list
 
     @staticmethod
     def open_url(url, service_key, page, num_rows, start_date, end_date, stn_id) -> ET:
@@ -75,3 +62,19 @@ class OpenAPI(object):
         dates = pd.date_range(start_date, end_date)
 
         return len(dates)
+
+    def conv_data_to_db(self, data: pd.DataFrame) -> list:
+        converted_list = []
+        for exg in self.exg_list:
+            data_exg = data[['date', 'location', exg]]
+            data_exg['date'] = pd.to_datetime(data_exg['date']).dt.strftime('%Y%m%d')
+            data_exg['project_cd'] = 'ENT001'
+            data_exg['idx_cd'] = exg.upper()
+            data_exg['create_user_cd'] = 'SYSTEM'
+            data_exg['create_date'] = datetime.now()
+            data_exg = data_exg.rename(columns={'date': 'yymm',
+                                       exg: 'ref_val',
+                                       'location': 'idx_dtl_cd'})
+            converted_list.append(data_exg)
+
+        return converted_list

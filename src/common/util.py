@@ -39,7 +39,7 @@ def group(hrchy, hrchy_lvl, data, cd=None, lvl=0) -> dict:
     return grp
 
 
-def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
+def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> dict:
     temp = None
     if lvl == 0:
         temp = {}

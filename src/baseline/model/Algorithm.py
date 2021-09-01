@@ -1,3 +1,4 @@
+import ast
 import numpy as np
 
 # Univariate Statistical Models
@@ -11,12 +12,11 @@ from statsmodels.tsa.statespace.varmax import VARMAX    # Vector Autoregressive 
                                                         # eXogenous regressors model
 from statsmodels.tsa.statespace.sarimax import SARIMAX    # Seasonal Auto regressive integrated moving average
 
-import tensorflow as tf
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import LSTM, Dense, Input, BatchNormalization
-from tensorflow.keras.layers import Lambda, Conv1D, Reshape
-from tensorflow.keras.layers import RepeatVector, TimeDistributed
-from tensorflow.keras.optimizers import Adam
+# import tensorflow as tf
+# from tensorflow.keras.models import Sequential, Model
+# from tensorflow.keras.layers import LSTM, Dense, Input, BatchNormalization
+# from tensorflow.keras.layers import RepeatVector, TimeDistributed
+# from tensorflow.keras.optimizers import Adam
 
 # Model Decorator
 # def stats_method(func: Callable) -> Callable[[object, list, tuple, int], Any]:
@@ -61,8 +61,9 @@ class Algorithm(object):
         :param pred_step: prediction steps
         :return: forecast result
         """
-        model = AutoReg(endog=history, lags=cfg['lags'], trend=cfg['trend'],
-                        seasonal=cfg['seasonal'], period=cfg['period'])
+        model = AutoReg(endog=history, lags=ast.literal_eval(cfg['lags']), trend=cfg['trend'],
+                        seasonal=ast.literal_eval(cfg['seasonal']),
+                        period=ast.literal_eval(cfg['period']))
 
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
@@ -93,7 +94,7 @@ class Algorithm(object):
         :return: forecast result
         """
         # define model
-        order = (cfg['p'], cfg['d'], cfg['q'])
+        order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['d']), ast.literal_eval(cfg['q']))
         model = ARIMA(history, order=order, trend=cfg['trend'], freq=cfg['freq'])
 
         # fit model
@@ -153,12 +154,13 @@ class Algorithm(object):
         :return: forecast result
         """
         # define model
-        model = ExponentialSmoothing(history, trend=cfg['trend'], damped_trend=cfg['damped_trend'],
-                                     seasonal=cfg['seasonal'], seasonal_periods=cfg['seasonal_period'],
-                                     use_boxcox=cfg['use_boxcox'])
+        model = ExponentialSmoothing(history, trend=cfg['trend'], damped_trend=ast.literal_eval(cfg['damped_trend']),
+                                     seasonal=ast.literal_eval(cfg['seasonal']),
+                                     seasonal_periods=ast.literal_eval(cfg['seasonal_period']),
+                                     use_boxcox=ast.literal_eval(cfg['use_boxcox']))
 
         # fit model
-        model_fit = model.fit(optimized=True, remove_bias=cfg['remove_bias'])  # fit model
+        model_fit = model.fit(optimized=True, remove_bias=ast.literal_eval(cfg['remove_bias']))  # fit model
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
@@ -197,7 +199,7 @@ class Algorithm(object):
         model = VAR(endog=endog, exog=exog)
 
         # fit model
-        model_fit = model.fit(maxlags=cfg['maxlags'], ic=cfg['ic'], trend=cfg['trend'])
+        model_fit = model.fit(maxlags=ast.literal_eval(cfg['maxlags']), ic=cfg['ic'], trend=cfg['trend'])
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
@@ -225,7 +227,7 @@ class Algorithm(object):
         :param pred_step: prediction steps
         :return: forecast result
         """
-        order = (cfg['p'], cfg['q'])
+        order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['q']))
 
         # define model
         model = VARMAX(endog, exog=exog, order=order, trend=cfg['trend'])
@@ -261,45 +263,26 @@ class Algorithm(object):
         :param pred_step: prediction steps
         :return: forecast result
         """
-        # define
-        model = SARIMAX(endog=endog)
-        pass
-    
-    def seq2seq(self) -> Model:
-        """
-        Sequence to sequence model
-        # Multivariate to target
-        # m time-steps to n time-steps
-        :return:
-        """
-        # define sequence to sequence LSTM model
-        input_train = Input(shape=(self.window_input, self.n_features))
-        output_train = Input(shape=(self.window_output, self.n_features))
+        order = (ast.literal_eval(cfg['p']),
+                 ast.literal_eval(cfg['d']),
+                 ast.literal_eval(cfg['q']))
 
-        # Encoder LSTM
-        encoder_last_h1, encoder_last_h2, encoder_last_c = LSTM(
-            self.n_hidden, activation=self.activation,
-            dropout=self.dropout, recurrent_dropout=self.recurrent_dropout,
-            return_sequences=False, return_state=True)(input_train)
+        seasonal_order = (ast.literal_eval(cfg['ssn_p']),
+                          ast.literal_eval(cfg['ssn_d']),
+                          ast.literal_eval(cfg['ssn_q']),
+                          ast.literal_eval(cfg['ssn_s']))
 
-        # Batch normalization
-        encoder_last_h1 = BatchNormalization(momentum=self.momentum)(encoder_last_h1)
-        encoder_last_c = BatchNormalization(momentum=self.momentum)(encoder_last_c)
+        # define model
+        model = SARIMAX(endog=endog, exog=exog,
+                        order=order, seasonal_order=seasonal_order, trend=cfg['trend'])
 
-        # Decoder LSTM
-        decoder = RepeatVector(output_train.shape[1])(encoder_last_h1)
-        decoder = LSTM(self.n_hidden, activation=self.activation, dropout=self.dropout,
-                       recurrent_dropout=self.recurrent_dropout, return_state=False,
-                       return_sequences=True)(decoder, initial_state=[encoder_last_h1, encoder_last_c])
-        out = TimeDistributed(Dense(1))(decoder)
+        # fit model
+        model_fit = model.fit()
 
-        model = Model(inputs=input_train, outputs=out)
+        # Make multi-step forecast
+        yhat = model_fit.predict(start=len(endog), end=len(endog) + pred_step - 1)
 
-        optimizer = Adam(lr=self.lr, clipnorm=1)
-        model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber(), metrics=['mse'])
-        model.summary()
-
-        return model
+        return yhat[:, 0]
 
     # def prophet(history, n_test, forecast=False):
     #
@@ -325,6 +308,42 @@ class Algorithm(object):
     #         forecast = model.predict(future)
     #
     #         return  forecast['yhat'][-n_test:]
+
+    # def seq2seq(self) -> Model:
+    #     """
+    #     Sequence to sequence model
+    #     # Multivariate to target
+    #     # m time-steps to n time-steps
+    #     :return:
+    #     """
+    #     # define sequence to sequence LSTM model
+    #     input_train = Input(shape=(self.window_input, self.n_features))
+    #     output_train = Input(shape=(self.window_output, self.n_features))
+    #
+    #     # Encoder LSTM
+    #     encoder_last_h1, encoder_last_h2, encoder_last_c = LSTM(
+    #         self.n_hidden, activation=self.activation,
+    #         dropout=self.dropout, recurrent_dropout=self.recurrent_dropout,
+    #         return_sequences=False, return_state=True)(input_train)
+    #
+    #     # Batch normalization
+    #     encoder_last_h1 = BatchNormalization(momentum=self.momentum)(encoder_last_h1)
+    #     encoder_last_c = BatchNormalization(momentum=self.momentum)(encoder_last_c)
+    #
+    #     # Decoder LSTM
+    #     decoder = RepeatVector(output_train.shape[1])(encoder_last_h1)
+    #     decoder = LSTM(self.n_hidden, activation=self.activation, dropout=self.dropout,
+    #                    recurrent_dropout=self.recurrent_dropout, return_state=False,
+    #                    return_sequences=True)(decoder, initial_state=[encoder_last_h1, encoder_last_c])
+    #     out = TimeDistributed(Dense(1))(decoder)
+    #
+    #     model = Model(inputs=input_train, outputs=out)
+    #
+    #     optimizer = Adam(lr=self.lr, clipnorm=1)
+    #     model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber(), metrics=['mse'])
+    #     model.summary()
+    #
+    #     return model
 
     @staticmethod
     def lstm_data_reshape(data: np.array, n_feature: int) -> np.array:

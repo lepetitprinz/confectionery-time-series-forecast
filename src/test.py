@@ -50,29 +50,29 @@ prep = DataPrep()
 # Biz - Line - Brand - Item
 #############################
 data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
-# path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', data_type='pickle')
+path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', data_type='pickle')
 # data_io.save_object(data=data_preped, kind='binary', file_path=path_sell_in_4_prep)  # Save object
-# data_preped = data_io.load_object(file_path=path_sell_in_4_prep, kind='binary')  # Load object
+data_preped = data_io.load_object(file_path=path_sell_in_4_prep, kind='binary')  # Load object
 
 #####################
 # Training
 #####################
 # Load from data
-# cand_models = data_io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
-# cand_models = list(cand_models.T.iloc[0])
-#
-# param_grid = data_io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
-# param_grid['stat'] = param_grid['stat'].apply(lambda x: x.lower())
-# param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
-# param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat', key='option_cd', val='option_val')
-#
-# training = Train(division='SELL-IN',
-#                  cand_models=cand_models,
-#                  param_grid=param_grid,
-#                  end_date=date['date_to'])
-#
+cand_models = data_io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
+model_info = cand_models.set_index(keys='model').to_dict('index')
+
+param_grid = data_io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
+param_grid['stat'] = param_grid['stat'].apply(lambda x: x.lower())
+param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
+param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat', key='option_cd', val='option_val')
+
+training = Train(division='SELL-IN',
+                 model_info=model_info,
+                 param_grid=param_grid,
+                 end_date=date['date_to'])
+
 # # Train the model
-# scores = training.train(df=data_preped)
+scores = training.train(df=data_preped)
 # scores_db = training.make_score_result(scores=scores)
 #
 # # Save the score

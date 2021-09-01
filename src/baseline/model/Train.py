@@ -1,11 +1,8 @@
-import common.config as config
 import common.util as util
-from common.SqlConfig import SqlConfig
-from common.SqlSession import SqlSession
+import common.config as config
 from baseline.model.Algorithm import Algorithm
 
 import warnings
-
 import numpy as np
 import pandas as pd
 from math import sqrt
@@ -16,16 +13,16 @@ from sklearn.metrics import mean_squared_error
 # Tensorflow library
 # from tensorflow.keras import backend as K
 # from tensorflow.keras.callbacks import EarlyStopping
-
 warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, cand_models: list, param_grid: dict, end_date):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, end_date):
         # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
         self.end_date = end_date
-        self.target = 'qty'
+        self.col_target = 'qty'
+        self.col_exo = ['discount', '']
 
         # Hierarchy
         self.hrchy_list = config.HRCHY_LIST
@@ -36,35 +33,18 @@ class Train(object):
 
         # Algorithms
         self.algorithm = Algorithm()
-        self.cand_models = cand_models
+        self.cand_models = list(model_info.keys())
         self.param_grid = param_grid
         self.model_to_variate = config.MODEL_TO_VARIATE
         self.model_fn = {'ar': self.algorithm.ar,
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
-                         'var': self.algorithm.var}
+                         'var': self.algorithm.var,
+                         'varmax': self.algorithm.varmax}
+
+        self.model_width = model_info
 
         self.epoch_best = 0
-
-        # hyper-parameters
-        self.cfg_ar = (config.LAG, config.TREND, config.SEASONAL, config.PERIOD)
-        self.cfg_arma = (config.TWO_LVL_ORDER, config.FREQUENCY, config.TREND_ARMA)
-        self.cfg_arima = (config.THR_LVL_ORDER, config.FREQUENCY, config.TREND_ARMA)
-        self.cfg_ses = (config.INIT_METHOD, config.SMOOTHING, config.OPTIMIZED)
-        self.cfg_hw = (config.TREND_HW, config.DAMPED_TREND, config.SEASONAL_HW, config.PERIOD,
-                       config.USE_BOXCOX, config.REMOVE_BIAS)
-        self.cfg_var = config.LAG
-        self.cfg_varma = (config.TWO_LVL_ORDER, config.TREND)
-        self.cfg_varmax = (config.TWO_LVL_ORDER, config.TREND)
-
-        self.cfg_dict = {'ar': self.cfg_ar,
-                         'arma': self.cfg_arma,
-                         'arima': self.cfg_arima,
-                         'ses': self.cfg_ses,
-                         'hw': self.cfg_hw,
-                         'var': self.cfg_var,
-                         'varma': self.cfg_varma,
-                         'varmax': self.cfg_varmax}
 
     def train(self, df) -> dict:
         scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
@@ -98,7 +78,7 @@ class Train(object):
 
         return result
 
-    def make_pred_result(self, predictions):
+    def make_pred_result(self, predictions) -> pd.DataFrame:
         end_date = datetime.strptime(self.end_date, '%Y%m%d')
 
         results = []
@@ -122,7 +102,6 @@ class Train(object):
             data = self.filter_data(df=df, model=model)
             score = self.walk_fwd_validation(model=model, cfg=self.param_grid[model],
                                              data=data, n_test=self.n_test)
-
             models.append([model, np.round(score, 2)])
 
         models = sorted(models, key=lambda x: x[1])
@@ -130,75 +109,64 @@ class Train(object):
         return models
 
     def filter_data(self, df: pd.DataFrame, model: str):
+        df = df.set_index(keys='yymmdd')    # Todo : Check index
         filtered = None
         if self.model_to_variate[model] == 'univ':
-            filtered = df[self.target]
+            filtered = df[self.col_target]
         elif self.model_to_variate[model] == 'multi':
-            pass
+            filtered = df[self.col_exo + [self.col_target]]
 
         return filtered
 
-    def walk_fwd_validation(self, model: str, cfg, data, n_test) -> np.array:
+    def walk_fwd_validation(self, model: str, data, cfg, n_test) -> np.array:
         """
         :param model: Statistical model
-        :param cfg: configuration
         :param data: time series data
+        :param cfg: configuration
         :param n_test: number of test data
-        :param time_type: Data Time range
         :return:
         """
         # split dataset
-        train, test = self.train_test_split(data=data, train_size=config.TRAIN_RATE)
-        # history = data.values  # seed history with training dataset
+        dataset = self.make_ts_dataset(df=data, model=model)
 
         predictions = []
-        for i in range(len(test) - n_test + 1):
-            # fit model and make forecast for history
-            yhat = self.model_fn[model](history=train,
-                                        cfg=cfg,
-                                        pred_step=n_test)
-            # store err in list of predictions
-            err = self.calc_sqrt_mse(test[i: i+n_test], yhat)
+        for train, test in dataset:
+            yhat = self.model_fn[model](history=train, cfg=cfg, pred_step=n_test)
+            err = self.calc_sqrt_mse(test, yhat)
             predictions.append(err)
-
-            # add actual observation to history for the next loop
-            # train = np.append(train, test[i])
 
         # estimate prediction error
         rmse = np.mean(predictions)
 
         return rmse
 
-    def walk_fwd_validation_multi(self, model: str, model_cfg, data, n_test) -> np.array:
-        # split dataset
-        train, test = self.train_test_split(data=data, train_size=config.TRAIN_RATE)
-        # history = data.values  # seed history with training dataset
+    def make_ts_dataset(self, df, model: str):
+        data_length = len(df)
+        input_width = int(self.model_width[model]['input_width'])
+        label_width = int(self.model_width[model]['label_width'])
+        data_input = None
+        data_target = None
+        dataset = []
+        for i in range(data_length - label_width + 1):
+            if self.model_to_variate[model] == 'univ':
+                data_input = df.iloc[i: i + input_width]
+                data_target = df.iloc[i + input_width: i + input_width + label_width]
+            elif self.model_to_variate[model] == 'multi':
+                data_input = df.iloc[i: i + input_width, :]
+                data_target = df.iloc[i + input_width: i + input_width + label_width, :]
 
-        predictions = []
-        for i in range(len(test) - n_test + 1):
-            # fit model and make forecast for history
-            yhat = self.model_multi[model](history=train,
-                                           cfg=model_cfg,
-                                           pred_step=n_test)
-            # store err in list of predictions
-            err = self.calc_sqrt_mse(test[config.COL_TARGET][i: i + n_test], yhat)
-            predictions.append(err)
+            dataset.append((data_input, data_target))
 
-            # add actual observation to history for the next loop
-            train = train.append(test.iloc[i, :])
+        return dataset
 
-        # estimate prediction error
-        rmse = np.mean(predictions)
-
-        return rmse
-
-    def train_test_split(self, data, train_size):
+    def train_test_split(self, data, model):
+        train_rate = config.TRAIN_RATE
         data_length = len(data)
-        if self.model_type == 'univ':
-            return data[: int(data_length * train_size)], data[int(data_length * train_size):]
+        if self.model_to_variate[model] == 'univ':
+            return data[: int(data_length * train_rate)], data[int(data_length * train_rate):]
 
-        elif self.model_type == 'multi':
-            return data.iloc[:int(data_length * train_size), :], data.iloc[int(data_length * train_size):, :]
+        elif self.model_to_variate[model] == 'multi':
+            return data.iloc[:int(data_length * train_rate), :], data.iloc[int(data_length * train_rate):, :]
 
     @staticmethod
     def calc_sqrt_mse(actual, predicted) -> float:
@@ -207,8 +175,8 @@ class Train(object):
     def score_model(self, model: str, data, n_test, cfg) -> tuple:
         # convert config to a key
         key = str(cfg)
-        result = self.walk_fwd_validation(model=model, data=data, n_test=n_test,
-                                          cfg=cfg, time_type=self.time_type)
+        result = self.walk_fwd_validation(model=model, data=data, n_test=n_test, cfg=cfg)
+
         return model, key, result
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):

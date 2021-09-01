@@ -23,14 +23,14 @@ class DataIO(object):
 
         return result
 
-    def insert_to_db(self, df: pd.DataFrame, tb_name: str):
+    def insert_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
         self.session.insert(df=df, tb_name=tb_name)
 
-    def update_to_db(self, df: pd.DataFrame, tb_name: str):
+    def update_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
         self.session.update(df=df, tb_name=tb_name)
 
     @staticmethod
-    def save_object(data, kind: str, file_path: str):
+    def save_object(data, kind: str, file_path: str) -> None:
         if kind == 'csv':
             data.to_csv(file_path, )
 

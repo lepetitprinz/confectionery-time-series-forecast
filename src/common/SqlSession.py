@@ -3,7 +3,9 @@ import common.config as config
 
 import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy import Table, MetaData, insert, update
+from sqlalchemy import Table, MetaData, insert
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import Insert
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -81,10 +83,15 @@ class SqlSession(object):
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
 
-    def update(self, df: pd.DataFrame, tb_name: str):
-        table = self.get_table_meta(tb_name=tb_name)
-        with self.engine.connect() as conn:
-            conn.execute(table.update(), df.to_dict('records'))
+    # def upsert(self, df: pd.DataFrame, tb_name: str):
+    #     table = self.get_table_meta(tb_name=tb_name)
+    #     stmt = insert(table).values(df.to_dict('records'))
+    #     stmt = stmt.on_conflict_do_update(
+    #         constraint='post_key',
+    #         set_={}
+    #         )
+    #     with self.engine.connect() as conn:
+    #         conn.execute(stmt)
 
     def get_table_meta(self, tb_name: str):
         metadata = MetaData(bind=self.engine)
@@ -92,3 +99,13 @@ class SqlSession(object):
         table = Table(tb_name, metadata, autoload=True, autoload_with=self.engine)
 
         return table
+
+    # @compiles(Insert)
+    # def compile_upsert(self, insert_stmt, compiler, **kwargs):
+    #     pk = insert_stmt.table.primary_key
+    #     insert = compiler.visit_insert(insert_stmt, **kwargs)
+    #     ondup = f'ON CONFLICT ({",".join(c.name for c in pk)}) DO UPDATE SET'
+    #     updates = ', '.join(f"{c.name}=EXCLUDED.{c.name}" for c in insert_stmt.table.columns)
+    #     upsert = ' '.join((insert, ondup, updates))
+    #
+    #     return upsert
