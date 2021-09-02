@@ -1,10 +1,34 @@
+import common.util as util
+import common.config as config
+
 from datetime import datetime
 from datetime import timedelta
+import pandas as pd
 
 
 class Predict(object):
-    def __init__(self):
-        self.model_list = []
+    def __init__(self, division: str, model_info: dict, param_grid: dict, end_date):
+        self.division = division    # SELL-IN / SELL-OUT
+        self.col_target = 'qty'
+
+        # Hierarchy
+        self.hrchy_list = config.HRCHY_LIST
+        self.hrchy = config.HRCHY
+        self.hrchy_level = config.HRCHY_LEVEL
+
+        self.n_test = config.N_TEST
+
+        # Algorithms
+        self.algorithm = Algorithm()
+        self.cand_models = list(model_info.keys())
+        self.param_grid = param_grid
+        self.model_to_variate = config.MODEL_TO_VARIATE
+        self.model_fn = {'ar': self.algorithm.ar,
+                         'arima': self.algorithm.arima,
+                         'hw': self.algorithm.hw,
+                         'var': self.algorithm.var,
+                         'varmax': self.algorithm.varmax}
+
 
     def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
         if lvl == 0:
@@ -30,9 +54,9 @@ class Predict(object):
                 if len(val_hrchy) > self.n_test:
                     hrchy.append(key_hrchy)
                     temp = []
-                    for algorithm in self.model_univ_list:
-                        prediction = self.model_univ[algorithm](history=val_hrchy[self.target_feature].to_numpy(),
-                                                                cfg=self.cfg_dict[algorithm],
+                    for algorithm in self.cand_models:
+                        prediction = self.model_fn[algorithm](history=val_hrchy[self.col_target].to_numpy(),
+                                                                cfg=self.param_grid[algorithm],
                                                                 pred_step=self.n_test)
                         temp.append(hrchy + [algorithm, prediction])
                     hrchy.remove(key_hrchy)

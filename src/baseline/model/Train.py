@@ -17,10 +17,9 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, end_date):
+    def __init__(self, division: str, model_info: dict, param_grid: dict):
         # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
-        self.end_date = end_date
         self.col_target = 'qty'
         self.col_exo = ['discount', '']
 
@@ -77,24 +76,6 @@ class Train(object):
             result.append(hrchy + [algorithm, score])
 
         return result
-
-    def make_pred_result(self, predictions) -> pd.DataFrame:
-        end_date = datetime.strptime(self.end_date, '%Y%m%d')
-
-        results = []
-        fkey = ['HRCHY' + str(i+1) for i in range(len(predictions))]
-        for i, pred in enumerate(predictions):
-            for j,  result in enumerate(pred[-1]):
-                results.append([fkey[i]] + pred[:-1] +
-                              [datetime.strftime(end_date + timedelta(weeks=(j+1)), '%Y%m%d'), result])
-
-        results = pd.DataFrame(results)
-        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'month', 'result_sales']
-        results.columns = cols
-        results['project_cd'] = 'ENT001'
-        results['division'] = self.division
-
-        return results
 
     def train_model(self, df) -> list:
         models = []
