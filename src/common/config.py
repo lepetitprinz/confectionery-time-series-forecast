@@ -36,6 +36,8 @@ HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_ctgr_cd')]
 # HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd')]
 HRCHY_LEVEL = len(HRCHY) - 1
 
+RESAMPLE_RULE = 'w'
+
 # Outlier handling configuration
 SMOOTH_YN = True    # Smoothing or not (True / False)
 SMOOTH_METHOD = 'quantile'    # quantile / sigma

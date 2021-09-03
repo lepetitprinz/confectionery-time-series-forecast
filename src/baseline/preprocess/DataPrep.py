@@ -13,7 +13,7 @@ class DataPrep(object):
     TYPE_STR_COLS = ['sold_cust_grp_cd', 'item_cd']
     TARGET_COL = ['qty']
 
-    def __init__(self):
+    def __init__(self, date: dict):
         # Path
         self.base_dir = config.BASE_DIR
         self.save_dir = config.SAVE_DIR
@@ -21,6 +21,10 @@ class DataPrep(object):
         # Dataset
         self.division = ''
         self.features = []
+        self.resample_rule = config.RESAMPLE_RULE
+        self.date_range = pd.date_range(start=date['date_from'],
+                                        end=date['date_to'],
+                                        freq=config.RESAMPLE_RULE)
 
         # Hierarchy
         self.hrchy_list = config.HRCHY_LIST
@@ -129,11 +133,17 @@ class DataPrep(object):
         return grp
 
     def resample(self, df):
-        cols = self.GROUP_BY_COLS + self.hrchy_list[:self.hrchy_level+1]
-        df_group = df.groupby(by=cols).sum()
-        df_group = df_group.reset_index()
+        cols = self.hrchy_list[:self.hrchy_level+1]
+        data_level = df[cols].iloc[0].to_dict()
+        df_resampled = df.resample(rule=self.resample_rule).sum()
+        if len(df_resampled.index) != len(self.date_range):
+            print("")
+        for key, val in data_level.items():
+            df_resampled[key] = val
+        # df_group = df.groupby(by=cols).sum()
+        # df_group = df_group.reset_index()
 
-        return df_group
+        return df_resampled
 
     def set_features(self, df):
         return df[self.features]

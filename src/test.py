@@ -27,55 +27,57 @@ path_sell_in_predict = os.path.join('..', 'result', 'sell_in_predict.pickle')
 data_io = DataIO()
 common = data_io.get_dict_from_db(sql=SqlConfig.sql_comm_master(), key='OPTION_CD', val='OPTION_VAL')
 date = {'date_from': common['rst_start_day'], 'date_to': common['rst_end_day']}
+
+# Load SELL-IN
 # sell_in = data_io.get_df_from_db(sql=SqlConfig.sql_sell_in(**date))
 # data_io.save_object(data=sell_in, file_path=path_sell_in, kind='csv')  # Save object
-
+# print("Saving Sell Dataset is finished")
 # sell_in = data_io.load_object(file_path=path_sell_in, kind='csv')  # Load object
 
 #######################
 # 2. Consistency Check
 #######################
 # cns_check = ConsistencyCheck(division='sell_in', save_yn=False)
-
+#
 # sell_in_checked = cns_check.check(df=sell_in)
 # data_io.save_object(data=sell_in_checked, file_path=path_sell_in_cns, kind='csv')
-# sell_in_checked = data_io.load_object(file_path=path_sell_in_cns, kind='csv')  # Load object
+sell_in_checked = data_io.load_object(file_path=path_sell_in_cns, kind='csv')  # Load object
 
 #######################
 # 3. Data Preprocessing
 #######################
-prep = DataPrep()
-
-#############################
-# Biz - Line - Brand - Item
-#############################
-# data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
-path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', data_type='pickle')
+prep = DataPrep(date=date)
+#
+# #############################
+# # Biz - Line - Brand - Item
+# #############################
+data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
+# path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', data_type='pickle')
 # data_io.save_object(data=data_preped, kind='binary', file_path=path_sell_in_4_prep)  # Save object
-data_preped = data_io.load_object(file_path=path_sell_in_4_prep, kind='binary')  # Load object
-
-#####################
-# Training
-#####################
-# Load from data
-cand_models = data_io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
-model_info = cand_models.set_index(keys='model').to_dict('index')
-
-param_grid = data_io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
-param_grid['stat'] = param_grid['stat'].apply(lambda x: x.lower())
-param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
-param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat', key='option_cd', val='option_val')
-
-training = Train(division='SELL-IN',
-                 model_info=model_info,
-                 param_grid=param_grid)
-
-# # Train the model
-scores = training.train(df=data_preped)
-scores_db = training.make_score_result(scores=scores)
-
-# # Save the score
-data_io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
+# data_preped = data_io.load_object(file_path=path_sell_in_4_prep, kind='binary')  # Load object
+#
+# #####################
+# # Training
+# #####################
+# # Load from data
+# cand_models = data_io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
+# model_info = cand_models.set_index(keys='model').to_dict('index')
+#
+# param_grid = data_io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
+# param_grid['stat'] = param_grid['stat'].apply(lambda x: x.lower())
+# param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
+# param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat', key='option_cd', val='option_val')
+#
+# training = Train(division='SELL-IN',
+#                  model_info=model_info,
+#                  param_grid=param_grid)
+#
+# # # Train the model
+# scores = training.train(df=data_preped)
+# scores_db = training.make_score_result(scores=scores)
+#
+# # # Save the score
+# data_io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
 
 # save_dir = os.path.join('..', 'result', 'score_sell_in.pickle')
 # data_io.save_object(data=scores, file_path=path_sell_in_score, kind='binary')  # Save object

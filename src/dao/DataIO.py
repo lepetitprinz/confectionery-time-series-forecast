@@ -32,7 +32,7 @@ class DataIO(object):
     @staticmethod
     def save_object(data, kind: str, file_path: str) -> None:
         if kind == 'csv':
-            data.to_csv(file_path, )
+            data.to_csv(file_path, index=False)
 
         elif kind == 'binary':
             with open(file_path, 'wb') as handle:
