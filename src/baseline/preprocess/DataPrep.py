@@ -10,7 +10,7 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     GROUP_BY_COLS = ['week']
     # GROUP_BY_COLS = ['sold_cust_grp_cd', 'week']
-    TYPE_STR_COLS = ['sold_cust_grp_cd', 'item_cd', 'yymmdd']
+    TYPE_STR_COLS = ['sold_cust_grp_cd', 'item_cd']
     TARGET_COL = ['qty']
 
     def __init__(self):
@@ -54,19 +54,13 @@ class DataPrep(object):
                              df=data_group)
 
         # Resampling
-        data_group = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
-                                          fn=self.resample,
-                                          df=data_group)
-
-
-        # Univariate or Multivariate dataset
-        # data_featured = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
-        #                                      fn=self.set_features,
-        #                                      df=data_resampled)
+        data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
+                                             fn=self.resample,
+                                             df=data_group)
 
         print("Data preprocessing is finished\n")
 
-        return data_group
+        return data_resample
 
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert columns to lower case
@@ -89,6 +83,10 @@ class DataPrep(object):
         # convert data type
         for col in self.TYPE_STR_COLS:
             df[col] = df[col].astype(str)
+
+        # convert to datetime
+        df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
+        df = df.set_index(keys=['yymmdd'])
 
         # add noise feature
         # df = self.add_noise_feat(df=df)
@@ -167,29 +165,3 @@ class DataPrep(object):
             df[col] = np.where(df[col].values > max_val, max_val, df[col].values)
 
         return df
-
-    @staticmethod
-    def split_sequence(df, n_steps_in, n_steps_out) -> tuple:
-        """
-        Split univariate sequence data
-        :param df: Time series data
-        :param n_steps_in:
-        :param n_steps_out:
-        :return:
-        """
-        data = df.astype('float32')
-        x = []
-        y = []
-        for i in range(len(data)):
-            # find the end of this pattern
-            end_ix = i + n_steps_in
-            out_end_ix = end_ix + n_steps_out
-            # check if we are beyond the sequence
-            if out_end_ix > len(df):
-                break
-            # gather input and output parts of the pattern
-            seq_x, seq_y = data[i:end_ix, :], data[end_ix:out_end_ix, :]
-            x.append(seq_x)
-            y.append(seq_y)
-
-        return np.array(x), np.array(y)

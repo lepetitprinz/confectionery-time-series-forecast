@@ -52,10 +52,7 @@ MODEL_TO_VARIATE = {'ar': 'univ',
                     'varmax': 'multi',
                     'sarima': 'multi',
                     'lstm': 'multi'}
-
-MODEL_CANDIDATES = {'univ': ['ar', 'arma', 'arima', 'hw'],
-                    'multi': ['var'],
-                    'exg': ['lstm_vn']}
+VALIDATION_METHOD = 'train_test'    # train_test / walk-walk_forward
 
 #####################################
 #  Model Hyper-parameters

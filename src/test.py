@@ -39,7 +39,7 @@ date = {'date_from': common['rst_start_day'], 'date_to': common['rst_end_day']}
 
 # sell_in_checked = cns_check.check(df=sell_in)
 # data_io.save_object(data=sell_in_checked, file_path=path_sell_in_cns, kind='csv')
-sell_in_checked = data_io.load_object(file_path=path_sell_in_cns, kind='csv')  # Load object
+# sell_in_checked = data_io.load_object(file_path=path_sell_in_cns, kind='csv')  # Load object
 
 #######################
 # 3. Data Preprocessing
@@ -49,7 +49,7 @@ prep = DataPrep()
 #############################
 # Biz - Line - Brand - Item
 #############################
-data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
+# data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
 path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', data_type='pickle')
 # data_io.save_object(data=data_preped, kind='binary', file_path=path_sell_in_4_prep)  # Save object
 data_preped = data_io.load_object(file_path=path_sell_in_4_prep, kind='binary')  # Load object
@@ -68,15 +68,14 @@ param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat', key='option_cd
 
 training = Train(division='SELL-IN',
                  model_info=model_info,
-                 param_grid=param_grid,
-                 end_date=date['date_to'])
+                 param_grid=param_grid)
 
 # # Train the model
 scores = training.train(df=data_preped)
-# scores_db = training.make_score_result(scores=scores)
-#
+scores_db = training.make_score_result(scores=scores)
+
 # # Save the score
-# data_io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
+data_io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
 
 # save_dir = os.path.join('..', 'result', 'score_sell_in.pickle')
 # data_io.save_object(data=scores, file_path=path_sell_in_score, kind='binary')  # Save object

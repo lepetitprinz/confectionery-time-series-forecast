@@ -2,6 +2,7 @@ import ast
 import numpy as np
 
 # Univariate Statistical Models
+import pandas as pd
 from statsmodels.tsa.ar_model import AutoReg    # Auto Regression
 from statsmodels.tsa.arima.model import ARIMA    # Auto Regressive Integrated Moving Average
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing    # Simple Exponential Smoothing
@@ -46,7 +47,7 @@ class Algorithm(object):
     #############################
     # Auto-regressive Model
     @staticmethod
-    def ar(history, cfg: dict, pred_step=0):
+    def ar(history, cfg: dict, pred_step=1):
         """
         :param history: time series data
         :param cfg:
@@ -62,21 +63,20 @@ class Algorithm(object):
         :return: forecast result
         """
         model = AutoReg(endog=history, lags=ast.literal_eval(cfg['lags']), trend=cfg['trend'],
-                        seasonal=ast.literal_eval(cfg['seasonal']),
-                        period=ast.literal_eval(cfg['period']))
+                        seasonal=bool(cfg['seasonal']), period=ast.literal_eval(cfg['period']))
 
         model_fit = model.fit()
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
         # Make multi-step prediction
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
+        yhat = model_fit.forecast(steps=pred_step)
 
         return yhat
 
     # Autoregressive integrated moving average model
     @staticmethod
-    def arima(history, cfg: dict, pred_step=0):
+    def arima(history, cfg: dict, pred_step=1):
         """
         :param history: time series data
         :param cfg:
@@ -95,7 +95,7 @@ class Algorithm(object):
         """
         # define model
         order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['d']), ast.literal_eval(cfg['q']))
-        model = ARIMA(history, order=order, trend=cfg['trend'], freq=cfg['freq'])
+        model = ARIMA(history, order=order, trend=cfg['trend'], freq=ast.literal_eval(cfg['freq']))
 
         # fit model
         model_fit = model.fit()
@@ -103,12 +103,12 @@ class Algorithm(object):
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
+        yhat = model_fit.forecast(steps=pred_step)
 
         return yhat
 
     @staticmethod
-    def ses(history, cfg: dict, pred_step=0):
+    def ses(history, cfg: dict, pred_step=1):
         """
         :param history: time series data
         :param cfg:
@@ -133,7 +133,7 @@ class Algorithm(object):
         return yhat
 
     @staticmethod
-    def hw(history, cfg: dict, pred_step=0):
+    def hw(history, cfg: dict, pred_step=1):
         """
         :param history: time series data
         :param cfg:
@@ -154,18 +154,18 @@ class Algorithm(object):
         :return: forecast result
         """
         # define model
-        model = ExponentialSmoothing(history, trend=cfg['trend'], damped_trend=ast.literal_eval(cfg['damped_trend']),
-                                     seasonal=ast.literal_eval(cfg['seasonal']),
-                                     seasonal_periods=ast.literal_eval(cfg['seasonal_period']),
-                                     use_boxcox=ast.literal_eval(cfg['use_boxcox']))
+        model = ExponentialSmoothing(history, trend=cfg['trend'],
+                                     damped_trend=bool(cfg['damped_trend']),
+                                     seasonal=cfg['seasonal'],
+                                     seasonal_periods=ast.literal_eval(cfg['seasonal_period']))
 
         # fit model
-        model_fit = model.fit(optimized=True, remove_bias=ast.literal_eval(cfg['remove_bias']))  # fit model
+        model_fit = model.fit(optimized=True, remove_bias=bool(cfg['remove_bias']))  # fit model
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(history), end=len(history) + pred_step - 1)
+        yhat = model_fit.forecast(steps=pred_step)
 
         return yhat
 
@@ -173,10 +173,11 @@ class Algorithm(object):
     # Multi-variate Model
     #############################
     @staticmethod
-    def var(endog: np.array, exog: np.array, cfg: dict, pred_step=0):
+    def var(history: dict, cfg: dict, pred_step=1):
         """
-        :param endog: 2-d endogenous response variable
-        :param exog: 2-d exogenous variable
+        :param history:
+            endog: 2-d endogenous response variable
+            exog: 2-d exogenous variable
         :param cfg:
                 maxlags: int, None
                     Maximum number of lags to check for order selection
@@ -196,25 +197,27 @@ class Algorithm(object):
         :return:
         """
         # define model
-        model = VAR(endog=endog, exog=exog)
+        data = np.vstack((history['endog'], history['exog'])).T
+        model = VAR(data)
 
         # fit model
-        model_fit = model.fit(maxlags=ast.literal_eval(cfg['maxlags']), ic=cfg['ic'], trend=cfg['trend'])
+        model_fit = model.fit(maxlags=ast.literal_eval(cfg['maxlags']),
+                              ic=ast.literal_eval(cfg['ic']), trend=cfg['trend'])
         # print('Coefficients: {}'.format(model_fit.params))
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        # yhat = model.predict(start=len(history), end=len(history) + pred_step - 1)
-        yhat = model_fit.forecast(y=endog.values, steps=pred_step)
+        yhat = model_fit.forecast(y=data, steps=pred_step)
 
         return yhat[:, 0]
 
     # Vector Autoregressive Moving Average with eXogenous regressors model
     @staticmethod
-    def varmax(endog: np.array, exog: np.array, cfg: dict, pred_step=0):
+    def varmax(history: dict, cfg: dict, pred_step=1):
         """
-        :param endog: 2-d endogenous response variable
-        :param exog: 2-d exogenous variable
+        :param history:
+            endog: 2-d endogenous response variable
+            exog: 2-d exogenous variable
         :param cfg:
                 order: (p, q)
                     p: Trend autoregression order
@@ -230,7 +233,8 @@ class Algorithm(object):
         order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['q']))
 
         # define model
-        model = VARMAX(endog, exog=exog, order=order, trend=cfg['trend'])
+        model = VARMAX(endog=history['endog'], exog=history['exog'],
+                       order=order, trend=cfg['trend'])
 
         # fit model
         model_fit = model.fit()
@@ -238,15 +242,16 @@ class Algorithm(object):
         # print(model_fit.summary())
 
         # Make multi-step forecast
-        yhat = model_fit.forecast(y=endog.values, steps=pred_step)
+        yhat = model_fit.forecast(steps=pred_step)
 
         return yhat[:, 0]
 
     @staticmethod
-    def sarimax(endog: np.array, exog: np.array, cfg: dict, pred_step=0):
+    def sarimax(history: dict, cfg: dict, pred_step=1):
         """
-        :param endog: The observed time-series process
-        :param exog: Array of exogenous regressors, shaped [nobs x k]
+        :param history:
+            endog: The observed time-series process
+            exog: Array of exogenous regressors, shaped [nobs x k]
         :param cfg:
                 order: (p, d, q)
                     p: Trend auto-regression order
@@ -273,16 +278,16 @@ class Algorithm(object):
                           ast.literal_eval(cfg['ssn_s']))
 
         # define model
-        model = SARIMAX(endog=endog, exog=exog,
+        model = SARIMAX(endog=history['endog'], exog=history['exog'],
                         order=order, seasonal_order=seasonal_order, trend=cfg['trend'])
 
         # fit model
         model_fit = model.fit()
 
         # Make multi-step forecast
-        yhat = model_fit.predict(start=len(endog), end=len(endog) + pred_step - 1)
+        yhat = model_fit.forecast(steps=pred_step, exog=[history['exog'][-1]] * pred_step)
 
-        return yhat[:, 0]
+        return yhat
 
     # def prophet(history, n_test, forecast=False):
     #

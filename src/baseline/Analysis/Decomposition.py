@@ -13,11 +13,10 @@ class Decomposition(object):
         self.x = 'qty'
         self.model = 'additive'     # additive / multiplicative
         self.tb_name = 'M4S_O110500'
-        self.dao = DataIO()
+        self.save_to_db_yn = False
 
     def decompose(self, df):
-        date = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
-        data = pd.Series(data=df[self.x].to_numpy(), index=date.to_numpy())
+        data = pd.Series(data=df[self.x].to_numpy(), index=df.index)
         data_resampled = data.resample(rule='D').sum()
         decomposed = seasonal_decompose(x=data_resampled, model=self.model)
         item_info = df[self.hrchy_list].drop_duplicates()
@@ -38,4 +37,8 @@ class Decomposition(object):
              'create_user_cd': 'SYSTEM',
              'create_date': datetime.now()})
 
-        self.dao.insert_to_db(df=result, tb_name=self.tb_name)
+        # Save
+        if self.save_to_db_yn:
+            dao = DataIO()
+            dao.insert_to_db(df=result, tb_name=self.tb_name)
+            dao.session.close()

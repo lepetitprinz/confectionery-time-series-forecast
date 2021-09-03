@@ -5,9 +5,7 @@ from baseline.model.Algorithm import Algorithm
 import warnings
 import numpy as np
 import pandas as pd
-from math import sqrt
-from datetime import timedelta
-from datetime import datetime
+from typing import List
 from sklearn.metrics import mean_squared_error
 
 # Tensorflow library
@@ -20,28 +18,26 @@ class Train(object):
     def __init__(self, division: str, model_info: dict, param_grid: dict):
         # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
-        self.col_target = 'qty'
-        self.col_exo = ['discount', '']
+        self.col_target = 'qty'     # Target column
+        self.col_exo = ['discount']     # Exogenous features
+        self.hrchy_level = config.HRCHY_LEVEL  # Data Hierarchy
 
-        # Hierarchy
-        self.hrchy_list = config.HRCHY_LIST
-        self.hrchy = config.HRCHY
-        self.hrchy_level = config.HRCHY_LEVEL
-
-        self.n_test = config.N_TEST
-
-        # Algorithms
+        # Algorithm Configuration
         self.algorithm = Algorithm()
         self.cand_models = list(model_info.keys())
         self.param_grid = param_grid
         self.model_to_variate = config.MODEL_TO_VARIATE
+        self.model_info = model_info
         self.model_fn = {'ar': self.algorithm.ar,
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
                          'var': self.algorithm.var,
-                         'varmax': self.algorithm.varmax}
+                         'varmax': self.algorithm.varmax,
+                         'sarima': self.algorithm.sarimax}
 
-        self.model_width = model_info
+        # Training Configuration
+        self.validation_method = config.VALIDATION_METHOD
+        self.n_test = config.N_TEST
 
         self.epoch_best = 0
 
@@ -70,50 +66,80 @@ class Train(object):
         return result
 
     @staticmethod
-    def score_to_df(hrchy: list, data):
+    def score_to_df(hrchy: list, data) -> List[list]:
         result = []
         for algorithm, score in data:
             result.append(hrchy + [algorithm, score])
 
         return result
 
-    def train_model(self, df) -> list:
+    def train_model(self, df) -> List[List[np.array]]:
+        feature_by_variable = self.select_feature_by_variable(df=df)
+
         models = []
         for model in self.cand_models:
-            data = self.filter_data(df=df, model=model)
-            score = self.walk_fwd_validation(model=model, cfg=self.param_grid[model],
-                                             data=data, n_test=self.n_test)
-            models.append([model, np.round(score, 2)])
-
+            score = self.validation(data=feature_by_variable[self.model_to_variate[model]], model=model)
+            models.append([model, np.round(score, 3)])
         models = sorted(models, key=lambda x: x[1])
 
         return models
 
-    def filter_data(self, df: pd.DataFrame, model: str):
-        df = df.set_index(keys='yymmdd')    # Todo : Check index
-        filtered = None
+    def validation(self, data, model: str):
+        score = 0
+        if len(data) > int(self.model_info[model]['input_width']):
+            if self.validation_method == 'train_test':
+                score = self.train_test_validation(data=data, model=model)
+
+            elif self.validation_method == 'walk_forward':
+                score = self.walk_fwd_validation(data=data, model=model)
+
+        return score
+
+    def train_test_validation(self, model: str, data) -> np.array:
+        # split dataset
+        data_train = None
+        data_test = None
+        data_length = len(data)
         if self.model_to_variate[model] == 'univ':
-            filtered = df[self.col_target]
+            data_train = data.iloc[: data_length - self.n_test]
+            data_test = data.iloc[data_length - self.n_test:]
         elif self.model_to_variate[model] == 'multi':
-            filtered = df[self.col_exo + [self.col_target]]
+            data_train = data.iloc[: data_length - self.n_test, :]
+            data_train = {'endog': data_train[self.col_target].values.ravel(),
+                          'exog': data_train[self.col_exo].values.ravel()}
+            data_test = data.iloc[data_length - self.n_test:, :]
+            data_test = {'endog': data_test[self.col_target],
+                         'exog': data_test[self.col_exo].values.ravel()}
 
-        return filtered
+        # evaluation
+        yhat = self.model_fn[model](history=data_train, cfg=self.param_grid[model], pred_step=self.n_test)
+        yhat = np.nan_to_num(yhat)
 
-    def walk_fwd_validation(self, model: str, data, cfg, n_test) -> np.array:
+        err = 0
+        if self.model_to_variate[model] == 'univ':
+            err = mean_squared_error(data_test, yhat, squared=False)
+        elif self.model_to_variate[model] == 'multi':
+            err = mean_squared_error(data_test['endog'], yhat, squared=False)
+
+        return err
+
+    def walk_fwd_validation(self, model: str, data) -> np.array:
         """
         :param model: Statistical model
         :param data: time series data
-        :param cfg: configuration
+        :param params: configuration
         :param n_test: number of test data
         :return:
         """
         # split dataset
-        dataset = self.make_ts_dataset(df=data, model=model)
+        dataset = self.window_generator(df=data, model=model)
 
+        # evaluation
         predictions = []
         for train, test in dataset:
-            yhat = self.model_fn[model](history=train, cfg=cfg, pred_step=n_test)
-            err = self.calc_sqrt_mse(test, yhat)
+            yhat = self.model_fn[model](history=train, cfg=self.param_grid[model], pred_step=self.n_test)
+            yhat = np.nan_to_num(yhat)
+            err = mean_squared_error(test, yhat, squared=False)
             predictions.append(err)
 
         # estimate prediction error
@@ -121,14 +147,14 @@ class Train(object):
 
         return rmse
 
-    def make_ts_dataset(self, df, model: str):
+    def window_generator(self, df, model: str) -> List:
         data_length = len(df)
-        input_width = int(self.model_width[model]['input_width'])
-        label_width = int(self.model_width[model]['label_width'])
+        input_width = int(self.model_info[model]['input_width'])
+        label_width = int(self.model_info[model]['label_width'])
         data_input = None
         data_target = None
         dataset = []
-        for i in range(data_length - label_width + 1):
+        for i in range(data_length - input_width - label_width + 1):
             if self.model_to_variate[model] == 'univ':
                 data_input = df.iloc[i: i + input_width]
                 data_target = df.iloc[i + input_width: i + input_width + label_width]
@@ -149,16 +175,18 @@ class Train(object):
         elif self.model_to_variate[model] == 'multi':
             return data.iloc[:int(data_length * train_rate), :], data.iloc[int(data_length * train_rate):, :]
 
-    @staticmethod
-    def calc_sqrt_mse(actual, predicted) -> float:
-        return sqrt(mean_squared_error(actual, predicted))
-
     def score_model(self, model: str, data, n_test, cfg) -> tuple:
         # convert config to a key
         key = str(cfg)
-        result = self.walk_fwd_validation(model=model, data=data, n_test=n_test, cfg=cfg)
+        result = self.walk_fwd_validation(model=model, data=data, n_test=n_test, params=cfg)
 
         return model, key, result
+
+    def select_feature_by_variable(self, df: pd.DataFrame):
+        feature_by_variable = {'univ': df[self.col_target],
+                               'multi': df[self.col_exo + [self.col_target]]}
+
+        return feature_by_variable
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
     #     scores = [self.score_model(model=model, data=data, n_test=n_test,

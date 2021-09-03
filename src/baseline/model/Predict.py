@@ -1,5 +1,6 @@
 import common.util as util
 import common.config as config
+from baseline.model.Algorithm import Algorithm
 
 from datetime import datetime
 from datetime import timedelta
@@ -29,7 +30,6 @@ class Predict(object):
                          'var': self.algorithm.var,
                          'varmax': self.algorithm.varmax}
 
-
     def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
         if lvl == 0:
             temp = []
@@ -56,8 +56,8 @@ class Predict(object):
                     temp = []
                     for algorithm in self.cand_models:
                         prediction = self.model_fn[algorithm](history=val_hrchy[self.col_target].to_numpy(),
-                                                                cfg=self.param_grid[algorithm],
-                                                                pred_step=self.n_test)
+                                                              cfg=self.param_grid[algorithm],
+                                                              pred_step=self.n_test)
                         temp.append(hrchy + [algorithm, prediction])
                     hrchy.remove(key_hrchy)
 
