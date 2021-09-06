@@ -51,13 +51,10 @@ MODEL_TO_VARIATE = {'ar': 'univ',
                     'lstm': 'multi'}
 VALIDATION_METHOD = 'train_test'    # train_test / walk-walk_forward
 
-
-
 # Outlier handling configuration
 SMOOTH_YN = True    # Smoothing or not (True / False)
 SMOOTH_METHOD = 'quantile'    # quantile / sigma
 SMOOTH_RATE = 0.05    # Quantile rate
-
 
 #####################################
 #  Model Hyper-parameters
