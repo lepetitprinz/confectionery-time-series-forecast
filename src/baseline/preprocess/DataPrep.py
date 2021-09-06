@@ -136,12 +136,17 @@ class DataPrep(object):
         cols = self.hrchy_list[:self.hrchy_level+1]
         data_level = df[cols].iloc[0].to_dict()
         df_resampled = df.resample(rule=self.resample_rule).sum()
+
+        # Check and add dates when sales does not exist
         if len(df_resampled.index) != len(self.date_range):
-            print("")
-        for key, val in data_level.items():
-            df_resampled[key] = val
-        # df_group = df.groupby(by=cols).sum()
-        # df_group = df_group.reset_index()
+            idx_add = list(set(self.date_range) - set(df_resampled.index))
+            data_add = np.zeros((len(idx_add), df_resampled.shape[1]))
+            df_add = pd.DataFrame(data_add, index=idx_add, columns=df_resampled.columns)
+            df_resampled = df_resampled.append(df_add)
+            df_resampled = df_resampled.sort_index()
+
+        data_lvl = pd.DataFrame(data_level, index=df_resampled.index)
+        df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
 
         return df_resampled
 

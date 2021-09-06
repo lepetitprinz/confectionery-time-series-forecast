@@ -82,6 +82,8 @@ class SqlSession(object):
         df.columns = [col.upper() for col in df.columns]
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
+            print(f"Saving oo {tb_name} table is finished.")
+
 
     # def upsert(self, df: pd.DataFrame, tb_name: str):
     #     table = self.get_table_meta(tb_name=tb_name)

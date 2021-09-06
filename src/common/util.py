@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from collections import defaultdict
 
+
 def group(hrchy, hrchy_lvl, data, cd=None, lvl=0) -> dict:
     grp = {}
     col = hrchy[lvl][1]
@@ -88,11 +89,13 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
         return temp
 
     elif lvl == hrchy_lvl:
+        temp = []
         for key_hrchy, val_hrchy in val.items():
-            if len(val_hrchy) > 2:
-                hrchy.append(key_hrchy)
-                temp = fn(hrchy, val_hrchy)
-                hrchy.remove(key_hrchy)
+            hrchy.append(key_hrchy)
+            result = fn(hrchy, val_hrchy)
+            temp.extend(result)
+            hrchy.remove(key_hrchy)
+
         return temp
 
     return temp

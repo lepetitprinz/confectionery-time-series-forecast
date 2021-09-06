@@ -38,11 +38,6 @@ HRCHY_LEVEL = len(HRCHY) - 1
 
 RESAMPLE_RULE = 'w'
 
-# Outlier handling configuration
-SMOOTH_YN = True    # Smoothing or not (True / False)
-SMOOTH_METHOD = 'quantile'    # quantile / sigma
-SMOOTH_RATE = 0.05    # Quantile rate
-
 ###########################
 # Model configuration
 ###########################
@@ -56,34 +51,19 @@ MODEL_TO_VARIATE = {'ar': 'univ',
                     'lstm': 'multi'}
 VALIDATION_METHOD = 'train_test'    # train_test / walk-walk_forward
 
+
+
+# Outlier handling configuration
+SMOOTH_YN = True    # Smoothing or not (True / False)
+SMOOTH_METHOD = 'quantile'    # quantile / sigma
+SMOOTH_RATE = 0.05    # Quantile rate
+
+
 #####################################
 #  Model Hyper-parameters
 #####################################
 # Statistical model hyper-parameters
 N_TEST = 4    # prediction
-
-LAG = {'D': 7, 'W': 1, 'M': 1}      # AR
-SEASONAL = False                     # AR
-TREND = 'c'                        # AR / VARMAX / HW
-TREND_ARMA = 'c'                    # ARMA
-PERIOD = {'D': 7, 'W': 2, 'M': 2}   # AR / HW
-FREQUENCY = None                    # ARMA / ARIMA
-TWO_LVL_ORDER = {'D': (1, 0),       # ARMA / VARMAX
-                 'W': (1, 0),
-                 'M': (1, 0)}
-THR_LVL_ORDER = {'D': (1, 0, 0),    # ARIMA
-                 'W': (1, 0, 0),
-                 'M': (1, 0, 0)}
-
-INIT_METHOD = 'estimated'    # Simple Exponential Smoothing
-SMOOTHING = 0.2              # Simple Exponential Smoothing
-OPTIMIZED = True             # Simple Exponential Smoothing
-
-TREND_HW = 'add'       # Holt-Winters
-DAMPED_TREND = True    # Holt-Winters
-SEASONAL_HW = 'add'    # Holt-Winters
-USE_BOXCOX = None      # Holt-Winters
-REMOVE_BIAS = True     # Holt-Winters
 
 # Deep Learning model Hyper-parameters
 TIME_STEP = 12    # 4 weeks

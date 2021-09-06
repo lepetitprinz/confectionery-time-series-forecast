@@ -4,20 +4,17 @@ from baseline.model.Algorithm import Algorithm
 
 from datetime import datetime
 from datetime import timedelta
+import numpy as np
 import pandas as pd
 
 
 class Predict(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, end_date):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict):
         self.division = division    # SELL-IN / SELL-OUT
+        self.date = date
         self.col_target = 'qty'
-
-        # Hierarchy
-        self.hrchy_list = config.HRCHY_LIST
-        self.hrchy = config.HRCHY
+        self.col_exo = ['discount']     # Exogenous features
         self.hrchy_level = config.HRCHY_LEVEL
-
-        self.n_test = config.N_TEST
 
         # Algorithms
         self.algorithm = Algorithm()
@@ -28,45 +25,48 @@ class Predict(object):
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
                          'var': self.algorithm.var,
-                         'varmax': self.algorithm.varmax}
+                         'varmax': self.algorithm.varmax,
+                         'sarima': self.algorithm.sarimax}
 
-    def forecast(self, df=None, val=None, lvl=0, hrchy=[]):
-        if lvl == 0:
-            temp = []
-            for key, val in df.items():
-                hrchy.append(key)
-                result = self.forecast(val=val, lvl=lvl+1, hrchy=hrchy)
-                temp.extend(result)
-                hrchy.remove(key)
+        # Forecast Configuration
+        self.n_test = config.N_TEST
 
-        elif lvl < self.hrchy_level:
-            temp = []
-            for key_hrchy, val_hrchy in val.items():
-                hrchy.append(key_hrchy)
-                result = self.forecast(val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
-                temp.extend(result)
-                hrchy.remove(key_hrchy)
+    def forecast(self, df):
+        prediction = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
+                                                   fn=self.forecast_model,
+                                                   df=df)
 
-            return temp
+        return prediction
 
-        elif lvl == self.hrchy_level:
-            for key_hrchy, val_hrchy in val.items():
-                if len(val_hrchy) > self.n_test:
-                    hrchy.append(key_hrchy)
-                    temp = []
-                    for algorithm in self.cand_models:
-                        prediction = self.model_fn[algorithm](history=val_hrchy[self.col_target].to_numpy(),
-                                                              cfg=self.param_grid[algorithm],
-                                                              pred_step=self.n_test)
-                        temp.append(hrchy + [algorithm, prediction])
-                    hrchy.remove(key_hrchy)
+    def forecast_model(self, hrchy, df):
+        feature_by_variable = self.select_feature_by_variable(df=df)
 
-            return temp
+        models = []
+        for model in self.cand_models:
+            data = feature_by_variable[self.model_to_variate[model]]
+            data = self.split_variable(model=model, data=data)
+            prediction = self.model_fn[model](history=data,
+                                              cfg=self.param_grid[model],
+                                              pred_step=self.n_test)
+            models.append(hrchy + [model, prediction])
 
-        return temp
+        return models
+
+    def select_feature_by_variable(self, df: pd.DataFrame):
+        feature_by_variable = {'univ': df[self.col_target],
+                               'multi': df[self.col_exo + [self.col_target]]}
+
+        return feature_by_variable
+
+    def split_variable(self, model: str, data) -> np.array:
+        if self.model_to_variate[model] == 'multi':
+            data = {'endog': data[self.col_target].values.ravel(),
+                    'exog': data[self.col_exo].values.ravel()}
+
+        return data
 
     def make_pred_result(self, df):
-        end_date = datetime.strptime(self.end_date, '%Y%m%d')
+        end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
 
         results = []
         fkey = ['HRCHY' + str(i + 1) for i in range(len(df))]
@@ -74,13 +74,15 @@ class Predict(object):
             for j, result in enumerate(pred[-1]):
                 results.append([fkey[i]] + pred[:-1] +
                                [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), result])
+                # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
         results = pd.DataFrame(results)
-        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'month',
-                                                                                          'result_sales']
+        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] +\
+               ['stat', 'yymmdd', 'result_sales']
         results.columns = cols
         results['project_cd'] = 'ENT001'
         results['division'] = self.division
+        results['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
 
         return results
 

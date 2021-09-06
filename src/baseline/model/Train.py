@@ -15,9 +15,10 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict):
         # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
+        self.date = date
         self.col_target = 'qty'     # Target column
         self.col_exo = ['discount']     # Exogenous features
         self.hrchy_level = config.HRCHY_LEVEL  # Data Hierarchy
@@ -39,39 +40,12 @@ class Train(object):
         self.validation_method = config.VALIDATION_METHOD
         self.n_test = config.N_TEST
 
-        self.epoch_best = 0
-
     def train(self, df) -> dict:
         scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
                                       fn=self.train_model,
                                       df=df)
 
         return scores
-
-    def make_score_result(self, scores: dict) -> pd.DataFrame:
-        result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
-                                               fn=self.score_to_df,
-                                               df=scores)
-
-        result = pd.DataFrame(result)
-        cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']
-        result.columns = cols
-
-        result['project_cd'] = 'ENT001'
-        result['division'] = self.division
-        result['fkey'] = ['HRCHY' + str(i+1) for i in range(len(result))]
-
-        result['rmse'] = result['rmse'].fillna(0)
-
-        return result
-
-    @staticmethod
-    def score_to_df(hrchy: list, data) -> List[list]:
-        result = []
-        for algorithm, score in data:
-            result.append(hrchy + [algorithm, score])
-
-        return result
 
     def train_model(self, df) -> List[List[np.array]]:
         feature_by_variable = self.select_feature_by_variable(df=df)
@@ -84,16 +58,47 @@ class Train(object):
 
         return models
 
+    def select_feature_by_variable(self, df: pd.DataFrame):
+        feature_by_variable = {'univ': df[self.col_target],
+                               'multi': df[self.col_exo + [self.col_target]]}
+
+        return feature_by_variable
+
     def validation(self, data, model: str):
         score = 0
-        if len(data) > int(self.model_info[model]['input_width']):
-            if self.validation_method == 'train_test':
-                score = self.train_test_validation(data=data, model=model)
+        # if len(data) > int(self.model_info[model]['input_width']):
+        if self.validation_method == 'train_test':
+            score = self.train_test_validation(data=data, model=model)
 
-            elif self.validation_method == 'walk_forward':
-                score = self.walk_fwd_validation(data=data, model=model)
+        elif self.validation_method == 'walk_forward':
+            score = self.walk_fwd_validation(data=data, model=model)
 
         return score
+
+    def make_score_result(self, scores: dict) -> pd.DataFrame:
+        result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
+                                               fn=self.score_to_df,
+                                               df=scores)
+
+        result = pd.DataFrame(result)
+        cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']
+        result.columns = cols
+
+        result['project_cd'] = 'ENT001'
+        result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        result['division'] = self.division
+        result['fkey'] = ['HRCHY' + str(i+1) for i in range(len(result))]
+        result['rmse'] = result['rmse'].fillna(0)
+
+        return result
+
+    @staticmethod
+    def score_to_df(hrchy: list, data) -> List[list]:
+        result = []
+        for algorithm, score in data:
+            result.append(hrchy + [algorithm, score])
+
+        return result
 
     def train_test_validation(self, model: str, data) -> np.array:
         # split dataset
@@ -181,12 +186,6 @@ class Train(object):
         result = self.walk_fwd_validation(model=model, data=data, n_test=n_test, params=cfg)
 
         return model, key, result
-
-    def select_feature_by_variable(self, df: pd.DataFrame):
-        feature_by_variable = {'univ': df[self.col_target],
-                               'multi': df[self.col_exo + [self.col_target]]}
-
-        return feature_by_variable
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
     #     scores = [self.score_model(model=model, data=data, n_test=n_test,
