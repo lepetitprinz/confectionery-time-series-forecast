@@ -24,7 +24,7 @@ class ConsistencyCheck(object):
         self.sql_config = SqlConfig()
         self.io = DataIO()
 
-    def check(self, df: pd.DataFrame):
+    def check(self, df: pd.DataFrame) -> pd.DataFrame:
         # convert to lowercase columns
         df.columns = [col.lower() for col in df.columns]
 
@@ -33,7 +33,7 @@ class ConsistencyCheck(object):
 
         return normal
 
-    def check_code_map(self, df: pd.DataFrame):
+    def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
         normal = self.check_prod_level(df=df)
         normal = self.check_unit_code(df=normal)
         normal = self.check_unit_code_map(df=normal)
@@ -109,6 +109,3 @@ class ConsistencyCheck(object):
         df.columns = [col.upper() for col in df.columns]
 
         return df
-
-    def save_result(self):
-        pass

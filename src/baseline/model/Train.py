@@ -75,10 +75,10 @@ class Train(object):
 
         return score
 
-    def make_score_result(self, scores: dict) -> pd.DataFrame:
+    def make_score_result(self, data: dict) -> pd.DataFrame:
         result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
                                                fn=self.score_to_df,
-                                               df=scores)
+                                               df=data)
 
         result = pd.DataFrame(result)
         cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']

@@ -29,10 +29,9 @@ common = data_io.get_dict_from_db(sql=SqlConfig.sql_comm_master(), key='OPTION_C
 date = {'date_from': common['rst_start_day'], 'date_to': common['rst_end_day']}
 
 # Load SELL-IN
-# sell_in = data_io.get_df_from_db(sql=SqlConfig.sql_sell_in(**date))
-# data_io.save_object(data=sell_in, file_path=path_sell_in, kind='csv')  # Save object
-# print("Saving Sell Dataset is finished")
-# sell_in = data_io.load_object(file_path=path_sell_in, kind='csv')  # Load object
+sell_in = data_io.get_df_from_db(sql=SqlConfig.sql_sell_in(**date))
+data_io.save_object(data=sell_in, file_path=path_sell_in, kind='csv')  # Save object
+sell_in = data_io.load_object(file_path=path_sell_in, kind='csv')  # Load object
 
 #######################
 # 2. Consistency Check
@@ -76,7 +75,7 @@ training = Train(division='SELL-IN',
 # Train the model
 # scores = training.train(df=data_preped)
 scores = data_io.load_object(file_path=path_sell_in_4_score, kind='binary')  # Load object
-scores_db = training.make_score_result(scores=scores)
+scores_db = training.make_score_result(data=scores)
 
 # Save the score
 data_io.insert_to_db(df=scores_db, tb_name='M4S_I110410')

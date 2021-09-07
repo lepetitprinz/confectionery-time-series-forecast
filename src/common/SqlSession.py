@@ -3,9 +3,7 @@ import common.config as config
 
 import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy import Table, MetaData, insert
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Insert
+from sqlalchemy import Table, MetaData
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -56,19 +54,23 @@ class SqlSession(object):
         """
         close session
         """
-        self._connection.close()
+        try:
+            self._connection.close()
+            print("DB Session is closed")
+
+        except SQLAlchemyError as e:
+            error = str(e.__dict__['orig'])
+            print(f"Error: {error}")
 
     def select(self, sql: str):
         """
         get query
         """
         if self._connection is None:
-            raise ConnectionError('Data Source session is not initialized')
+            raise ConnectionError('Session is not initialized')
 
         try:
-            # result = self._connection.execute(text(sql))
-            # columns = [col for col in result.keys()]
-            print("Selection process start")
+            print("Select the dataset")
             data = pd.read_sql_query(sql, self._connection)
 
             return data
@@ -78,12 +80,13 @@ class SqlSession(object):
             return error
 
     def insert(self, df: pd.DataFrame, tb_name: str):
+        # Get meta information
         table = self.get_table_meta(tb_name=tb_name)
         df.columns = [col.upper() for col in df.columns]
+
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
             print(f"Saving oo {tb_name} table is finished.")
-
 
     # def upsert(self, df: pd.DataFrame, tb_name: str):
     #     table = self.get_table_meta(tb_name=tb_name)

@@ -1,8 +1,7 @@
 import ast
 import numpy as np
 
-# Univariate Statistical Models
-import pandas as pd
+# Uni-variate Statistical Models
 from statsmodels.tsa.ar_model import AutoReg    # Auto Regression
 from statsmodels.tsa.arima.model import ARIMA    # Auto Regressive Integrated Moving Average
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing    # Simple Exponential Smoothing
@@ -32,14 +31,15 @@ class Algorithm(object):
 
     # Model List
     1. Uni-variate Model
-        - AR model (Autoregressive model)
-        - ARIMA model (Autoregressive integrated moving average model)
-        - SES model (Simple Exponential Smoothing model)
-        - HWES model (Holt Winters Exponential Smoothing model)
+        - AR model (Autoregressive Model)
+        - ARIMA model (Autoregressive Integrated Moving Average Model)
+        - SES model (Simple Exponential Smoothing Model)
+        - HWES model (Holt-Winters Exponential Smoothing Model)
 
-    2. Multivariate Model
+    2. Multi-variate Model
         - VAR model (Vector Autoregressive model)
         - VARMAX model (Vector Autoregressive Moving Average with eXogenous regressors model)
+        - SARIMA model (Seasonal Autoregressive integrated Moving Average)
     """
 
     #############################
@@ -81,7 +81,7 @@ class Algorithm(object):
         :param history: time series data
         :param cfg:
                 order: (p, d, q)
-                    p: Trend autoregression order
+                    p: Trend auto-regression order
                     d: Trend difference order
                     q: Trend moving average order
                 freq: frequency of the time series (‘B’, ‘D’, ‘W’, ‘M’, ‘A’, ‘Q)
