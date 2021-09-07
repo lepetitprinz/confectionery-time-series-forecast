@@ -8,20 +8,21 @@ from baseline.model.Predict import Predict
 
 
 class Pipeline(object):
-    def __init__(self, division: str, prod_lvl: int):
+    def __init__(self, division: str, cust_lvl: int, prod_lvl: int, save_step_yn=False):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         """
         # Data Configuration
-        self.io = DataIO()
+        self.io = DataIO()    # Connect the DB
         self.division = division
+        self.cust_lvl = cust_lvl
         self.prod_lvl = prod_lvl
+        self.hrchy_key = "C" + str(cust_lvl) + '-' + "D" + str(prod_lvl)
         self.common = self.io.get_dict_from_db(sql=SqlConfig.sql_comm_master(), key='OPTION_CD', val='OPTION_VAL')
-        self.date = {'date_from': self.common['rst_start_day'],
-                     'date_to': self.common['rst_end_day']}
+        self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
 
         # Save Configuration
-        self.save_steps_yn = True
+        self.save_steps_yn = save_step_yn
 
     def run(self):
         # ---------------------- #

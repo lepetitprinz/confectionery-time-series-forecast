@@ -30,8 +30,8 @@ STN_LIST = [108]
 ###########################
 # Data configuration
 ###########################
-HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']
-HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_ctgr_cd')]
+HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd']
+HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_cd')]
 # HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd']
 # HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd')]
 HRCHY_LEVEL = len(HRCHY) - 1
