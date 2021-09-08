@@ -14,8 +14,8 @@ import os
 path_sell_in = os.path.join('..', 'data', 'sell_in_org.csv')
 path_sell_in_cns = os.path.join('..', 'data', 'sell_in_check.csv')
 path_sell_in_prep = os.path.join('..', 'result', 'sell_in_prep.pickle')
-path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', data_type='pickle')
-path_sell_in_4_score = util.make_path(module='result', division='sell-in', hrchy_lvl=4, step='train', data_type='pickle')
+path_sell_in_4_prep = util.make_path(module='data', division='sell-in', hrchy_lvl=4, step='prep', extension='pickle')
+path_sell_in_4_score = util.make_path(module='result', division='sell-in', hrchy_lvl=4, step='train', extension='pickle')
 path_sell_in_predict = os.path.join('..', 'result', 'sell_in_predict.pickle')
 #######################
 # SELL-IN

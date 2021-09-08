@@ -12,7 +12,7 @@ class Predict(object):
     def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict, hrchy: list):
         self.division = division    # SELL-IN / SELL-OUT
         self.date = date
-        self.col_target = 'qty'
+        self.col_target = config.TARGET_COL
         self.col_exo = ['discount']     # Exogenous features
         self.hrchy = hrchy
         self.hrchy_level = len(hrchy) - 1
@@ -26,7 +26,6 @@ class Predict(object):
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
                          'var': self.algorithm.var,
-                         'varmax': self.algorithm.varmax,
                          'sarima': self.algorithm.sarimax}
 
         # Forecast Configuration

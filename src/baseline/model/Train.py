@@ -34,7 +34,6 @@ class Train(object):
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
                          'var': self.algorithm.var,
-                         'varmax': self.algorithm.varmax,
                          'sarima': self.algorithm.sarimax}
 
         # Training Configuration

@@ -64,7 +64,7 @@ class ConsistencyCheck(object):
         unit_code_map = self.io.get_df_from_db(sql=self.sql_config.sql_unit_map())
         unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
         df['sku_cd'] = df['sku_cd'].astype(str)
-        merged = pd.merge(df, unit_code_map, how='left', on='item_cd')
+        merged = pd.merge(df, unit_code_map, how='left', on='sku_cd')
         err = merged[merged['box_bol'].isna()]
         normal = merged[~merged['box_bol'].isna()]
 

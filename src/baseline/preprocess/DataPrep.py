@@ -8,19 +8,18 @@ import pandas as pd
 
 class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
-    GROUP_BY_COLS = ['week']
-    # GROUP_BY_COLS = ['sold_cust_grp_cd', 'week']
-    TYPE_STR_COLS = ['sold_cust_grp_cd', 'item_cd']
-    TARGET_COL = ['qty']
+    TYPE_STR_COLS = ['cust_cd', 'sku_cd']
 
-    def __init__(self, date: dict, hrchy: list):
+    def __init__(self, date: dict, division: str, hrchy: list, decompose_yn=False):
         # Path
         self.base_dir = config.BASE_DIR
         self.save_dir = config.SAVE_DIR
 
         # Dataset
-        self.division = ''
+        self.division = division
         self.features = []
+        self.target_col = config.TARGET_COL
+        self.decompose_yn = decompose_yn
         self.resample_rule = config.RESAMPLE_RULE
         self.date_range = pd.date_range(start=date['date_from'],
                                         end=date['date_to'],
@@ -35,12 +34,8 @@ class DataPrep(object):
         self.smooth_method = config.SMOOTH_METHOD
         self.smooth_rate = config.SMOOTH_RATE
 
-    def preprocess(self, data: pd.DataFrame, division: str) -> dict:
+    def preprocess(self, data: pd.DataFrame) -> dict:
         print("Implement data preprocessing")
-
-        # set dataset division
-        self.division = division
-
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
 
@@ -48,13 +43,14 @@ class DataPrep(object):
         data_group = self.group(data=data)
 
         # Decomposition
-        decompose = Decomposition(division=self.division,
-                                  hrchy_list=self.hrchy,
-                                  hrchy_lvl_cd=self.hrchy[self.hrchy_level])
+        if self.decompose_yn:
+            decompose = Decomposition(division=self.division,
+                                      hrchy_list=self.hrchy,
+                                      hrchy_lvl_cd=self.hrchy[self.hrchy_level])
 
-        util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
-                             fn=decompose.decompose,
-                             df=data_group)
+            util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
+                                 fn=decompose.decompose,
+                                 df=data_group)
 
         # Resampling
         data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
@@ -66,9 +62,6 @@ class DataPrep(object):
         return data_resample
 
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
-        # convert columns to lower case
-        df.columns = [col.lower() for col in df.columns]
-
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
 
@@ -153,12 +146,12 @@ class DataPrep(object):
         return df[self.features]
 
     def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
-        vals = df[self.TARGET_COL].values * 0.05
+        vals = df[self.target_col].values * 0.05
         vals = vals.astype(int)
         vals = np.where(vals == 0, 1, vals)
         vals = np.where(vals < 0, vals * -1, vals)
         noise = np.random.randint(-vals, vals)
-        df['exo'] = df[config.COL_TARGET].values + noise
+        df['exo'] = df[self.target_col].values + noise
 
         return df
 

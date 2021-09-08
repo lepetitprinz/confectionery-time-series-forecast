@@ -231,10 +231,10 @@ class Algorithm(object):
         :return: forecast result
         """
         order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['q']))
+        data = np.vstack((history['endog'], history['exog'])).T
 
         # define model
-        model = VARMAX(endog=history['endog'], exog=history['exog'],
-                       order=order, trend=cfg['trend'])
+        model = VARMAX(endog=data, order=order, trend=cfg['trend'])
 
         # fit model
         model_fit = model.fit()

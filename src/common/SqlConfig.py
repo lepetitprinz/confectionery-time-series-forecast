@@ -36,6 +36,8 @@ class SqlConfig(object):
     @staticmethod
     def sql_sell_in(**kwargs):
         sql = f""" 
+        SELECT *
+        FROM(
             SELECT DIVISION_CD
                  , CUST_CD
                  , BIZ_CD
@@ -67,8 +69,7 @@ class SqlConfig(object):
                          , RST_SALES_QTY AS QTY
                          , CREATE_DATE
                       FROM M4S_I002170
-                     WHERE FROM_DC_CD NOT LIKE '%공통%'  -- Exception
-                       AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
                     ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM_CD AS SKU_CD
@@ -80,6 +81,8 @@ class SqlConfig(object):
                                 WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
                               ) ITEM
                 ON SALES.SKU_CD = ITEM.SKU_CD
+            ) MST
+            WHERE (LINE_CD = 'P111' OR BRAND_CD = 'P304020')    --- EXCEPTION
                """
         return sql
 
@@ -130,7 +133,7 @@ class SqlConfig(object):
     @staticmethod
     def sql_unit_map():
         sql = """
-            SELECT BOX.ITEM_CD
+            SELECT BOX.ITEM_CD AS SKU_CD
                  , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
                  , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE) AS BOX_EA
               FROM (

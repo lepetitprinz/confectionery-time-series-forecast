@@ -4,10 +4,10 @@ import os
 # Class Configuration
 ###########################
 CLS_LOAD = False
-CLS_CNS = True
+CLS_CNS = False
 CLS_PREP = False
-CLS_TRAIN = False
-CLS_PRED = False
+CLS_TRAIN = True
+CLS_PRED = True
 
 ###########################
 # Database Configuration
@@ -39,6 +39,7 @@ STN_LIST = [108]
 ###########################
 # Data configuration
 ###########################
+TARGET_COL = 'qty'
 HRCHY_CUST = []
 HRCHY_PROD = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd', 'sku_cd']
 UNIT_CD = ['BOX', 'EA ', 'BOL']
