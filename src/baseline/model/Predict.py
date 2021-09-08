@@ -9,12 +9,13 @@ import pandas as pd
 
 
 class Predict(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict, hrchy: list):
         self.division = division    # SELL-IN / SELL-OUT
         self.date = date
         self.col_target = 'qty'
         self.col_exo = ['discount']     # Exogenous features
-        self.hrchy_level = config.HRCHY_LEVEL
+        self.hrchy = hrchy
+        self.hrchy_level = len(hrchy) - 1
 
         # Algorithms
         self.algorithm = Algorithm()
@@ -65,11 +66,11 @@ class Predict(object):
 
         return data
 
-    def make_pred_result(self, df):
+    def make_pred_result(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
 
         results = []
-        fkey = ['HRCHY' + str(i + 1) for i in range(len(df))]
+        fkey = [hrchy_key + str(i+1).zfill(3) for i in range(len(df))]
         for i, pred in enumerate(df):
             for j, result in enumerate(pred[-1]):
                 results.append([fkey[i]] + pred[:-1] +

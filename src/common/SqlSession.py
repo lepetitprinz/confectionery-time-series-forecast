@@ -3,7 +3,7 @@ import common.config as config
 
 import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy import Table, MetaData
+from sqlalchemy import Table, MetaData, insert
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -88,15 +88,15 @@ class SqlSession(object):
             conn.execute(table.insert(), df.to_dict('records'))
             print(f"Saving oo {tb_name} table is finished.")
 
-    # def upsert(self, df: pd.DataFrame, tb_name: str):
-    #     table = self.get_table_meta(tb_name=tb_name)
-    #     stmt = insert(table).values(df.to_dict('records'))
-    #     stmt = stmt.on_conflict_do_update(
-    #         constraint='post_key',
-    #         set_={}
-    #         )
-    #     with self.engine.connect() as conn:
-    #         conn.execute(stmt)
+    def upsert(self, df: pd.DataFrame, tb_name: str):
+        table = self.get_table_meta(tb_name=tb_name)
+        stmt = insert(table).values(df.to_dict('records'))
+        stmt = stmt.on_conflict_do_update(
+            constraint='post_key',
+            set_={}
+            )
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
 
     def get_table_meta(self, tb_name: str):
         metadata = MetaData(bind=self.engine)

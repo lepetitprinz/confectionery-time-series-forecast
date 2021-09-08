@@ -13,7 +13,7 @@ class DataPrep(object):
     TYPE_STR_COLS = ['sold_cust_grp_cd', 'item_cd']
     TARGET_COL = ['qty']
 
-    def __init__(self, date: dict):
+    def __init__(self, date: dict, hrchy: list):
         # Path
         self.base_dir = config.BASE_DIR
         self.save_dir = config.SAVE_DIR
@@ -27,9 +27,8 @@ class DataPrep(object):
                                         freq=config.RESAMPLE_RULE)
 
         # Hierarchy
-        self.hrchy_list = config.HRCHY_LIST
-        self.hrchy = config.HRCHY
-        self.hrchy_level = config.HRCHY_LEVEL
+        self.hrchy = hrchy
+        self.hrchy_level = len(hrchy) - 1
 
         # Smoothing
         self.smooth_yn = config.SMOOTH_YN
@@ -50,8 +49,8 @@ class DataPrep(object):
 
         # Decomposition
         decompose = Decomposition(division=self.division,
-                                  hrchy_list=self.hrchy_list,
-                                  hrchy_lvl_cd=self.hrchy_list[self.hrchy_level])
+                                  hrchy_list=self.hrchy,
+                                  hrchy_lvl_cd=self.hrchy[self.hrchy_level])
 
         util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
                              fn=decompose.decompose,
@@ -99,7 +98,7 @@ class DataPrep(object):
 
     def group(self, data, cd=None, lvl=0) -> dict:
         grp = {}
-        col = self.hrchy[lvl][1]
+        col = self.hrchy[lvl]
 
         code_list = None
         if isinstance(data, pd.DataFrame):
@@ -133,7 +132,7 @@ class DataPrep(object):
         return grp
 
     def resample(self, df):
-        cols = self.hrchy_list[:self.hrchy_level+1]
+        cols = self.hrchy[:self.hrchy_level + 1]
         data_level = df[cols].iloc[0].to_dict()
         df_resampled = df.resample(rule=self.resample_rule).sum()
 

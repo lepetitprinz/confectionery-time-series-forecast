@@ -1,4 +1,3 @@
-
 class SqlConfig(object):
     # Item Master Table
     @staticmethod
@@ -38,7 +37,7 @@ class SqlConfig(object):
     def sql_sell_in(**kwargs):
         sql = f""" 
             SELECT DIVISION_CD
-                 , SOLD_CUST_GRP_CD
+                 , CUST_CD
                  , BIZ_CD
                  , LINE_CD
                  , BRAND_CD
@@ -56,7 +55,7 @@ class SqlConfig(object):
               FROM (
                     SELECT PROJECT_CD
                          , DIVISION_CD
-                         , SOLD_CUST_GRP_CD
+                         , SOLD_CUST_GRP_CD AS CUST_CD
                          , ITEM_CD AS SKU_CD
                          , YYMMDD
                          , SEQ
@@ -73,10 +72,10 @@ class SqlConfig(object):
                     ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM_CD AS SKU_CD
-                                    , ITEM_GUBUN01_CD AS BIZ_CD
-                                    , ITEM_GUBUN02_CD AS LINE_CD
-                                    , ITEM_GUBUN03_CD AS BRAND_CD
-                                    , ITEM_GUBUN04_CD AS ITEM_CD
+                                    , ITEM_ATTR01_CD AS BIZ_CD
+                                    , ITEM_ATTR02_CD AS LINE_CD
+                                    , ITEM_ATTR03_CD AS BRAND_CD
+                                    , ITEM_ATTR04_CD AS ITEM_CD
                                  FROM VIEW_I002040
                                 WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
                               ) ITEM
@@ -89,7 +88,7 @@ class SqlConfig(object):
     def sql_sell_out(**kwargs):
         sql = f""" 
            SELECT DIVISION_CD
-                , SOLD_CUST_GRP_CD
+                , CUST_CD
                 , BIZ_CD
                 , LINE_CD
                 , BRAND_CD
@@ -104,7 +103,7 @@ class SqlConfig(object):
              FROM (
                    SELECT PROJECT_CD
                         , DIVISION_CD
-                        , SOLD_CUST_GRP_CD
+                        , SOLD_CUST_GRP_CD AS CUST_CD
                         , ITEM_CD AS SKU_CD
                         , YYMMDD
                         , SEQ
@@ -117,10 +116,10 @@ class SqlConfig(object):
                    ) SALES
              LEFT OUTER JOIN (
                               SELECT ITEM_CD AS SKU_CD
-                                   , ITEM_GUBUN01_CD AS BIZ_CD
-                                   , ITEM_GUBUN02_CD AS LINE_CD
-                                   , ITEM_GUBUN03_CD AS BRAND_CD
-                                   , ITEM_GUBUN04_CD AS ITEM_CD
+                                   , ITEM_ATTR01_CD AS BIZ_CD
+                                   , ITEM_ATTR02_CD AS LINE_CD
+                                   , ITEM_ATTR03_CD AS BRAND_CD
+                                   , ITEM_ATTR04_CD AS ITEM_CD
                                 FROM VIEW_I002040
                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
                              ) ITEM
@@ -173,21 +172,31 @@ class SqlConfig(object):
     @staticmethod
     def sql_algorithm(**kwargs):
         sql = f"""
-            SELECT LOWER(STAT) AS MODEL
+            SELECT LOWER(STAT_CD) AS MODEL
                  , INPUT_POINT AS INPUT_WIDTH
                  , PERIOD AS LABEL_WIDTH
               FROM M4S_I103010
              WHERE USE_YN = 'Y'
-               AND DIVISION = '{kwargs['division']}'           
+               AND DIVISION_CD = '{kwargs['division']}'           
             """
         return sql
 
     @staticmethod
     def sql_best_hyper_param_grid():
         sql = """
-            SELECT STAT
+            SELECT STAT_CD
                  , OPTION_CD
                  , OPTION_VAL
               FROM M4S_I103011
+            """
+        return sql
+
+    @staticmethod
+    def sql_err_grp_map():
+        sql = """
+            SELECT COMM_DTL_CD
+                 , ATTR01_VAL
+              FROM M4S_I002011
+             WHERE COMM_CD = 'ERR_CD'
             """
         return sql

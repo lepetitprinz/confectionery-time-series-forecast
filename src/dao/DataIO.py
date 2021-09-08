@@ -27,26 +27,26 @@ class DataIO(object):
         self.session.insert(df=df, tb_name=tb_name)
 
     def update_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
-        self.session.update(df=df, tb_name=tb_name)
+        self.session.upsert(df=df, tb_name=tb_name)
 
     @staticmethod
-    def save_object(data, kind: str, file_path: str) -> None:
-        if kind == 'csv':
+    def save_object(data, data_type: str, file_path: str) -> None:
+        if data_type == 'csv':
             data.to_csv(file_path, index=False)
 
-        elif kind == 'binary':
+        elif data_type == 'binary':
             with open(file_path, 'wb') as handle:
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         print("Data is saved")
 
     @staticmethod
-    def load_object(file_path: str, kind: str):
+    def load_object(file_path: str, data_type: str):
         data = None
-        if kind == 'csv':
+        if data_type == 'csv':
             data = pd.read_csv(file_path)
 
-        elif kind == 'binary':
+        elif data_type == 'binary':
             with open(file_path, 'rb') as handle:
                 data = pickle.load(handle)
 

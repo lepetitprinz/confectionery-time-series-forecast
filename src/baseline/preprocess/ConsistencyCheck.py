@@ -1,33 +1,26 @@
 from common.SqlConfig import SqlConfig
+import common.config as config
 from dao.DataIO import DataIO
 
 from copy import deepcopy
+import numpy as np
 import pandas as pd
 
 
 class ConsistencyCheck(object):
-    PROD_LVL_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd']
-    UNIT_CD = ['BOX', 'EA ', 'BOL']
-    ERR_CD_MAP = {'ERR001': 'Item - Item Level mapping 데이터 누락',
-                  'ERR002': '존재하지 않는 단위',
-                  'ERR003': 'BOX로 환산 단위(EA, BOL) mapping 데이터 누락'
-                  }
-
-    def __init__(self, division: str, save_yn: bool):
+    def __init__(self, division: str, hrchy: list, date: dict,
+                 err_grp_map: dict, save_yn: bool):
         self.cns_tb_name = 'M4S_O000000'
         self.division = division
+        self.hrchy = hrchy
+        self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
+        self.unit_cd = config.UNIT_CD
+        self.err_grp_map = err_grp_map
         self.save_yn = save_yn
-        self.err_table_cols = ['project_cd', 'division_cd', 'data_vrsn_cd', 'err_cd', 'err_nm',
-                               'sold_cust_grp_cd', 'item_cd', 'biz_cd', 'line_cd', 'brand_cd', 'item_ctgr_cd',
-                               'yymmdd', 'seq', 'from_dc_cd', 'unit_price', 'unit_cd', 'discount', 'week',
-                               'qty', 'create_user_cd', 'create_date', 'modify_user_cd', 'modify_date']
-        self.sql_config = SqlConfig()
         self.io = DataIO()
+        self.sql_config = SqlConfig()
 
     def check(self, df: pd.DataFrame) -> pd.DataFrame:
-        # convert to lowercase columns
-        df.columns = [col.lower() for col in df.columns]
-
         # Code Mapping
         normal = self.check_code_map(df=df)
 
@@ -43,13 +36,13 @@ class ConsistencyCheck(object):
     # Error 1
     def check_prod_level(self, df: pd.DataFrame):
         test_df = deepcopy(df)
-        test_df = test_df[self.PROD_LVL_LIST]
+        test_df = test_df[self.hrchy]
         na_rows = test_df.isna().sum(axis=1) > 0
         err = df[na_rows].fillna('')
         normal = df[~na_rows]
 
         # save the error data
-        err = self.make_err_format(df=err, err_cd='ERR001')
+        err = self.make_err_format(df=err, err_cd='err001')
         if len(err) > 0 and self.save_yn:
             self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
 
@@ -57,10 +50,10 @@ class ConsistencyCheck(object):
 
     # Error 2
     def check_unit_code(self, df: pd.DataFrame):
-        err = df[~df['unit_cd'].isin(self.UNIT_CD)]
-        normal = df[df['unit_cd'].isin(self.UNIT_CD)]
+        err = df[~df['unit_cd'].isin(self.unit_cd)]
+        normal = df[df['unit_cd'].isin(self.unit_cd)]
 
-        err = self.make_err_format(df=err, err_cd='ERR002')
+        err = self.make_err_format(df=err, err_cd='err002')
         if len(err) > 0 and self.save_yn:
             self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
 
@@ -70,13 +63,13 @@ class ConsistencyCheck(object):
     def check_unit_code_map(self, df: pd.DataFrame):
         unit_code_map = self.io.get_df_from_db(sql=self.sql_config.sql_unit_map())
         unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
-        df['item_cd'] = df['item_cd'].astype(str)
+        df['sku_cd'] = df['sku_cd'].astype(str)
         merged = pd.merge(df, unit_code_map, how='left', on='item_cd')
         err = merged[merged['box_bol'].isna()]
         normal = merged[~merged['box_bol'].isna()]
 
         # Save Error
-        err = self.make_err_format(df=err, err_cd='ERR003')
+        err = self.make_err_format(df=err, err_cd='err003')
         if len(err) > 0 and self.save_yn:
             self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
 
@@ -96,16 +89,17 @@ class ConsistencyCheck(object):
 
     def make_err_format(self, df: pd.DataFrame, err_cd: str):
         df['project_cd'] = 'ENT001'
-        df['data_vrsn_cd'] = '-'    # temp
+        df['data_vrsn_cd'] = self.data_vrsn_cd
+        df['err_grp_cd'] = self.err_grp_map[err_cd]
         df['err_cd'] = err_cd
-        df['err_nm'] = self.ERR_CD_MAP[err_cd]
         if self.division == 'sell_out':
-            df['from_dc_cd'] = ''
+            df['from_dc_cd'] = np.nan
         df['create_user_cd'] = 'SYSTEM'
-        df['modify_user_cd'] = ''
-        df['modify_date'] = ''
 
-        df = df[self.err_table_cols]
-        df.columns = [col.upper() for col in df.columns]
+        df = df.rename(columns={'biz_cd': 'item_attr01_cd',
+                                'line_cd': 'item_attr02_cd',
+                                'brand_cd': 'item_attr03_cd',
+                                'item_cd': 'item_attr04_cd',
+                                'sku_cd': 'item_attr05_cd'})
 
         return df

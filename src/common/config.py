@@ -1,6 +1,15 @@
 import os
 
 ###########################
+# Class Configuration
+###########################
+CLS_LOAD = False
+CLS_CNS = True
+CLS_PREP = False
+CLS_TRAIN = False
+CLS_PRED = False
+
+###########################
 # Database Configuration
 ###########################
 RDMS = 'mssql+pymssql'
@@ -30,16 +39,13 @@ STN_LIST = [108]
 ###########################
 # Data configuration
 ###########################
-HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd']
-HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd'), (4, 'item_cd')]
-# HRCHY_LIST = ['biz_cd', 'line_cd', 'brand_cd']
-# HRCHY = [(1, 'biz_cd'), (2, 'line_cd'), (3, 'brand_cd')]
-HRCHY_LEVEL = len(HRCHY) - 1
-
+HRCHY_CUST = []
+HRCHY_PROD = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd', 'sku_cd']
+UNIT_CD = ['BOX', 'EA ', 'BOL']
 RESAMPLE_RULE = 'w'
 
 ###########################
-# Model configuration
+# Algorithm configuration
 ###########################
 TRAIN_RATE = 0.8    # Train / Test split rate
 MODEL_TO_VARIATE = {'ar': 'univ',

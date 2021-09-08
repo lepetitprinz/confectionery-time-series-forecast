@@ -5,7 +5,7 @@ from collections import defaultdict
 
 def group(hrchy, hrchy_lvl, data, cd=None, lvl=0) -> dict:
     grp = {}
-    col = hrchy[lvl][1]
+    col = hrchy[lvl]
 
     code_list = None
     if isinstance(data, pd.DataFrame):
@@ -101,8 +101,8 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
     return temp
 
 
-def make_path(module: str, division: str, hrchy_lvl: int, step: str, data_type: str):
-    path = os.path.join('..', module, division + '_' + str(hrchy_lvl) + '_' + step + '.' + data_type)
+def make_path(module: str, division: str, hrchy_lvl: str, step: str, data_type: str):
+    path = os.path.join('..', module, division + '_' + str(hrchy_lvl) + step + '.' + data_type)
 
     return path
 

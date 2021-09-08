@@ -1,10 +1,8 @@
 import common.util as util
 import common.config as config
 from dao.DataIO import DataIO
-from common.SqlConfig import SqlConfig
 from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
-from baseline.model.Model import Model
 
 import os
 ###################
@@ -28,7 +26,7 @@ data_io = DataIO()
 # data_io.save_object(data=sell_in, file_path=path_sell_in, kind='csv')  # Save object
 # sell_out = data_io.get_df_from_db(sql=SqlConfig.sql_sell_out(**date))
 
-sell_in = data_io.load_object(file_path=path_sell_in, kind='csv')  # Load object
+sell_in = data_io.load_object(file_path=path_sell_in, data_type='csv')  # Load object
 
 #####################
 # Consistency Check
@@ -37,8 +35,8 @@ sell_in = data_io.load_object(file_path=path_sell_in, kind='csv')  # Load object
 cns_check = ConsistencyCheck(division='sell_in', save_yn=False)
 
 sell_in_checked = cns_check.check(df=sell_in)
-data_io.save_object(data=sell_in_checked, file_path=path_sell_in_cns, kind='csv')
-sell_in_checked = data_io.load_object(file_path=path_sell_in_cns, kind='csv')  # Load object
+data_io.save_object(data=sell_in_checked, file_path=path_sell_in_cns, data_type='csv')
+sell_in_checked = data_io.load_object(file_path=path_sell_in_cns, data_type='csv')  # Load object
 
 # #####################
 # # Data Preprocessing
@@ -50,8 +48,8 @@ test = util.group(hrchy=config.HRCHY,
 
 
 data_preped = prep.preprocess(data=sell_in_checked, division='SELL-IN')
-data_io.save_object(data=data_preped, file_path=path_sell_in_prep, kind='binary')  # Save object
-data_preped = data_io.load_object(file_path=path_sell_in_prep, kind='binary')  # Load object
+data_io.save_object(data=data_preped, file_path=path_sell_in_prep, data_type='binary')  # Save object
+data_preped = data_io.load_object(file_path=path_sell_in_prep, data_type='binary')  # Load object
 
 #####################
 # Training

@@ -5,7 +5,7 @@ from baseline.model.Algorithm import Algorithm
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List
+from typing import List, Tuple
 from sklearn.metrics import mean_squared_error
 
 # Tensorflow library
@@ -15,13 +15,14 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict, hrchy: list):
         # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
         self.date = date
         self.col_target = 'qty'     # Target column
         self.col_exo = ['discount']     # Exogenous features
-        self.hrchy_level = config.HRCHY_LEVEL  # Data Hierarchy
+        self.hrchy = hrchy
+        self.hrchy_level = len(hrchy) - 1
 
         # Algorithm Configuration
         self.algorithm = Algorithm()
@@ -64,8 +65,8 @@ class Train(object):
 
         return feature_by_variable
 
-    def validation(self, data, model: str):
-        score = 0
+    def validation(self, data, model: str) -> float:
+        score = 0.
         # if len(data) > int(self.model_info[model]['input_width']):
         if self.validation_method == 'train_test':
             score = self.train_test_validation(data=data, model=model)
@@ -75,7 +76,7 @@ class Train(object):
 
         return score
 
-    def make_score_result(self, data: dict) -> pd.DataFrame:
+    def make_score_result(self, data: dict, hrchy_key: str) -> pd.DataFrame:
         result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
                                                fn=self.score_to_df,
                                                df=data)
@@ -87,7 +88,7 @@ class Train(object):
         result['project_cd'] = 'ENT001'
         result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
         result['division'] = self.division
-        result['fkey'] = ['HRCHY' + str(i+1) for i in range(len(result))]
+        result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
 
         return result
@@ -132,8 +133,6 @@ class Train(object):
         """
         :param model: Statistical model
         :param data: time series data
-        :param params: configuration
-        :param n_test: number of test data
         :return:
         """
         # split dataset
@@ -152,7 +151,7 @@ class Train(object):
 
         return rmse
 
-    def window_generator(self, df, model: str) -> List:
+    def window_generator(self, df, model: str) -> List[Tuple]:
         data_length = len(df)
         input_width = int(self.model_info[model]['input_width'])
         label_width = int(self.model_info[model]['label_width'])
@@ -183,7 +182,7 @@ class Train(object):
     def score_model(self, model: str, data, n_test, cfg) -> tuple:
         # convert config to a key
         key = str(cfg)
-        result = self.walk_fwd_validation(model=model, data=data, n_test=n_test, params=cfg)
+        result = self.walk_fwd_validation(model=model, data=data)
 
         return model, key, result
 
