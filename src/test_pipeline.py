@@ -1,6 +1,5 @@
 from baseline.deployment.Pipleline import Pipeline
 
-
 division = 'SELL-IN'
 cust_lvl = 0
 prod_lvl = 4

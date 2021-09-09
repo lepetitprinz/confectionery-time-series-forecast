@@ -203,3 +203,14 @@ class SqlConfig(object):
              WHERE COMM_CD = 'ERR_CD'
             """
         return sql
+
+    @staticmethod
+    def sql_item_profile():
+        sql = """
+            SELECT ITEM_CD AS SKU_CD
+                 , ITEM_NM AS SKU_NM
+                 , BOM_CD
+                 , BOM_NM
+              FROM M4S_I002043   
+        """
+        return sql

@@ -178,13 +178,6 @@ class Train(object):
         elif self.model_to_variate[model] == 'multi':
             return data.iloc[:int(data_length * train_rate), :], data.iloc[int(data_length * train_rate):, :]
 
-    def score_model(self, model: str, data, n_test, cfg) -> tuple:
-        # convert config to a key
-        key = str(cfg)
-        result = self.walk_fwd_validation(model=model, data=data)
-
-        return model, key, result
-
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
     #     scores = [self.score_model(model=model, data=data, n_test=n_test,
     #                                cfg=cfg) for cfg in cfg_list]

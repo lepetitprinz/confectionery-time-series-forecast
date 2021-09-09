@@ -17,6 +17,7 @@ class Pipeline(object):
         :param prod_lvl: Product Data Level (Biz/Line/Brand/Item/SKU)
         :param save_step_yn: Save result of each step
         """
+
         # Configuration
         # Data Configuration
         self.io = DataIO()    # Connect the DB
