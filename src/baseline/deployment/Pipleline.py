@@ -17,18 +17,21 @@ class Pipeline(object):
         :param prod_lvl: Product Data Level (Biz/Line/Brand/Item/SKU)
         :param save_step_yn: Save result of each step
         """
-
-        # Configuration
-        # Data Configuration
-        self.io = DataIO()    # Connect the DB
+        # Class Configuration
+        self.io = DataIO()
         self.sql_conf = SqlConfig()
-        self.division = division
-        self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(prod_lvl) + '-'
-        self.hrchy = config.HRCHY_CUST[:cust_lvl] + config.HRCHY_PROD[:prod_lvl]
-
-        # Date Configuration
         self.common = self.io.get_dict_from_db(sql=SqlConfig.sql_comm_master(), key='OPTION_CD', val='OPTION_VAL')
+
+        # Data Configuration
+        self.division = division
+        self.target_col = self.common['target_col']
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
+
+        # Data Level Configuration
+        self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(prod_lvl) + '-'
+        self.hrchy_cust = self.common['hrchy_cust'].split(',')
+        self.hrchy_prod = self.common['hrchy_prod'].split(',')
+        self.hrchy = self.hrchy_cust[:cust_lvl] + self.hrchy_prod[:prod_lvl]
 
         # Save & Load Configuration
         self.save_steps_yn = save_step_yn
@@ -89,7 +92,7 @@ class Pipeline(object):
         data_preped = None
         if config.CLS_PREP:
             # Initiate data preprocessing class
-            preprocess = DataPrep(date=self.date, division=self.division, hrchy=self.hrchy)
+            preprocess = DataPrep(date=self.date, division=self.division, common=self.common, hrchy=self.hrchy)
 
             # Preprocess the dataset
             data_preped = preprocess.preprocess(data=checked)
@@ -122,7 +125,7 @@ class Pipeline(object):
         if config.CLS_TRAIN:
             # Initiate train class
             training = Train(division=self.division, model_info=model_info, param_grid=param_grid,
-                             date=self.date, hrchy=self.hrchy)
+                             date=self.date, hrchy=self.hrchy, common=self.common)
 
             # Train the model
             scores = training.train(df=data_preped)
@@ -151,7 +154,7 @@ class Pipeline(object):
         if config.CLS_PRED:
             # Initiate predict class
             predict = Predict(division='SELL-IN', model_info=model_info, param_grid=param_grid,
-                              date=self.date, hrchy=self.hrchy)
+                              date=self.date, hrchy=self.hrchy, common=self.common)
 
             # Forecast the model
             prediction = predict.forecast(df=data_preped)

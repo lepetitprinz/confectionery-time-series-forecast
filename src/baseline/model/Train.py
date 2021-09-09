@@ -2,6 +2,7 @@ import common.util as util
 import common.config as config
 from baseline.model.Algorithm import Algorithm
 
+import ast
 import warnings
 import numpy as np
 import pandas as pd
@@ -15,21 +16,26 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict, hrchy: list):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict,
+                 hrchy: list, common: dict):
+        # Class Configuration
+        self.algorithm = Algorithm()
+
         # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
+        self.target_col = common['target_col']   # Target column
+        self.exo_col_list = ['discount']     # Exogenous features
         self.date = date
-        self.col_target = 'qty'     # Target column
-        self.col_exo = ['discount']     # Exogenous features
+        self.common = common
+
+        # Data Level Configuration
         self.hrchy = hrchy
         self.hrchy_level = len(hrchy) - 1
 
         # Algorithm Configuration
-        self.algorithm = Algorithm()
-        self.cand_models = list(model_info.keys())
         self.param_grid = param_grid
-        self.model_to_variate = config.MODEL_TO_VARIATE
         self.model_info = model_info
+        self.cand_models = list(model_info.keys())
         self.model_fn = {'ar': self.algorithm.ar,
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
@@ -38,7 +44,6 @@ class Train(object):
 
         # Training Configuration
         self.validation_method = config.VALIDATION_METHOD
-        self.n_test = config.N_TEST
 
     def train(self, df) -> dict:
         scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
@@ -52,15 +57,15 @@ class Train(object):
 
         models = []
         for model in self.cand_models:
-            score = self.validation(data=feature_by_variable[self.model_to_variate[model]], model=model)
+            score = self.validation(data=feature_by_variable[self.model_info[model]['variate']], model=model)
             models.append([model, np.round(score, 3)])
         models = sorted(models, key=lambda x: x[1])
 
         return models
 
     def select_feature_by_variable(self, df: pd.DataFrame):
-        feature_by_variable = {'univ': df[self.col_target],
-                               'multi': df[self.col_exo + [self.col_target]]}
+        feature_by_variable = {'univ': df[self.target_col],
+                               'multi': df[self.exo_col_list + [self.target_col]]}
 
         return feature_by_variable
 
@@ -105,25 +110,27 @@ class Train(object):
         data_train = None
         data_test = None
         data_length = len(data)
-        if self.model_to_variate[model] == 'univ':
-            data_train = data.iloc[: data_length - self.n_test]
-            data_test = data.iloc[data_length - self.n_test:]
-        elif self.model_to_variate[model] == 'multi':
-            data_train = data.iloc[: data_length - self.n_test, :]
-            data_train = {'endog': data_train[self.col_target].values.ravel(),
-                          'exog': data_train[self.col_exo].values.ravel()}
-            data_test = data.iloc[data_length - self.n_test:, :]
-            data_test = {'endog': data_test[self.col_target],
-                         'exog': data_test[self.col_exo].values.ravel()}
+        n_test = ast.literal_eval(self.model_info[model]['label_width'])
+
+        if self.model_info[model]['variate'] == 'univ':
+            data_train = data.iloc[: data_length - n_test]
+            data_test = data.iloc[data_length - n_test:]
+        elif self.model_info[model]['variate'] == 'multi':
+            data_train = data.iloc[: data_length - n_test, :]
+            data_train = {'endog': data_train[self.target_col].values.ravel(),
+                          'exog': data_train[self.exo_col_list].values.ravel()}
+            data_test = data.iloc[data_length - n_test:, :]
+            data_test = {'endog': data_test[self.target_col],
+                         'exog': data_test[self.exo_col_list].values.ravel()}
 
         # evaluation
-        yhat = self.model_fn[model](history=data_train, cfg=self.param_grid[model], pred_step=self.n_test)
+        yhat = self.model_fn[model](history=data_train, cfg=self.param_grid[model], pred_step=n_test)
         yhat = np.nan_to_num(yhat)
 
         err = 0
-        if self.model_to_variate[model] == 'univ':
+        if self.model_info[model]['variate'] == 'univ':
             err = mean_squared_error(data_test, yhat, squared=False)
-        elif self.model_to_variate[model] == 'multi':
+        elif self.model_info[model]['variate'] == 'multi':
             err = mean_squared_error(data_test['endog'], yhat, squared=False)
 
         return err
@@ -138,9 +145,10 @@ class Train(object):
         dataset = self.window_generator(df=data, model=model)
 
         # evaluation
+        n_test = ast.literal_eval(self.model_info[model]['label_width'])
         predictions = []
         for train, test in dataset:
-            yhat = self.model_fn[model](history=train, cfg=self.param_grid[model], pred_step=self.n_test)
+            yhat = self.model_fn[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
             yhat = np.nan_to_num(yhat)
             err = mean_squared_error(test, yhat, squared=False)
             predictions.append(err)
@@ -158,10 +166,10 @@ class Train(object):
         data_target = None
         dataset = []
         for i in range(data_length - input_width - label_width + 1):
-            if self.model_to_variate[model] == 'univ':
+            if self.model_info[model]['variate'] == 'univ':
                 data_input = df.iloc[i: i + input_width]
                 data_target = df.iloc[i + input_width: i + input_width + label_width]
-            elif self.model_to_variate[model] == 'multi':
+            elif self.model_info[model]['variate'] == 'multi':
                 data_input = df.iloc[i: i + input_width, :]
                 data_target = df.iloc[i + input_width: i + input_width + label_width, :]
 
@@ -170,12 +178,12 @@ class Train(object):
         return dataset
 
     def train_test_split(self, data, model):
-        train_rate = config.TRAIN_RATE
+        train_rate = ast.literal_eval(self.common['train_rate'])
         data_length = len(data)
-        if self.model_to_variate[model] == 'univ':
+        if self.model_info[model]['variate'] == 'univ':
             return data[: int(data_length * train_rate)], data[int(data_length * train_rate):]
 
-        elif self.model_to_variate[model] == 'multi':
+        elif self.model_info[model]['variate'] == 'multi':
             return data.iloc[:int(data_length * train_rate), :], data.iloc[int(data_length * train_rate):, :]
 
     # def grid_search(self, model: str, data, n_test: int, cfg_list: list):

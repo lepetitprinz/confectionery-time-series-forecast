@@ -10,29 +10,24 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     TYPE_STR_COLS = ['cust_cd', 'sku_cd']
 
-    def __init__(self, date: dict, division: str, hrchy: list, decompose_yn=False):
-        # Path
-        self.base_dir = config.BASE_DIR
-        self.save_dir = config.SAVE_DIR
-
-        # Dataset
+    def __init__(self, date: dict, division: str, common: dict,
+                 hrchy: list, decompose_yn=False):
+        # Dataset configuration
         self.division = division
-        self.features = []
-        self.target_col = config.TARGET_COL
-        self.decompose_yn = decompose_yn
-        self.resample_rule = config.RESAMPLE_RULE
+        self.target_col = common['target_col']
+        self.col_agg_map = {'sum': ['qty'],
+                            'avg': ['discount']}
+        self.resample_rule = common['resample_rule']
         self.date_range = pd.date_range(start=date['date_from'],
                                         end=date['date_to'],
-                                        freq=config.RESAMPLE_RULE)
+                                        freq=common['resample_rule'])
 
-        # Hierarchy
+        # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = len(hrchy) - 1
 
-        # Smoothing
-        self.smooth_yn = config.SMOOTH_YN
-        self.smooth_method = config.SMOOTH_METHOD
-        self.smooth_rate = config.SMOOTH_RATE
+        # Save & Load configuration
+        self.decompose_yn = decompose_yn
 
     def preprocess(self, data: pd.DataFrame) -> dict:
         print("Implement data preprocessing")
@@ -125,9 +120,12 @@ class DataPrep(object):
         return grp
 
     def resample(self, df):
-        cols = self.hrchy[:self.hrchy_level + 1]
-        data_level = df[cols].iloc[0].to_dict()
-        df_resampled = df.resample(rule=self.resample_rule).sum()
+        df_sum = df[self.col_agg_map['sum']]
+        df_avg = df[self.col_agg_map['avg']]
+
+        df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
+        df_avg_resampled = df_avg.resample(rule=self.resample_rule).mean()
+        df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
         if len(df_resampled.index) != len(self.date_range):
@@ -137,38 +135,37 @@ class DataPrep(object):
             df_resampled = df_resampled.append(df_add)
             df_resampled = df_resampled.sort_index()
 
+        cols = self.hrchy[:self.hrchy_level + 1]
+        data_level = df[cols].iloc[0].to_dict()
         data_lvl = pd.DataFrame(data_level, index=df_resampled.index)
         df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
 
         return df_resampled
 
-    def set_features(self, df):
-        return df[self.features]
+    # def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
+    #     vals = df[self.target_col].values * 0.05
+    #     vals = vals.astype(int)
+    #     vals = np.where(vals == 0, 1, vals)
+    #     vals = np.where(vals < 0, vals * -1, vals)
+    #     noise = np.random.randint(-vals, vals)
+    #     df['exo'] = df[self.target_col].values + noise
+    #
+    #     return df
 
-    def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
-        vals = df[self.target_col].values * 0.05
-        vals = vals.astype(int)
-        vals = np.where(vals == 0, 1, vals)
-        vals = np.where(vals < 0, vals * -1, vals)
-        noise = np.random.randint(-vals, vals)
-        df['exo'] = df[self.target_col].values + noise
-
-        return df
-
-    def smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
-        for i, col in enumerate(df.columns):
-            min_val = 0
-            max_val = 0
-            if self.smooth_method == 'quantile':
-                min_val = df[col].quantile(self.smooth_rate)
-                max_val = df[col].quantile(1 - self.smooth_rate)
-            elif self.smooth_method == 'sigma':
-                mean = np.mean(df[col].values)
-                std = np.std(df[col].values)
-                min_val = mean - 2 * std
-                max_val = mean + 2 * std
-
-            df[col] = np.where(df[col].values < min_val, min_val, df[col].values)
-            df[col] = np.where(df[col].values > max_val, max_val, df[col].values)
-
-        return df
+    # def smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
+    #     for i, col in enumerate(df.columns):
+    #         min_val = 0
+    #         max_val = 0
+    #         if self.smooth_method == 'quantile':
+    #             min_val = df[col].quantile(self.smooth_rate)
+    #             max_val = df[col].quantile(1 - self.smooth_rate)
+    #         elif self.smooth_method == 'sigma':
+    #             mean = np.mean(df[col].values)
+    #             std = np.std(df[col].values)
+    #             min_val = mean - 2 * std
+    #             max_val = mean + 2 * std
+    #
+    #         df[col] = np.where(df[col].values < min_val, min_val, df[col].values)
+    #         df[col] = np.where(df[col].values > max_val, max_val, df[col].values)
+    #
+    #     return df

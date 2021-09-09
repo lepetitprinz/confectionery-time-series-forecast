@@ -178,6 +178,7 @@ class SqlConfig(object):
             SELECT LOWER(STAT_CD) AS MODEL
                  , INPUT_POINT AS INPUT_WIDTH
                  , PERIOD AS LABEL_WIDTH
+                 , VARIATE
               FROM M4S_I103010
              WHERE USE_YN = 'Y'
                AND DIVISION_CD = '{kwargs['division']}'           

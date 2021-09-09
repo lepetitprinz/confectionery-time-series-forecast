@@ -2,6 +2,7 @@ import common.util as util
 import common.config as config
 from baseline.model.Algorithm import Algorithm
 
+import ast
 from datetime import datetime
 from datetime import timedelta
 import numpy as np
@@ -9,27 +10,30 @@ import pandas as pd
 
 
 class Predict(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict, hrchy: list):
+    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict,
+                 hrchy: list, common: dict):
+        # Class Configuration
+        self.algorithm = Algorithm()
+
+        # Data Configuration
         self.division = division    # SELL-IN / SELL-OUT
+        self.target_col = common['target_col']     # Target features
+        self.exo_col_list = ['discount']     # Exogenous features
         self.date = date
-        self.col_target = config.TARGET_COL
-        self.col_exo = ['discount']     # Exogenous features
+
+        # Data Level Configuration
         self.hrchy = hrchy
         self.hrchy_level = len(hrchy) - 1
 
         # Algorithms
-        self.algorithm = Algorithm()
-        self.cand_models = list(model_info.keys())
         self.param_grid = param_grid
-        self.model_to_variate = config.MODEL_TO_VARIATE
+        self.model_info = model_info
+        self.cand_models = list(model_info.keys())
         self.model_fn = {'ar': self.algorithm.ar,
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
                          'var': self.algorithm.var,
                          'sarima': self.algorithm.sarimax}
-
-        # Forecast Configuration
-        self.n_test = config.N_TEST
 
     def forecast(self, df):
         prediction = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
@@ -43,25 +47,26 @@ class Predict(object):
 
         models = []
         for model in self.cand_models:
-            data = feature_by_variable[self.model_to_variate[model]]
+            data = feature_by_variable[self.model_info[model]['variate']]
             data = self.split_variable(model=model, data=data)
+            n_test = ast.literal_eval(self.model_info[model]['label_width'])
             prediction = self.model_fn[model](history=data,
                                               cfg=self.param_grid[model],
-                                              pred_step=self.n_test)
+                                              pred_step=n_test)
             models.append(hrchy + [model, prediction])
 
         return models
 
     def select_feature_by_variable(self, df: pd.DataFrame):
-        feature_by_variable = {'univ': df[self.col_target],
-                               'multi': df[self.col_exo + [self.col_target]]}
+        feature_by_variable = {'univ': df[self.target_col],
+                               'multi': df[self.exo_col_list + [self.target_col]]}
 
         return feature_by_variable
 
     def split_variable(self, model: str, data) -> np.array:
-        if self.model_to_variate[model] == 'multi':
-            data = {'endog': data[self.col_target].values.ravel(),
-                    'exog': data[self.col_exo].values.ravel()}
+        if self.model_info[model]['variate'] == 'multi':
+            data = {'endog': data[self.target_col].values.ravel(),
+                    'exog': data[self.exo_col_list].values.ravel()}
 
         return data
 

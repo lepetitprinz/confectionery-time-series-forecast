@@ -2,7 +2,7 @@ from baseline.deployment.Pipleline import Pipeline
 
 division = 'SELL-IN'
 cust_lvl = 0
-prod_lvl = 4
+prod_lvl = 3
 save_step_yn = True
 load_step_yn = True
 
