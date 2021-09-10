@@ -89,7 +89,7 @@ class Train(object):
         cols = ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] + ['stat', 'rmse']
         result.columns = cols
 
-        result['project_cd'] = 'ENT001'
+        result['project_cd'] = self.common['project_cd']
         result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
         result['division'] = self.division
         result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]

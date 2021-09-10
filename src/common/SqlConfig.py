@@ -2,7 +2,7 @@ class SqlConfig(object):
     # Item Master Table
     @staticmethod
     def sql_item_master():
-        sql = f"""
+        sql = """
             SELECT PROJECT_CD
                  , ITEM_CD
                  , ITEM_NM
@@ -13,7 +13,7 @@ class SqlConfig(object):
     # Customer Master Table
     @staticmethod
     def sql_cust_master():
-        sql = f"""
+        sql = """
             SELECT PROJECT_CD
                  , CUST_CD
                  , CUST_NM

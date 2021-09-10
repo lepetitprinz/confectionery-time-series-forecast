@@ -1,5 +1,4 @@
 from common.SqlConfig import SqlConfig
-import common.config as config
 from dao.DataIO import DataIO
 
 from copy import deepcopy
@@ -8,17 +7,23 @@ import pandas as pd
 
 
 class ConsistencyCheck(object):
-    def __init__(self, division: str, hrchy: list, date: dict,
+    def __init__(self, division: str, common: dict, hrchy: list, date: dict,
                  err_grp_map: dict, save_yn: bool):
-        self.cns_tb_name = 'M4S_O000000'
-        self.division = division
-        self.hrchy = hrchy
-        self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
-        self.unit_cd = config.UNIT_CD
-        self.err_grp_map = err_grp_map
-        self.save_yn = save_yn
+        # Class Configuration
         self.io = DataIO()
         self.sql_config = SqlConfig()
+
+        # Data Configuration
+        self.division = division
+        self.common = common
+        self.hrchy = hrchy
+        self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
+        self.err_grp_map = err_grp_map
+        self.unit_cd = common['unit_cd'].split(',')
+
+        # Save and Load Configuration
+        self.cns_tb_name = 'M4S_I002174'
+        self.save_yn = save_yn
 
     def check(self, df: pd.DataFrame) -> pd.DataFrame:
         # Code Mapping
@@ -64,6 +69,8 @@ class ConsistencyCheck(object):
         unit_code_map = self.io.get_df_from_db(sql=self.sql_config.sql_unit_map())
         unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
         df['sku_cd'] = df['sku_cd'].astype(str)
+
+        # Merge unit code map
         merged = pd.merge(df, unit_code_map, how='left', on='sku_cd')
         err = merged[merged['box_bol'].isna()]
         normal = merged[~merged['box_bol'].isna()]
@@ -81,14 +88,8 @@ class ConsistencyCheck(object):
     def check_discount(self, df: pd.DataFrame, col_nm: str):
         pass
 
-    @staticmethod
-    def fill_na(df: pd.DataFrame):
-        is_null_col = [col for col, is_null in zip(df.columns, df.isnull().sum()) if is_null > 0]
-        for col in is_null_col:
-            df[col] = df[col].fillna(0)
-
     def make_err_format(self, df: pd.DataFrame, err_cd: str):
-        df['project_cd'] = 'ENT001'
+        df['project_cd'] = self.common['project_cd']
         df['data_vrsn_cd'] = self.data_vrsn_cd
         df['err_grp_cd'] = self.err_grp_map[err_cd]
         df['err_cd'] = err_cd

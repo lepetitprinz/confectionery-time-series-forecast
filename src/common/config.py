@@ -1,7 +1,7 @@
 # Class Configuration
 CLS_LOAD = False
 CLS_CNS = False
-CLS_PREP = False
+CLS_PREP = True
 CLS_TRAIN = True
 CLS_PRED = True
 
@@ -15,7 +15,6 @@ PASSWORD = 'matrixadm'     # User password
 
 # Data configuration
 HRCHY_CUST = []
-HRCHY_PROD = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd', 'sku_cd']
 UNIT_CD = ['BOX', 'EA ', 'BOL']
 
 # Algorithm configuration

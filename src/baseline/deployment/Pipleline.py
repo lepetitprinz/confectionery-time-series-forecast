@@ -70,7 +70,7 @@ class Pipeline(object):
         checked = None
         err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD', val='ATTR01_VAL')
         if config.CLS_CNS:
-            cns = ConsistencyCheck(division=self.division,  hrchy=self.hrchy, date=self.date,
+            cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy, date=self.date,
                                    err_grp_map=err_grp_map, save_yn=False)
             checked = cns.check(df=sell)
 

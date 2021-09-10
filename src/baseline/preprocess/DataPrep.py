@@ -8,7 +8,7 @@ import pandas as pd
 
 class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
-    TYPE_STR_COLS = ['cust_cd', 'sku_cd']
+    STR_TYPE_COLS = ['cust_cd', 'sku_cd']
 
     def __init__(self, date: dict, division: str, common: dict,
                  hrchy: list, decompose_yn=False):
@@ -72,7 +72,7 @@ class DataPrep(object):
         df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
 
         # convert data type
-        for col in self.TYPE_STR_COLS:
+        for col in self.STR_TYPE_COLS:
             df[col] = df[col].astype(str)
 
         # convert to datetime
@@ -96,7 +96,7 @@ class DataPrep(object):
             code_list = list(data[cd][col].unique())
 
         if lvl < self.hrchy_level:
-            for code in code_list:
+               for code in code_list:
                 sliced = None
                 if isinstance(data, pd.DataFrame):
                     sliced = data[data[col] == code]
