@@ -1,27 +1,4 @@
 class SqlConfig(object):
-    # Item Master Table
-    @staticmethod
-    def sql_item_master():
-        sql = """
-            SELECT PROJECT_CD
-                 , ITEM_CD
-                 , ITEM_NM
-              FROM M4S_I002040
-            """
-        return sql
-
-    # Customer Master Table
-    @staticmethod
-    def sql_cust_master():
-        sql = """
-            SELECT PROJECT_CD
-                 , CUST_CD
-                 , CUST_NM
-              FROM M4S_I002060
-            """
-        return sql
-
-    # D
     @staticmethod
     def sql_comm_master():
         sql = f"""
@@ -32,33 +9,80 @@ class SqlConfig(object):
             """
         return sql
 
+    @staticmethod
+    def sql_item_view():
+        sql = """
+            SELECT ITEM_ATTR01_CD AS BIZ_CD
+                 , ITEM_ATTR01_NM AS BIZ_NM
+                 , ITEM_ATTR02_CD AS LINE_CD
+                 , ITEM_ATTR02_NM AS LINE_NM
+                 , ITEM_ATTR03_CD AS BRAND_CD
+                 , ITEM_ATTR03_NM AS BRAND_NM
+                 , ITEM_ATTR04_CD AS ITEM_CD
+                 , ITEM_ATTR04_NM AS ITEM_NM
+                 , ITEM_CD AS SKU_CD
+                 , ITEM_NM AS SKU_NM
+              FROM VIEW_I002040
+             WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
+             GROUP BY ITEM_ATTR01_CD
+                    , ITEM_ATTR01_NM
+                    , ITEM_ATTR02_CD
+                    , ITEM_ATTR02_NM
+                    , ITEM_ATTR03_CD
+                    , ITEM_ATTR03_NM
+                    , ITEM_ATTR04_CD
+                    , ITEM_ATTR04_NM
+                    , ITEM_CD
+                    , ITEM_NM
+        """
+        return sql
+
+    @staticmethod
+    def sql_cust_info():
+        sql = """
+            SELECT CUST.CUST_GRP_CD
+                 , GRP.CUST_GRP_NM
+                 , CUST.CUST_CD
+                 , CUST_NM
+              FROM (
+                    SELECT CUST_GRP_CD
+                         , CUST_CD
+                         , CUST_NM
+                      FROM M4S_I002060
+                     WHERE USE_YN = 'Y'
+                   ) CUST
+              LEFT OUTER JOIN (
+                               SELECT CUST_GRP_CD
+                                    , CUST_GRP_NM
+                                 FROM M4S_I002050
+                             WHERE USE_YN = 'Y'
+                              ) GRP
+                ON CUST.CUST_GRP_CD = GRP.CUST_GRP_CD
+        """
+        return sql
+
+    @staticmethod
+    def sql_calendar():
+        sql = """
+            SELECT YYMMDD
+                 , WEEK
+              FROM M4S_I002030
+        """
+        return sql
+
     # SELL-IN Table
     @staticmethod
     def sql_sell_in(**kwargs):
         sql = f""" 
-        SELECT *
-        FROM(
-            SELECT DIVISION_CD
-                 , CUST_CD
-                 , BIZ_CD
-                 , LINE_CD
-                 , BRAND_CD
-                 , ITEM_CD
-                 , SALES.SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , FROM_DC_CD
-                 , UNIT_PRICE
-                 , UNIT_CD
-                 , DISCOUNT
-                 , WEEK
-                 , QTY
-                 , CREATE_DATE
+            SELECT *
               FROM (
-                    SELECT PROJECT_CD
-                         , DIVISION_CD
-                         , SOLD_CUST_GRP_CD AS CUST_CD
-                         , ITEM_CD AS SKU_CD
+                    SELECT DIVISION_CD
+                         , CUST_CD
+                         , BIZ_CD
+                         , LINE_CD
+                         , BRAND_CD
+                         , ITEM_CD
+                         , SALES.SKU_CD
                          , YYMMDD
                          , SEQ
                          , FROM_DC_CD
@@ -66,23 +90,37 @@ class SqlConfig(object):
                          , UNIT_CD
                          , DISCOUNT
                          , WEEK
-                         , RST_SALES_QTY AS QTY
+                         , QTY
                          , CREATE_DATE
-                      FROM M4S_I002170
-                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
-                    ) SALES
-              LEFT OUTER JOIN (
-                               SELECT ITEM_CD AS SKU_CD
-                                    , ITEM_ATTR01_CD AS BIZ_CD
-                                    , ITEM_ATTR02_CD AS LINE_CD
-                                    , ITEM_ATTR03_CD AS BRAND_CD
-                                    , ITEM_ATTR04_CD AS ITEM_CD
-                                 FROM VIEW_I002040
-                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                              ) ITEM
-                ON SALES.SKU_CD = ITEM.SKU_CD
-            ) MST
-            WHERE (LINE_CD = 'P111' OR BRAND_CD = 'P304020')    --- EXCEPTION
+                      FROM (
+                            SELECT PROJECT_CD
+                                 , DIVISION_CD
+                                 , SOLD_CUST_GRP_CD AS CUST_CD
+                                 , ITEM_CD AS SKU_CD
+                                 , YYMMDD
+                                 , SEQ
+                                 , FROM_DC_CD
+                                 , UNIT_PRICE
+                                 , UNIT_CD
+                                 , DISCOUNT
+                                 , WEEK
+                                 , RST_SALES_QTY AS QTY
+                                 , CREATE_DATE
+                              FROM M4S_I002170
+                             WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                            ) SALES
+                      LEFT OUTER JOIN (
+                                       SELECT ITEM_CD AS SKU_CD
+                                            , ITEM_ATTR01_CD AS BIZ_CD
+                                            , ITEM_ATTR02_CD AS LINE_CD
+                                            , ITEM_ATTR03_CD AS BRAND_CD
+                                            , ITEM_ATTR04_CD AS ITEM_CD
+                                         FROM VIEW_I002040
+                                        WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                                      ) ITEM
+                        ON SALES.SKU_CD = ITEM.SKU_CD
+                    ) MST
+             WHERE (LINE_CD = 'P111' OR BRAND_CD = 'P304020')    --- EXCEPTION
                """
         return sql
 

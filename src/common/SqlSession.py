@@ -70,7 +70,6 @@ class SqlSession(object):
             raise ConnectionError('Session is not initialized')
 
         try:
-            print("Select the dataset")
             data = pd.read_sql_query(sql, self._connection)
 
             return data

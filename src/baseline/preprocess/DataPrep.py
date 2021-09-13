@@ -119,12 +119,20 @@ class DataPrep(object):
 
         return grp
 
-    def resample(self, df):
+    def resample(self, df: pd.DataFrame):
+        # Split by aggregation method
         df_sum = df[self.col_agg_map['sum']]
         df_avg = df[self.col_agg_map['avg']]
 
+        # resampling
         df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
         df_avg_resampled = df_avg.resample(rule=self.resample_rule).mean()
+
+        # fill NaN
+        df_sum_resampled = df_sum_resampled.fillna(value=0)
+        df_avg_resampled = df_avg_resampled.fillna(value=0)
+
+        # Concatenate aggregation
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist

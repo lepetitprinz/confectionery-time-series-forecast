@@ -111,20 +111,33 @@ class Pipeline(object):
         # ================================================================================================= #
         # 4. Training
         # ================================================================================================= #
+        # Load information form DB
+        # Load master dataset
+        cust_mst = self.io.get_df_from_db(sql=SqlConfig.sql_cust_info())
+        item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
+        cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
+        # item_mst['sku_cd'] = item_mst['sku_cd'].astype(str)
+
         # Load Algorithm & Hyper-parameter Information
-        cand_models = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
-        model_info = cand_models.set_index(keys='model').to_dict('index')
+        model_mst = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
+        model_mst = model_mst.set_index(keys='model').to_dict('index')
 
         param_grid = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
         param_grid['stat_cd'] = param_grid['stat_cd'].apply(lambda x: x.lower())
         param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
         param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
 
+        mst_info = {'cust_mst': cust_mst,
+                    'item_mst': item_mst,
+                    'cal_mst': cal_mst,
+                    'model_mst': model_mst,
+                    'param_grid': param_grid}
+
         print("Step 4: Train\n")
         scores = None
         if config.CLS_TRAIN:
             # Initiate train class
-            training = Train(division=self.division, model_info=model_info, param_grid=param_grid,
+            training = Train(division=self.division, mst_info=mst_info,
                              date=self.date, hrchy=self.hrchy, common=self.common)
 
             # Train the model
@@ -153,7 +166,7 @@ class Pipeline(object):
         print("Step 5: Forecast\n")
         if config.CLS_PRED:
             # Initiate predict class
-            predict = Predict(division='SELL-IN', model_info=model_info, param_grid=param_grid,
+            predict = Predict(division='SELL-IN', mst_info=mst_info,
                               date=self.date, hrchy=self.hrchy, common=self.common)
 
             # Forecast the model

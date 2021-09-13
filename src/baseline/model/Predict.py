@@ -10,7 +10,7 @@ import pandas as pd
 
 
 class Predict(object):
-    def __init__(self, division: str, model_info: dict, param_grid: dict, date: dict,
+    def __init__(self, division: str, mst_info: dict, date: dict,
                  hrchy: list, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
@@ -19,6 +19,9 @@ class Predict(object):
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']     # Target features
         self.exo_col_list = ['discount']     # Exogenous features
+        self.cust_mst = mst_info['cust_mst']
+        self.item_mst = mst_info['item_mst']
+        self.cal_mst = mst_info['cal_mst']
         self.date = date
 
         # Data Level Configuration
@@ -26,9 +29,9 @@ class Predict(object):
         self.hrchy_level = len(hrchy) - 1
 
         # Algorithms
-        self.param_grid = param_grid
-        self.model_info = model_info
-        self.cand_models = list(model_info.keys())
+        self.param_grid = mst_info['param_grid']
+        self.model_info = mst_info['model_mst']
+        self.cand_models = list(self.model_info.keys())
         self.model_fn = {'ar': self.algorithm.ar,
                          'arima': self.algorithm.arima,
                          'hw': self.algorithm.hw,
@@ -50,10 +53,13 @@ class Predict(object):
             data = feature_by_variable[self.model_info[model]['variate']]
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
-            prediction = self.model_fn[model](history=data,
-                                              cfg=self.param_grid[model],
-                                              pred_step=n_test)
-            models.append(hrchy + [model, prediction])
+            try:
+                prediction = self.model_fn[model](history=data,
+                                                  cfg=self.param_grid[model],
+                                                  pred_step=n_test)
+            except ValueError:
+                prediction = [0] * n_test
+            models.append(hrchy + [model.upper(), prediction])
 
         return models
 
@@ -82,12 +88,21 @@ class Predict(object):
                 # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
         results = pd.DataFrame(results)
-        cols = ['fkey'] + ['S_COL0' + str(i + 1) for i in range(self.hrchy_level + 1)] +\
-               ['stat', 'yymmdd', 'result_sales']
+        cols = ['fkey'] + self.hrchy + ['stat_cd', 'yymmdd', 'result_sales']
         results.columns = cols
         results['project_cd'] = 'ENT001'
-        results['division'] = self.division
+        results['division_cd'] = self.division
         results['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        results['create_user'] = 'SYSTEM'
+
+        results = pd.merge(results, self.item_mst[config.COL_NAMES[: 2*len(self.hrchy)]].drop_duplicates(),
+                           on=self.hrchy, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        results = pd.merge(results, self.cal_mst, on='yymmdd', how='left')
+
+        # Rename columns
+        results = results.rename(columns=config.COL_RENAME1)
+        results = results.rename(columns=config.COL_RENAME2)
+
 
         return results
 
