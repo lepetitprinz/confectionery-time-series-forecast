@@ -1,9 +1,10 @@
 # Class Configuration
 CLS_LOAD = False
 CLS_CNS = False
-CLS_PREP = True
-CLS_TRAIN = True
-CLS_PRED = True
+CLS_PREP = False
+CLS_TRAIN = False
+CLS_PRED = False
+CLS_SPLIT = True
 
 # Database Configuration
 RDMS = 'mssql+pymssql'

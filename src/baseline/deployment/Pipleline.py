@@ -6,6 +6,7 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
+from baseline.model.Split import Split
 
 
 class Pipeline(object):
@@ -45,9 +46,9 @@ class Pipeline(object):
         print("Step 1: Load the dataset\n")
         sell = None
         if config.CLS_LOAD:
-            if self.division == 'SELL-IN':
+            if self.division == 'SELL_IN':
                 sell = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-            elif self.division == 'SELL-OUT':
+            elif self.division == 'SELL_OUT':
                 sell = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
             else:
                 raise ValueError(f"{self.division} does not exist")
@@ -164,9 +165,10 @@ class Pipeline(object):
         # 5. Forecast
         # ================================================================================================= #
         print("Step 5: Forecast\n")
+        data_pred = None
         if config.CLS_PRED:
             # Initiate predict class
-            predict = Predict(division='SELL-IN', mst_info=mst_info,
+            predict = Predict(division=self.division, mst_info=mst_info,
                               date=self.date, hrchy=self.hrchy, common=self.common)
 
             # Forecast the model
@@ -176,7 +178,7 @@ class Pipeline(object):
             if self.save_steps_yn:
                 file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
                                            step='pred', extension='pickle')
-                self.io.save_object(data=scores, file_path=file_path, data_type='binary')
+                self.io.save_object(data=prediction, file_path=file_path, data_type='binary')
 
             prediction_db = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
 
@@ -186,3 +188,18 @@ class Pipeline(object):
 
             # Close DB session
             self.io.session.close()
+
+        if self.load_step_yn:
+            file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                       step='pred', extension='pickle')
+            data_pred = self.io.load_object(file_path=file_path, data_type='binary')
+
+        # ================================================================================================= #
+        # 6. Split
+        # ================================================================================================= #
+        print("Step 6: Split\n")
+        if config.CLS_SPLIT:
+            # Initiate predict class
+            split = Split(division=self.division, hrchy=self.hrchy)
+
+            split_rate = split.split(data=data_pred)
