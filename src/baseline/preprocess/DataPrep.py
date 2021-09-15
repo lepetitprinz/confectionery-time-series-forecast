@@ -10,13 +10,15 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_cd', 'sku_cd']
 
-    def __init__(self, date: dict, division: str, common: dict,
+    def __init__(self, date: dict, cust: pd.DataFrame, division: str, common: dict,
                  hrchy: list, decompose_yn=False):
         # Dataset configuration
         self.division = division
+        self.cust = cust
         self.target_col = common['target_col']
         self.col_agg_map = {'sum': ['qty'],
                             'avg': ['discount']}
+        self.seq_to_cust_map = {}
         self.resample_rule = common['resample_rule']
         self.date_range = pd.date_range(start=date['date_from'],
                                         end=date['date_to'],
@@ -31,6 +33,14 @@ class DataPrep(object):
 
     def preprocess(self, data: pd.DataFrame) -> dict:
         print("Implement data preprocessing")
+        # convert data type
+        for col in self.STR_TYPE_COLS:
+            data[col] = data[col].astype(str)
+
+        # Mapping: cust_cd -> cust_grp_cd
+        data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
+        data['cust_grp_cd'] = data['cust_grp_cd'].fillna('-')
+
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
 
@@ -70,10 +80,6 @@ class DataPrep(object):
         df['qty'] = df['qty'].to_numpy() / unit_map
 
         df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
-
-        # convert data type
-        for col in self.STR_TYPE_COLS:
-            df[col] = df[col].astype(str)
 
         # convert to datetime
         df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
@@ -149,6 +155,12 @@ class DataPrep(object):
         df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
 
         return df_resampled
+
+    #
+    def make_seq_to_cust_map(self, df: pd.DataFrame):
+        seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
+
+        return seq_to_cust
 
     # def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
     #     vals = df[self.target_col].values * 0.05

@@ -2,17 +2,25 @@
 CLS_LOAD = False
 CLS_CNS = False
 CLS_PREP = False
-CLS_TRAIN = False
-CLS_PRED = False
-CLS_SPLIT = True
+CLS_TRAIN = True
+CLS_PRED = True
+CLS_SPLIT = False
 
 # Database Configuration
 RDMS = 'mssql+pymssql'
-HOST = '10.112.33.101'    # Database IP adress
+HOST = '10.109.16.49'    # Database IP adress
 DATABASE = 'BISCM'      # Database name
 PORT = '1433'
-USER = 'sa'    # User name
-PASSWORD = 'matrixadm'     # User password
+USER = 'matrix'    # User name
+PASSWORD = 'Diam0nd123!'     # User password
+
+# Database Configuration (temp)
+# RDMS = 'mssql+pymssql'
+# HOST = '10.112.33.101'    # Database IP adress
+# DATABASE = 'BISCM'      # Database name
+# PORT = '1433'
+# USER = 'sa'    # User name
+# PASSWORD = 'matrixadm'     # User password
 
 # Data configuration
 HRCHY_CUST = []
@@ -38,5 +46,7 @@ COL_RENAME1 = {'biz_cd': 'item_attr01_cd', 'line_cd': 'item_attr02_cd', 'brand_c
 COL_RENAME2 = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 
 #
-COL_NAMES = ['biz_cd', 'biz_nm', 'line_cd', 'line_nm', 'brand_cd', 'brand_nm',
+COL_ITEM = ['biz_cd', 'biz_nm', 'line_cd', 'line_nm', 'brand_cd', 'brand_nm',
              'item_cd', 'item_nm', 'sku_cd', 'sku_nm']
+
+COL_CUST = ['cust_grp_cd', 'cust_grp_nm']

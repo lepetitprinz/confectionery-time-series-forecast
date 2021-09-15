@@ -38,7 +38,36 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_cust_info():
+    def sql_cust_code():
+        sql = """
+            SELECT CUST_CD
+                 , CUST_GRP_CD
+              FROM (
+                    SELECT CUST.CUST_CD
+                         , CUST.CUST_GRP_CD
+                         , ROW_NUMBER() over (PARTITION BY CUST_CD, GRP.CUST_GRP_CD ORDER BY CUST_CD, GRP.CUST_GRP_CD) AS RANK
+                         , CUST_NM
+                      FROM (
+                            SELECT CUST_GRP_CD
+                                 , CUST_CD
+                                 , CUST_NM
+                              FROM M4S_I002060
+                             WHERE USE_YN = 'Y'
+                           ) CUST
+                      LEFT OUTER JOIN (
+                                       SELECT CUST_GRP_CD
+                                            , CUST_GRP_NM
+                                         FROM M4S_I002050
+                                        WHERE USE_YN = 'Y'
+                                      ) GRP
+                        ON CUST.CUST_GRP_CD = GRP.CUST_GRP_CD
+                   ) RSLT
+             WHERE RANK = 1
+        """
+        return sql
+
+    @staticmethod
+    def sql_cust_info_bak():
         sql = """
             SELECT CUST.CUST_GRP_CD
                  , GRP.CUST_GRP_NM
@@ -58,6 +87,16 @@ class SqlConfig(object):
                              WHERE USE_YN = 'Y'
                               ) GRP
                 ON CUST.CUST_GRP_CD = GRP.CUST_GRP_CD
+        """
+        return sql
+
+    @staticmethod
+    def sql_cust_grp_info():
+        sql = """
+            SELECT CUST_GRP_CD
+                 , CUST_GRP_NM
+              FROM M4S_I002050
+             WHERE USE_YN = 'Y'
         """
         return sql
 
@@ -83,7 +122,8 @@ class SqlConfig(object):
                          , BRAND_CD
                          , ITEM_CD
                          , SALES.SKU_CD
-                         , YYMMDD
+                         , CONVERT(CHAR, DATEADD(WEEK, 15, CONVERT(DATE, YYMMDD)), 112) AS YYMMDD
+                        -- , YYMMDD
                          , SEQ
                          , FROM_DC_CD
                          , UNIT_PRICE
@@ -251,5 +291,14 @@ class SqlConfig(object):
                  , BOM_CD
                  , BOM_NM
               FROM M4S_I002043   
+        """
+        return sql
+
+    @staticmethod
+    def sql_exg_data():
+        sql = """
+            SELECT *
+            FROM M4S_O110710
+        
         """
         return sql

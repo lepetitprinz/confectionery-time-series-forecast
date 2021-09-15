@@ -10,12 +10,12 @@ from baseline.model.Split import Split
 
 
 class Pipeline(object):
-    def __init__(self, division: str, cust_lvl: int, prod_lvl: int,
+    def __init__(self, division: str, cust_lvl: int, item_lvl: int,
                  save_step_yn=False, load_step_yn=False, save_db_yn=False):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param cust_lvl: Customer Data Level ()
-        :param prod_lvl: Product Data Level (Biz/Line/Brand/Item/SKU)
+        :param item_lvl: Product Data Level (Biz/Line/Brand/Item/SKU)
         :param save_step_yn: Save result of each step
         """
         # Class Configuration
@@ -29,10 +29,10 @@ class Pipeline(object):
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
 
         # Data Level Configuration
-        self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(prod_lvl) + '-'
+        self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(item_lvl) + '-'
         self.hrchy_cust = self.common['hrchy_cust'].split(',')
-        self.hrchy_prod = self.common['hrchy_prod'].split(',')
-        self.hrchy = self.hrchy_cust[:cust_lvl] + self.hrchy_prod[:prod_lvl]
+        self.hrchy_item = self.common['hrchy_prod'].split(',')
+        self.hrchy = self.hrchy_cust[:cust_lvl] + self.hrchy_item[:item_lvl]
 
         # Save & Load Configuration
         self.save_steps_yn = save_step_yn
@@ -92,8 +92,12 @@ class Pipeline(object):
         print("Step 3: Data Preprocessing\n")
         data_preped = None
         if config.CLS_PREP:
+            # Load Customer dataset
+            cust = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
+
             # Initiate data preprocessing class
-            preprocess = DataPrep(date=self.date, division=self.division, common=self.common, hrchy=self.hrchy)
+            preprocess = DataPrep(date=self.date, cust=cust, division=self.division,
+                                  common=self.common, hrchy=self.hrchy)
 
             # Preprocess the dataset
             data_preped = preprocess.preprocess(data=checked)
@@ -114,7 +118,8 @@ class Pipeline(object):
         # ================================================================================================= #
         # Load information form DB
         # Load master dataset
-        cust_mst = self.io.get_df_from_db(sql=SqlConfig.sql_cust_info())
+        cust_code = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
+        cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
         item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
         # item_mst['sku_cd'] = item_mst['sku_cd'].astype(str)
@@ -128,7 +133,8 @@ class Pipeline(object):
         param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
         param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
 
-        mst_info = {'cust_mst': cust_mst,
+        mst_info = {'cust_code': cust_code,
+                    'cust_grp': cust_grp,
                     'item_mst': item_mst,
                     'cal_mst': cal_mst,
                     'model_mst': model_mst,
@@ -138,8 +144,8 @@ class Pipeline(object):
         scores = None
         if config.CLS_TRAIN:
             # Initiate train class
-            training = Train(division=self.division, mst_info=mst_info,
-                             date=self.date, hrchy=self.hrchy, common=self.common)
+            training = Train(division=self.division, mst_info=mst_info, date=self.date,
+                             hrchy_cust=self.hrchy_cust, hrchy_item=self.hrchy_item, common=self.common)
 
             # Train the model
             scores = training.train(df=data_preped)
@@ -168,8 +174,8 @@ class Pipeline(object):
         data_pred = None
         if config.CLS_PRED:
             # Initiate predict class
-            predict = Predict(division=self.division, mst_info=mst_info,
-                              date=self.date, hrchy=self.hrchy, common=self.common)
+            predict = Predict(division=self.division, mst_info=mst_info, date=self.date,
+                              hrchy_cust=self.hrchy_cust, hrchy_item=self.hrchy_item, common=self.common)
 
             # Forecast the model
             prediction = predict.forecast(df=data_preped)

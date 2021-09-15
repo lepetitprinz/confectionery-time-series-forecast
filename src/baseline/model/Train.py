@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 
 class Train(object):
     def __init__(self, division: str, mst_info: dict, date: dict,
-                 hrchy: list, common: dict):
+                 hrchy_cust: list, hrchy_item: list, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
@@ -25,14 +25,17 @@ class Train(object):
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']   # Target column
         self.exo_col_list = ['discount']     # Exogenous features
-        self.cust_mst = mst_info['cust_mst']
+        self.cust_code = mst_info['cust_code']
+        self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
         self.date = date
         self.common = common
 
         # Data Level Configuration
-        self.hrchy = hrchy
-        self.hrchy_level = len(hrchy) - 1
+        self.hrchy_cust = hrchy_cust
+        self.hrchy_item = hrchy_item
+        self.hrchy = hrchy_cust + hrchy_item
+        self.hrchy_level = len(self.hrchy) - 1
 
         # Algorithm Configuration
         self.param_grid = mst_info['param_grid']
@@ -98,9 +101,15 @@ class Train(object):
         result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
 
-        result = pd.merge(result, self.item_mst[config.COL_NAMES[: 2*len(self.hrchy)]].drop_duplicates(),
-                          on=self.hrchy, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        # Merge information
+        # Item Names
+        result = pd.merge(result, self.item_mst[config.COL_ITEM[: 2 * len(self.hrchy_item)]].drop_duplicates(),
+                          on=self.hrchy_item, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
+        result = pd.merge(result, self.cust_grp[config.COL_CUST[: 2 * len(self.hrchy_cust)]].drop_duplicates(),
+                          on=self.hrchy_cust, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+
+        # Customer Names
         result = result.rename(columns=config.COL_RENAME1)
         result = result.rename(columns=config.COL_RENAME2)
 

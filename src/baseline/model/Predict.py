@@ -11,7 +11,7 @@ import pandas as pd
 
 class Predict(object):
     def __init__(self, division: str, mst_info: dict, date: dict,
-                 hrchy: list, common: dict):
+                 hrchy_cust: list, hrchy_item: list, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
@@ -19,13 +19,16 @@ class Predict(object):
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']     # Target features
         self.exo_col_list = ['discount']     # Exogenous features
-        self.cust_mst = mst_info['cust_mst']
+        self.cust_code = mst_info['cust_code']
+        self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
         self.cal_mst = mst_info['cal_mst']
         self.date = date
 
         # Data Level Configuration
-        self.hrchy = hrchy
+        self.hrchy_cust = hrchy_cust
+        self.hrchy_item = hrchy_item
+        self.hrchy = hrchy_cust + hrchy_item
         self.hrchy_level = len(hrchy) - 1
 
         # Algorithms
@@ -79,32 +82,38 @@ class Predict(object):
     def make_pred_result(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
 
-        results = []
+        result_pred = []
         fkey = [hrchy_key + str(i+1).zfill(3) for i in range(len(df))]
         for i, pred in enumerate(df):
-            for j, result in enumerate(pred[-1]):
-                results.append([fkey[i]] + pred[:-1] +
-                               [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), result])
+            for j, result_pred in enumerate(pred[-1]):
+                result_pred.append([fkey[i]] + pred[:-1] +
+                               [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), result_pred])
                 # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
-        results = pd.DataFrame(results)
+        result_pred = pd.DataFrame(result_pred)
         cols = ['fkey'] + self.hrchy + ['stat_cd', 'yymmdd', 'result_sales']
-        results.columns = cols
-        results['project_cd'] = 'ENT001'
-        results['division_cd'] = self.division
-        results['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
-        results['create_user'] = 'SYSTEM'
+        result_pred.columns = cols
+        result_pred['project_cd'] = 'ENT001'
+        result_pred['division_cd'] = self.division
+        result_pred['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        result_pred['create_user'] = 'SYSTEM'
 
-        results = pd.merge(results, self.item_mst[config.COL_NAMES[: 2*len(self.hrchy)]].drop_duplicates(),
-                           on=self.hrchy, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
-        results = pd.merge(results, self.cal_mst, on='yymmdd', how='left')
+        result_pred = pd.merge(result_pred,
+                               self.item_mst[config.COL_ITEM[: 2 * len(self.hrchy_item)]].drop_duplicates(),
+                               on=self.hrchy_item, how='left',
+                               suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        result_pred = pd.merge(result_pred,
+                               self.cust_grp[config.COL_CUST[: 2 * len(self.hrchy_cust)]].drop_duplicates(),
+                               on=self.hrchy_cust, how='left',
+                               suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        result_pred = pd.merge(result_pred, self.cal_mst, on='yymmdd', how='left')
 
         # Rename columns
-        results = results.rename(columns=config.COL_RENAME1)
-        results = results.rename(columns=config.COL_RENAME2)
+        result_pred = result_pred.rename(columns=config.COL_RENAME1)
+        result_pred = result_pred.rename(columns=config.COL_RENAME2)
 
 
-        return results
+        return result_pred
 
     # def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
     #     # scaling

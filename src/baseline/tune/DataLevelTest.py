@@ -20,7 +20,7 @@ class DataLevelTest(object):
     def test(self):
         for cust_lvl in self.cust_lvl_list:
             for prod_lvl in self.prod_lvl_list:
-                pipeline = Pipeline(division=self.division, cust_lvl=cust_lvl, prod_lvl=prod_lvl,
+                pipeline = Pipeline(division=self.division, cust_lvl=cust_lvl, item_lvl=prod_lvl,
                                     save_step_yn=self.save_steps_yn, load_step_yn=self.load_step_yn,
                                     save_db_yn=self.save_db_yn)
                 pipeline.run()
