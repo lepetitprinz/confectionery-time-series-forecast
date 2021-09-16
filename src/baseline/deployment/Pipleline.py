@@ -6,7 +6,7 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
-from baseline.model.Split import Split
+from baseline.tune.Split import Split
 
 
 class Pipeline(object):
@@ -30,9 +30,12 @@ class Pipeline(object):
 
         # Data Level Configuration
         self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(item_lvl) + '-'
-        self.hrchy_cust = self.common['hrchy_cust'].split(',')
-        self.hrchy_item = self.common['hrchy_prod'].split(',')
-        self.hrchy = self.hrchy_cust[:cust_lvl] + self.hrchy_item[:item_lvl]
+        self.hrchy_lvl = {'cust_lvl': cust_lvl, 'item_lvl': item_lvl}
+        self.hrchy_cust = self.common['hrchy_cust'].run(',')
+        self.hrchy_item = self.common['hrchy_item'].run(',')
+        self.hrchy_dict = {'hrchy_cust': self.common['hrchy_cust'].run(','),
+                           'hrchy_item': self.common['hrchy_item'].run(',')}
+        self.hrchy_list = self.hrchy_cust[:cust_lvl] + self.hrchy_item[:item_lvl]
 
         # Save & Load Configuration
         self.save_steps_yn = save_step_yn
@@ -71,7 +74,7 @@ class Pipeline(object):
         checked = None
         err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD', val='ATTR01_VAL')
         if config.CLS_CNS:
-            cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy, date=self.date,
+            cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy_list, date=self.date,
                                    err_grp_map=err_grp_map, save_yn=False)
             checked = cns.check(df=sell)
 
@@ -97,7 +100,7 @@ class Pipeline(object):
 
             # Initiate data preprocessing class
             preprocess = DataPrep(date=self.date, cust=cust, division=self.division,
-                                  common=self.common, hrchy=self.hrchy)
+                                  common=self.common, hrchy=self.hrchy_list)
 
             # Preprocess the dataset
             data_preped = preprocess.preprocess(data=checked)
@@ -114,7 +117,7 @@ class Pipeline(object):
             data_preped = self.io.load_object(file_path=file_path, data_type='binary')
 
         # ================================================================================================= #
-        # 4. Training
+        # 4.0. Load information
         # ================================================================================================= #
         # Load information form DB
         # Load master dataset
@@ -140,12 +143,15 @@ class Pipeline(object):
                     'model_mst': model_mst,
                     'param_grid': param_grid}
 
+        # ================================================================================================= #
+        # 4. Training
+        # ================================================================================================= #
         print("Step 4: Train\n")
         scores = None
         if config.CLS_TRAIN:
             # Initiate train class
             training = Train(division=self.division, mst_info=mst_info, date=self.date,
-                             hrchy_cust=self.hrchy_cust, hrchy_item=self.hrchy_item, common=self.common)
+                             hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
 
             # Train the model
             scores = training.train(df=data_preped)
@@ -175,7 +181,7 @@ class Pipeline(object):
         if config.CLS_PRED:
             # Initiate predict class
             predict = Predict(division=self.division, mst_info=mst_info, date=self.date,
-                              hrchy_cust=self.hrchy_cust, hrchy_item=self.hrchy_item, common=self.common)
+                              hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
 
             # Forecast the model
             prediction = predict.forecast(df=data_preped)
@@ -206,6 +212,6 @@ class Pipeline(object):
         print("Step 6: Split\n")
         if config.CLS_SPLIT:
             # Initiate predict class
-            split = Split(division=self.division, hrchy=self.hrchy)
+            split = Split(division_cd=self.division, hrchy=self.hrchy_list)
 
-            split_rate = split.split(data=data_pred)
+            split_rate = split.run(data=data_pred)

@@ -17,25 +17,26 @@ warnings.filterwarnings('ignore')
 
 class Train(object):
     def __init__(self, division: str, mst_info: dict, date: dict,
-                 hrchy_cust: list, hrchy_item: list, common: dict):
+                 hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
+        self.date = date
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']   # Target column
         self.exo_col_list = ['discount']     # Exogenous features
         self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
-        self.date = date
         self.common = common
 
         # Data Level Configuration
-        self.hrchy_cust = hrchy_cust
-        self.hrchy_item = hrchy_item
-        self.hrchy = hrchy_cust + hrchy_item
-        self.hrchy_level = len(self.hrchy) - 1
+        self.hrchy_lvl_dict = hrchy_lvl_dict
+        self.hrchy_tot_lvl = hrchy_lvl_dict['cust_lvl'] + hrchy_lvl_dict['item_lvl'] - 1
+        self.hrchy_cust = hrchy_dict['hrchy_cust']
+        self.hrchy_item = hrchy_dict['hrchy_item']
+        self.hrchy = self.hrchy_cust[:hrchy_lvl_dict['cust_lvl']] + self.hrchy_item[:hrchy_lvl_dict['item_lvl']]
 
         # Algorithm Configuration
         self.param_grid = mst_info['param_grid']
@@ -51,7 +52,7 @@ class Train(object):
         self.validation_method = config.VALIDATION_METHOD
 
     def train(self, df) -> dict:
-        scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
+        scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_tot_lvl,
                                       fn=self.train_model,
                                       df=df)
 
@@ -86,7 +87,7 @@ class Train(object):
         return score
 
     def make_score_result(self, data: dict, hrchy_key: str) -> pd.DataFrame:
-        result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
+        result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_tot_lvl,
                                                fn=self.score_to_df,
                                                df=data)
 
@@ -96,18 +97,27 @@ class Train(object):
 
         result['project_cd'] = self.common['project_cd']
         result['division_cd'] = self.division
-        result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        # result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        result['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
         result['create_user'] = 'SYSTEM'
         result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
 
         # Merge information
         # Item Names
-        result = pd.merge(result, self.item_mst[config.COL_ITEM[: 2 * len(self.hrchy_item)]].drop_duplicates(),
-                          on=self.hrchy_item, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        if self.hrchy_lvl_dict['item_lvl'] > 0:
+            result = pd.merge(result,
+                              self.item_mst[config.COL_ITEM[: 2 * self.hrchy_lvl_dict['item_lvl']]].drop_duplicates(),
+                              on=self.hrchy_item[:self.hrchy_lvl_dict['item_lvl']],
+                              how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
-        result = pd.merge(result, self.cust_grp[config.COL_CUST[: 2 * len(self.hrchy_cust)]].drop_duplicates(),
-                          on=self.hrchy_cust, how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        # Customer Names
+        if self.hrchy_lvl_dict['cust_lvl'] > 0:
+            result = pd.merge(result,
+                              self.cust_grp[config.COL_CUST[: 2 * self.hrchy_lvl_dict['cust_lvl']]].drop_duplicates(),
+                              on=self.hrchy_cust[:self.hrchy_lvl_dict['cust_lvl']],
+                              how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+            result = result.fillna('-')
 
         # Customer Names
         result = result.rename(columns=config.COL_RENAME1)

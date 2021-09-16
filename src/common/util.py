@@ -59,9 +59,8 @@ def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> dict:
     elif lvl == hrchy_lvl:
         temp = {}
         for key_hrchy, val_hrchy in val.items():
-            if len(val_hrchy) > 2:
-                result = fn(val_hrchy)
-                temp[key_hrchy] = result
+            result = fn(val_hrchy)
+            temp[key_hrchy] = result
         return temp
 
     return temp

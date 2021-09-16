@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="Microsoft SQL Server - BISCM@10.112.33.101" uuid="80d519be-1ea2-42df-8165-420ac342f7f3">
-      <driver-ref>sqlserver.ms</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</jdbc-driver>
-      <jdbc-url>jdbc:sqlserver://10.112.33.101:1433;database=BISCM</jdbc-url>
-      <working-dir>$ProjectFileDir$</working-dir>
-    </data-source>
     <data-source source="LOCAL" name="BISCM@10.109.16.49" uuid="149d301b-2651-4e86-a2c5-2731312c5ed4">
       <driver-ref>sqlserver.ms</driver-ref>
       <synchronize>true</synchronize>

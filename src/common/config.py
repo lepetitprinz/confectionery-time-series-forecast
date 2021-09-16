@@ -2,7 +2,7 @@
 CLS_LOAD = False
 CLS_CNS = False
 CLS_PREP = False
-CLS_TRAIN = True
+CLS_TRAIN = False
 CLS_PRED = True
 CLS_SPLIT = False
 
@@ -48,5 +48,10 @@ COL_RENAME2 = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 #
 COL_ITEM = ['biz_cd', 'biz_nm', 'line_cd', 'line_nm', 'brand_cd', 'brand_nm',
              'item_cd', 'item_nm', 'sku_cd', 'sku_nm']
-
 COL_CUST = ['cust_grp_cd', 'cust_grp_nm']
+
+
+LVL_CD_LIST = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd', 'sku_cd', 'cust_grp_cd']
+LVL_MAP = {1: 'biz_cd', 2: 'line_cd', 3: 'brand_cd', 4: 'item_cd', 5: 'sku_cd', 6: 'cust_grp_cd'}
+LVL_FKEY_MAP = {'biz_cd': 'C0-P1', 'line_cd': 'C0-P2', 'brand_cd': 'C0-P3',
+                 'item_cd': 'C0-P4', 'sku_cd': 'C0-P5', 'cust_grp_cd': 'C1-P5'}

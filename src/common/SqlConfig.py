@@ -45,8 +45,8 @@ class SqlConfig(object):
               FROM (
                     SELECT CUST.CUST_CD
                          , CUST.CUST_GRP_CD
-                         , ROW_NUMBER() over (PARTITION BY CUST_CD, GRP.CUST_GRP_CD ORDER BY CUST_CD, GRP.CUST_GRP_CD) AS RANK
-                         , CUST_NM
+                         , ROW_NUMBER() over (PARTITION BY CUST_CD, GRP.CUST_GRP_CD 
+                                              ORDER BY CUST_CD, GRP.CUST_GRP_CD) AS RANK
                       FROM (
                             SELECT CUST_GRP_CD
                                  , CUST_CD
@@ -297,8 +297,43 @@ class SqlConfig(object):
     @staticmethod
     def sql_exg_data():
         sql = """
-            SELECT *
-            FROM M4S_O110710
-        
+            SELECT IDX_CD
+                 , IDX_DTL_CD
+                 , YYMM
+                 , REF_VAL
+              FROM M4S_O110710
+             WHERE IDX_CD IN (
+                              SELECT IDX_CD
+                                FROM M4S_O110700
+                               WHERE USE_YN = 'Y'
+                                 AND EXG_ID IN (
+                                                SELECT EXG_ID
+                                                  FROM M4S_O110701
+                                                 WHERE USE_YN = 'Y'
+                                               )
+                             )
+        """
+        return sql
+
+    @staticmethod
+    def sql_pred_all(**kwargs):
+        sql = f"""
+            SELECT DATA_VRSN_CD
+                 , DIVISION_CD
+                 , STAT_CD
+               --  , FKEY
+                 , WEEK
+                 , YYMMDD
+                 , RESULT_SALES AS QTY
+                 , CUST_GRP_CD
+                 , ITEM_ATTR01_CD AS BIZ_CD
+                 , ITEM_ATTR02_CD AS LINE_CD
+                 , ITEM_ATTR03_CD AS BRAND_CD
+                 , ITEM_ATTR04_CD AS ITEM_CD
+                 , ITEM_CD AS SKU_CD
+              FROM M4S_I110400
+             WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND FKEY LIKE '%{kwargs['fkey']}%'
         """
         return sql

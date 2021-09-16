@@ -11,25 +11,26 @@ import pandas as pd
 
 class Predict(object):
     def __init__(self, division: str, mst_info: dict, date: dict,
-                 hrchy_cust: list, hrchy_item: list, common: dict):
+                 hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
+        self.date = date
         self.division = division    # SELL-IN / SELL-OUT
-        self.target_col = common['target_col']     # Target features
-        self.exo_col_list = ['discount']     # Exogenous features
+        self.target_col = common['target_col']    # Target features
+        self.exo_col_list = ['discount']    # Exogenous features
         self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
         self.cal_mst = mst_info['cal_mst']
-        self.date = date
 
         # Data Level Configuration
-        self.hrchy_cust = hrchy_cust
-        self.hrchy_item = hrchy_item
-        self.hrchy = hrchy_cust + hrchy_item
-        self.hrchy_level = len(hrchy) - 1
+        self.hrchy_lvl_dict = hrchy_lvl_dict
+        self.hrchy_tot_lvl = hrchy_lvl_dict['cust_lvl'] + hrchy_lvl_dict['item_lvl'] - 1
+        self.hrchy_cust = hrchy_dict['hrchy_cust']
+        self.hrchy_item = hrchy_dict['hrchy_item']
+        self.hrchy = self.hrchy_cust[:hrchy_lvl_dict['cust_lvl']] + self.hrchy_item[:hrchy_lvl_dict['item_lvl']]
 
         # Algorithms
         self.param_grid = mst_info['param_grid']
@@ -42,7 +43,7 @@ class Predict(object):
                          'sarima': self.algorithm.sarimax}
 
     def forecast(self, df):
-        prediction = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_level,
+        prediction = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_tot_lvl,
                                                    fn=self.forecast_model,
                                                    df=df)
 
@@ -81,13 +82,14 @@ class Predict(object):
 
     def make_pred_result(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
+        end_date += timedelta(weeks=15) - timedelta(days=6)   # Todo: Exception
 
         result_pred = []
         fkey = [hrchy_key + str(i+1).zfill(3) for i in range(len(df))]
         for i, pred in enumerate(df):
-            for j, result_pred in enumerate(pred[-1]):
+            for j, prediction in enumerate(pred[-1]):
                 result_pred.append([fkey[i]] + pred[:-1] +
-                               [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), result_pred])
+                                   [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
                 # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
         result_pred = pd.DataFrame(result_pred)
@@ -95,23 +97,29 @@ class Predict(object):
         result_pred.columns = cols
         result_pred['project_cd'] = 'ENT001'
         result_pred['division_cd'] = self.division
-        result_pred['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        # result_pred['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
+        result_pred['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
         result_pred['create_user'] = 'SYSTEM'
 
-        result_pred = pd.merge(result_pred,
-                               self.item_mst[config.COL_ITEM[: 2 * len(self.hrchy_item)]].drop_duplicates(),
-                               on=self.hrchy_item, how='left',
-                               suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
-        result_pred = pd.merge(result_pred,
-                               self.cust_grp[config.COL_CUST[: 2 * len(self.hrchy_cust)]].drop_duplicates(),
-                               on=self.hrchy_cust, how='left',
-                               suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        if self.hrchy_lvl_dict['item_lvl'] > 0:
+            result_pred = pd.merge(result_pred,
+                                   self.item_mst[config.COL_ITEM[: 2*self.hrchy_lvl_dict['item_lvl']]].drop_duplicates(),
+                                   on=self.hrchy_item[:self.hrchy_lvl_dict['item_lvl']],
+                                   how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+
+        if self.hrchy_lvl_dict['cust_lvl'] > 0:
+            result_pred = pd.merge(result_pred,
+                                   self.cust_grp[config.COL_CUST[: 2 * self.hrchy_lvl_dict['cust_lvl']]].drop_duplicates(),
+                                   on=self.hrchy_cust[:self.hrchy_lvl_dict['cust_lvl']],
+                                   how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+
+            result_pred = result_pred.fillna('-')
+
         result_pred = pd.merge(result_pred, self.cal_mst, on='yymmdd', how='left')
 
         # Rename columns
         result_pred = result_pred.rename(columns=config.COL_RENAME1)
         result_pred = result_pred.rename(columns=config.COL_RENAME2)
-
 
         return result_pred
 

@@ -19,7 +19,7 @@ class ConsistencyCheck(object):
         self.hrchy = hrchy
         self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
         self.err_grp_map = err_grp_map
-        self.unit_cd = common['unit_cd'].split(',')
+        self.unit_cd = common['unit_cd'].run(',')
 
         # Save and Load Configuration
         self.cns_tb_name = 'M4S_I002174'

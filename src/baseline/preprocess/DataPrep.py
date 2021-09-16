@@ -155,7 +155,6 @@ class DataPrep(object):
         df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
 
         return df_resampled
-
     #
     def make_seq_to_cust_map(self, df: pd.DataFrame):
         seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
