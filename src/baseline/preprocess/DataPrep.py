@@ -32,7 +32,6 @@ class DataPrep(object):
         self.decompose_yn = decompose_yn
 
     def preprocess(self, data: pd.DataFrame) -> dict:
-        print("Implement data preprocessing")
         # convert data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(str)
@@ -61,8 +60,6 @@ class DataPrep(object):
         data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
                                              fn=self.resample,
                                              df=data_group)
-
-        print("Data preprocessing is finished\n")
 
         return data_resample
 

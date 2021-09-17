@@ -1,8 +1,8 @@
 # Class Configuration
-CLS_LOAD = False
+CLS_LOAD = True
 CLS_CNS = False
-CLS_PREP = False
-CLS_TRAIN = False
+CLS_PREP = True
+CLS_TRAIN = True
 CLS_PRED = True
 CLS_SPLIT = False
 

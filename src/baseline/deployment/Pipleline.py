@@ -31,10 +31,10 @@ class Pipeline(object):
         # Data Level Configuration
         self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(item_lvl) + '-'
         self.hrchy_lvl = {'cust_lvl': cust_lvl, 'item_lvl': item_lvl}
-        self.hrchy_cust = self.common['hrchy_cust'].run(',')
-        self.hrchy_item = self.common['hrchy_item'].run(',')
-        self.hrchy_dict = {'hrchy_cust': self.common['hrchy_cust'].run(','),
-                           'hrchy_item': self.common['hrchy_item'].run(',')}
+        self.hrchy_cust = self.common['hrchy_cust'].split(',')
+        self.hrchy_item = self.common['hrchy_item'].split(',')
+        self.hrchy_dict = {'hrchy_cust': self.common['hrchy_cust'].split(','),
+                           'hrchy_item': self.common['hrchy_item'].split(',')}
         self.hrchy_list = self.hrchy_cust[:cust_lvl] + self.hrchy_item[:item_lvl]
 
         # Save & Load Configuration
@@ -46,9 +46,9 @@ class Pipeline(object):
         # ================================================================================================= #
         # 1. Load the dataset
         # ================================================================================================= #
-        print("Step 1: Load the dataset\n")
         sell = None
         if config.CLS_LOAD:
+            print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
                 sell = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
             elif self.division == 'SELL_OUT':
@@ -70,10 +70,10 @@ class Pipeline(object):
         # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
-        print("Step 2: Check Consistency \n")
         checked = None
         err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD', val='ATTR01_VAL')
         if config.CLS_CNS:
+            print("Step 2: Check Consistency \n")
             cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy_list, date=self.date,
                                    err_grp_map=err_grp_map, save_yn=False)
             checked = cns.check(df=sell)
@@ -92,9 +92,9 @@ class Pipeline(object):
         # ================================================================================================= #
         # 3. Data Preprocessing
         # ================================================================================================= #
-        print("Step 3: Data Preprocessing\n")
         data_preped = None
         if config.CLS_PREP:
+            print("Step 3: Data Preprocessing\n")
             # Load Customer dataset
             cust = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
 
@@ -146,9 +146,9 @@ class Pipeline(object):
         # ================================================================================================= #
         # 4. Training
         # ================================================================================================= #
-        print("Step 4: Train\n")
         scores = None
         if config.CLS_TRAIN:
+            print("Step 4: Train\n")
             # Initiate train class
             training = Train(division=self.division, mst_info=mst_info, date=self.date,
                              hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
@@ -176,9 +176,9 @@ class Pipeline(object):
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
-        print("Step 5: Forecast\n")
         data_pred = None
         if config.CLS_PRED:
+            print("Step 5: Forecast\n")
             # Initiate predict class
             predict = Predict(division=self.division, mst_info=mst_info, date=self.date,
                               hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)

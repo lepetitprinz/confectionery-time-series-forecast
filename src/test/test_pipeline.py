@@ -1,9 +1,9 @@
 from baseline.deployment.Pipleline import Pipeline
 
 division = 'SELL_IN'
-cust_lvl = 0    # Customer_group - Customer
-prod_lvl = 3    # Biz - Line - Brand - Item - SKU
-save_step_yn = True
+cust_lvl = 1    # Customer_group - Customer
+prod_lvl = 5    # Biz - Line - Brand - Item - SKU
+save_step_yn = False
 load_step_yn = True
 save_db_yn = True
 
