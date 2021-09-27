@@ -4,7 +4,6 @@ CLS_CNS = False
 CLS_PREP = True
 CLS_TRAIN = True
 CLS_PRED = True
-CLS_SPLIT = False
 
 # Database Configuration
 RDMS = 'mssql+pymssql'

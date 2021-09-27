@@ -205,13 +205,3 @@ class Pipeline(object):
             file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
                                        step='pred', extension='pickle')
             data_pred = self.io.load_object(file_path=file_path, data_type='binary')
-
-        # ================================================================================================= #
-        # 6. Split
-        # ================================================================================================= #
-        print("Step 6: Split\n")
-        if config.CLS_SPLIT:
-            # Initiate predict class
-            split = Split(division_cd=self.division, hrchy=self.hrchy_list)
-
-            split_rate = split.run(data=data_pred)

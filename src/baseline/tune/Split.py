@@ -1,5 +1,7 @@
 import common.config as config
 
+import os
+import numpy as np
 import pandas as pd
 
 
@@ -12,6 +14,7 @@ class Split(object):
 
         # Data Level Configuration
         # Ratio
+        self.lvl = lvl
         self.ratio_hrchy = config.LVL_CD_LIST[:lvl['lvl_ratio']]
         self.ratio_lvl = lvl['lvl_ratio']
         self.ratio_cd = config.LVL_MAP[lvl['lvl_ratio']]
@@ -40,9 +43,10 @@ class Split(object):
         merged = pd.merge(df_split, df_ratio, how='right',
                           on=self.fix_col + self.split_hrchy)
         merged = merged.sort_values(by=self.fix_col + self.split_hrchy)
+        merged['split_qty'] = np.round(merged[self.target_col] * merged['rate'])
 
-        print("")
-        return merged
+        title = config.LVL_CD_LIST[self.lvl['lvl_ratio']-1] + '_to_' + config.LVL_CD_LIST[self.lvl['lvl_split']-1]
+        merged.to_csv(os.path.join('..', '..', 'tune', title + '.csv'), index=False)
 
     @staticmethod
     def concat_df(df_list: list):
@@ -53,7 +57,9 @@ class Split(object):
         return concat
 
     def drop_qty(self, hrchy: list, data: pd.DataFrame):
-        data = data.drop(columns=[self.target_col])
+        data[self.ratio_cd] = hrchy[-1]
+        data = data.drop(columns=[self.target_col, 'sum'])
+
         return data
 
     def calc_ratio(self, hrchy, hrchy_lvl, data, cd=None, lvl=0):
@@ -90,29 +96,34 @@ class Split(object):
                     sliced = data[cd][data[cd][col] == code]
                     sliced = sliced.reset_index(drop=True)
                 # sliced = sliced.sort_values(by=self.fix_col + self.split_hrchy)
+                    sliced = sliced.rename(columns={self.target_col: self.target_col + '_' + code})
                 temp.append((code, sliced))
 
             if len(temp) > 1:
-                concat = pd.DataFrame()
-                for df in temp:
-                    other = df[1].sort_values(by=self.fix_col + self.split_hrchy)
-                    concat = pd.concat([concat, other], axis=1)
+                merged = temp[0][1]
+                for _, df in temp[1:]:
+                    merged = pd.merge(merged, df, on=self.fix_col, suffixes=('', '_DROP'))
 
                 # filter qty columns
-                qty_cols = [col for col in concat.columns if 'qty' in col]
-                qty_sum = concat[qty_cols]
-                qty_sum['sum'] = qty_sum.sum(axis=1)
-
-                for t in temp:
-                    t[1]['rate'] = t[1]['qty'] / qty_sum['sum']
+                qty_cols = [col for col in merged.columns if 'qty' in col]
+                qty = merged[self.fix_col + self.split_hrchy + qty_cols]
+                qty.loc[:, 'sum'] = qty.sum(axis=1)
 
                 result = {}
-                for rated in temp:
-                    result[rated[0]] = rated[1]
+                for code, df in temp:
+                    qty_col = self.target_col + '_' + code
+                    sliced = qty[self.fix_col + self.split_hrchy + [qty_col] + ['sum']]
+                    # sliced['rate'] = sliced[qty_col] / sliced['sum']
+                    sliced.loc[:, 'rate'] = sliced[qty_col] / sliced['sum']
+                    sliced = sliced.rename(columns={qty_col: self.target_col})
+                    result[code] = sliced
 
             else:
-                temp[0][1]['rate'] = 1
-                result = {temp[0][0]: temp[0][1]}
+                code, df = temp[0]
+                df = df.rename(columns={self.target_col + '_' + code: self.target_col})
+                df['rate'] = 1
+                df['sum'] = df[self.target_col]
+                result = {code: df}
 
             return result
 
@@ -124,7 +135,7 @@ class Split(object):
             for key, val in df.items():
                 hrchy.append(key)
                 result = self.hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val,
-                                                  lvl=lvl+1, hrchy=hrchy)
+                                                       lvl=lvl+1, hrchy=hrchy)
                 temp.extend(result)
                 hrchy.remove(key)
 
@@ -133,7 +144,7 @@ class Split(object):
             for key_hrchy, val_hrchy in val.items():
                 hrchy.append(key_hrchy)
                 result = self.hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy,
-                                                  lvl=lvl+1, hrchy=hrchy)
+                                                       lvl=lvl+1, hrchy=hrchy)
                 temp.extend(result)
                 hrchy.remove(key_hrchy)
 
