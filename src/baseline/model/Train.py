@@ -16,20 +16,21 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, mst_info: dict, date: dict,
+    def __init__(self, division: str, mst_info: dict, date: dict, exg_list: list,
                  hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
         self.date = date
+        self.common = common
         self.division = division    # SELL-IN / SELL-OUT
-        self.target_col = common['target_col']   # Target column
-        self.exo_col_list = ['discount']     # Exogenous features
+        self.target_col = common['target_col']    # Target column
+        # self.exo_col_list = ['discount']     # Exogenous features
+        self.exo_col_list = exg_list + ['discount']    # Exogenous features
         self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
-        self.common = common
 
         # Data Level Configuration
         self.hrchy_lvl_dict = hrchy_lvl_dict

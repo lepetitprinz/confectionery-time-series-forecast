@@ -8,7 +8,7 @@ from baseline.tune.Split import Split
 io = DataIO()
 sql_conf = SqlConfig()
 
-#  
+#
 save_steps_yn = False
 load_step_yn = True
 
@@ -16,7 +16,7 @@ load_step_yn = True
 data_vrsn_cd = '20210416-20210912'
 division_cd = 'SELL_IN'
 
-lvl_ratio = 6
+lvl_ratio = 4
 lvl = {'lvl_ratio': lvl_ratio,
        'lvl_split': lvl_ratio-1}
 

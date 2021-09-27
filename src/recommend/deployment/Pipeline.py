@@ -6,10 +6,13 @@ from recommend.feature_engineering.Rank import Rank
 
 
 class Pipeline(object):
+    """
+    Ranking Pipeline
+    """
     def __init__(self, item_col: str, meta_col: str):
         self.item_col = item_col
         self.meta_col = meta_col
-        self.tb_name = 'M4S_O110300'
+        self.tb_name_rank = 'M4S_O110300'
         self.sql_conf = SqlConfig()
         self.io = DataIO()
 
@@ -46,4 +49,4 @@ class Pipeline(object):
 
         # Save
         results_db = prep.conv_to_db_table(data=results)
-        self.io.insert_to_db(df=results_db, tb_name=self.tb_name)
+        self.io.insert_to_db(df=results_db, tb_name=self.tb_name_rank)

@@ -10,7 +10,7 @@ import pandas as pd
 
 
 class Predict(object):
-    def __init__(self, division: str, mst_info: dict, date: dict,
+    def __init__(self, division: str, mst_info: dict, date: dict, exg_list: list,
                  hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
@@ -19,7 +19,7 @@ class Predict(object):
         self.date = date
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']    # Target features
-        self.exo_col_list = ['discount']    # Exogenous features
+        self.exo_col_list = exg_list + ['discount']    # Exogenous features
         self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']

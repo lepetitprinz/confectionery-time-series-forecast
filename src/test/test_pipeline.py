@@ -1,11 +1,11 @@
 from baseline.deployment.Pipleline import Pipeline
 
 division = 'SELL_IN'
-cust_lvl = 1    # Customer_group - Customer
-prod_lvl = 5    # Biz - Line - Brand - Item - SKU
+cust_lvl = 0    # Customer_group - Customer
+prod_lvl = 4    # Biz - Line - Brand - Item - SKU
 save_step_yn = False
 load_step_yn = True
-save_db_yn = True
+save_db_yn = False
 
 pipeline = Pipeline(division=division,
                     cust_lvl=cust_lvl,

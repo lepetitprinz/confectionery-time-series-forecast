@@ -4,6 +4,7 @@ import common.util as util
 
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 
 
 class DataPrep(object):
@@ -17,7 +18,8 @@ class DataPrep(object):
         self.cust = cust
         self.target_col = common['target_col']
         self.col_agg_map = {'sum': ['qty'],
-                            'avg': ['discount']}
+                            'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg',
+                                    'temp_max', 'temp_min']}
         self.seq_to_cust_map = {}
         self.resample_rule = common['resample_rule']
         self.date_range = pd.date_range(start=date['date_from'],
@@ -29,9 +31,9 @@ class DataPrep(object):
         self.hrchy_level = len(hrchy) - 1
 
         # Save & Load configuration
-        self.decompose_yn = decompose_yn
+        self.decompose_yn = True
 
-    def preprocess(self, data: pd.DataFrame) -> dict:
+    def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> dict:
         # convert data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(str)
@@ -39,6 +41,12 @@ class DataPrep(object):
         # Mapping: cust_cd -> cust_grp_cd
         data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
         data['cust_grp_cd'] = data['cust_grp_cd'].fillna('-')
+
+        # Exogenous Data
+        exg = self.prep_exg_data(data=exg)
+
+        # Merge sales data & exogenous data
+        data = pd.merge(data, exg, on='yymmdd', how='left')
 
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
@@ -86,6 +94,27 @@ class DataPrep(object):
         # df = self.add_noise_feat(df=df)
 
         return df
+
+    def prep_exg_data(self, data: pd.DataFrame):
+        exg_map = defaultdict(lambda: defaultdict(list))
+        for lvl1, lvl2, date, val in zip(data['idx_dtl_cd'], data['idx_cd'], data['yymm'], data['ref_val']):
+            exg_map[lvl1][lvl2].append((date, val))
+
+        result = pd.DataFrame()
+        for key1, val1 in exg_map.items():
+            for key2, val2 in val1.items():
+                temp = pd.DataFrame(val2, columns=['yymmdd', key2])
+                temp = temp.sort_values(by='yymmdd')
+                if len(result) == 0:
+                    result = pd.concat([result, temp], axis=1, join='outer')
+                else:
+                    result = pd.merge(result, temp, on='yymmdd')
+
+        result.columns = [col.lower() for col in result.columns]
+        result.loc[:, 'yymmdd'] = result.loc[:, 'yymmdd'].astype(int)
+        result = result.fillna(0)
+
+        return result
 
     def group(self, data, cd=None, lvl=0) -> dict:
         grp = {}

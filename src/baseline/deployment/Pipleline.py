@@ -92,18 +92,22 @@ class Pipeline(object):
         # ================================================================================================= #
         # 3. Data Preprocessing
         # ================================================================================================= #
+        # Load dataset
+        # Customer dataset
+        cust = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
+        # Exogenous dataset
+        exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data())
+        exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
+
         data_preped = None
         if config.CLS_PREP:
             print("Step 3: Data Preprocessing\n")
-            # Load Customer dataset
-            cust = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
-
             # Initiate data preprocessing class
             preprocess = DataPrep(date=self.date, cust=cust, division=self.division,
                                   common=self.common, hrchy=self.hrchy_list)
 
             # Preprocess the dataset
-            data_preped = preprocess.preprocess(data=checked)
+            data_preped = preprocess.preprocess(data=checked, exg=exg)
 
             # Save Step result
             if self.save_steps_yn:
@@ -150,7 +154,7 @@ class Pipeline(object):
         if config.CLS_TRAIN:
             print("Step 4: Train\n")
             # Initiate train class
-            training = Train(division=self.division, mst_info=mst_info, date=self.date,
+            training = Train(division=self.division, mst_info=mst_info, date=self.date, exg_list=exg_list,
                              hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
 
             # Train the model
@@ -180,7 +184,7 @@ class Pipeline(object):
         if config.CLS_PRED:
             print("Step 5: Forecast\n")
             # Initiate predict class
-            predict = Predict(division=self.division, mst_info=mst_info, date=self.date,
+            predict = Predict(division=self.division, mst_info=mst_info, date=self.date, exg_list=exg_list,
                               hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
 
             # Forecast the model
