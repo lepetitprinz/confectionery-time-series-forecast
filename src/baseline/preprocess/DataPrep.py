@@ -1,5 +1,4 @@
 from baseline.analysis.Decomposition import Decomposition
-import common.config as config
 import common.util as util
 
 import numpy as np
@@ -18,8 +17,7 @@ class DataPrep(object):
         self.cust = cust
         self.target_col = common['target_col']
         self.col_agg_map = {'sum': ['qty'],
-                            'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg',
-                                    'temp_max', 'temp_min']}
+                            'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min']}
         self.seq_to_cust_map = {}
         self.resample_rule = common['resample_rule']
         self.date_range = pd.date_range(start=date['date_from'],
@@ -31,7 +29,7 @@ class DataPrep(object):
         self.hrchy_level = len(hrchy) - 1
 
         # Save & Load configuration
-        self.decompose_yn = True
+        self.decompose_yn = decompose_yn
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> dict:
         # convert data type
@@ -128,7 +126,7 @@ class DataPrep(object):
             code_list = list(data[cd][col].unique())
 
         if lvl < self.hrchy_level:
-               for code in code_list:
+            for code in code_list:
                 sliced = None
                 if isinstance(data, pd.DataFrame):
                     sliced = data[data[col] == code]
@@ -181,8 +179,9 @@ class DataPrep(object):
         df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
 
         return df_resampled
-    #
-    def make_seq_to_cust_map(self, df: pd.DataFrame):
+
+    @staticmethod
+    def make_seq_to_cust_map(df: pd.DataFrame):
         seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
 
         return seq_to_cust
