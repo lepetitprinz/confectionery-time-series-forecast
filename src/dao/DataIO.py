@@ -31,6 +31,11 @@ class DataIO(object):
 
     @staticmethod
     def save_object(data, data_type: str, file_path: str) -> None:
+        """
+        :param data
+        :param data_type: csv / binary
+        :pram file_path: file path
+        """
         if data_type == 'csv':
             data.to_csv(file_path, index=False)
 
