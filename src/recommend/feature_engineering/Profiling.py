@@ -1,16 +1,9 @@
-import common.config as config
-from dao.DataIO import DataIO
-from common.SqlConfig import SqlConfig
-
 import numpy as np
 import pandas as pd
-from collections import defaultdict
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
-from surprise import Reader, Dataset, SVD
-from surprise.model_selection import cross_validate
 
 
 class Profiling(object):

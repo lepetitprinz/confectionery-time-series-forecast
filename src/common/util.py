@@ -113,3 +113,34 @@ def make_lvl_key_val_map(df: pd.DataFrame, lvl: str, key: str, val: str):
 
     return result
 
+
+def prep_exg_all(data: pd.DataFrame):
+    exg_map = defaultdict(lambda: defaultdict(list))
+    for lvl1, lvl2, date, val in zip(data['idx_dtl_cd'], data['idx_cd'], data['yymm'], data['ref_val']):
+        exg_map[lvl1][lvl2].append((date, val))
+
+    result = pd.DataFrame()
+    for key1, val1 in exg_map.items():
+        for key2, val2 in val1.items():
+            temp = pd.DataFrame(val2, columns=['yymmdd', key2])
+            temp = temp.sort_values(by='yymmdd')
+            if len(result) == 0:
+                result = pd.concat([result, temp], axis=1, join='outer')
+            else:
+                result = pd.merge(result, temp, on='yymmdd')
+
+    result.columns = [col.lower() for col in result.columns]
+    result.loc[:, 'yymmdd'] = result.loc[:, 'yymmdd'].astype(int)
+    result = result.fillna(0)
+
+    return result
+
+
+def prep_exg_partial(data: pd.DataFrame) -> pd.DataFrame:
+    item_cust = data['idx_dtl_cd'].str.split('_', 1, expand=True)
+    item_cust.columns = ['sku_cd', 'cust_grp_cd']
+
+    exg_partial = pd.concat([data, item_cust], axis=1)
+    exg_partial = exg_partial.drop(columns=['idx_cd', 'idx_dtl_cd'])
+
+    return exg_partial

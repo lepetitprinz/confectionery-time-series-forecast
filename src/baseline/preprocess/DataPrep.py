@@ -31,7 +31,10 @@ class DataPrep(object):
         # Save & Load configuration
         self.decompose_yn = decompose_yn
 
-    def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> dict:
+    def preprocess(self, data: pd.DataFrame, exg: dict) -> dict:
+        # ------------------------------- #
+        # 1. Preprocess sales dataset
+        # ------------------------------- #
         # convert data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(str)
@@ -40,17 +43,26 @@ class DataPrep(object):
         data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
         data['cust_grp_cd'] = data['cust_grp_cd'].fillna('-')
 
-        # Exogenous Data
-        exg = self.prep_exg_data(data=exg)
+        # ------------------------------- #
+        # 2. Preprocess Exogenous dataset
+        # ------------------------------- #
+        exg_all = util.prep_exg_all(data=exg['all'])
 
-        # Merge sales data & exogenous data
-        data = pd.merge(data, exg, on='yymmdd', how='left')
+        # preprocess exogenous(partial) data
+        exg_partial = util.prep_exg_partial(data=exg['partial'])
+
+        # ------------------------------- #
+        # 3. Preprocess merged dataset
+        # ------------------------------- #
+        # Merge sales data & exogenous(all) data
+        data = pd.merge(data, exg_all, on='yymmdd', how='left')
 
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
 
         # Grouping
-        data_group = self.group(data=data)
+        # data_group = self.group(data=data)
+        data_group = util.group(hrchy=self.hrchy, hrchy_lvl=self.hrchy_level, data=data)
 
         # Decomposition
         if self.decompose_yn:
@@ -92,27 +104,6 @@ class DataPrep(object):
         # df = self.add_noise_feat(df=df)
 
         return df
-
-    def prep_exg_data(self, data: pd.DataFrame):
-        exg_map = defaultdict(lambda: defaultdict(list))
-        for lvl1, lvl2, date, val in zip(data['idx_dtl_cd'], data['idx_cd'], data['yymm'], data['ref_val']):
-            exg_map[lvl1][lvl2].append((date, val))
-
-        result = pd.DataFrame()
-        for key1, val1 in exg_map.items():
-            for key2, val2 in val1.items():
-                temp = pd.DataFrame(val2, columns=['yymmdd', key2])
-                temp = temp.sort_values(by='yymmdd')
-                if len(result) == 0:
-                    result = pd.concat([result, temp], axis=1, join='outer')
-                else:
-                    result = pd.merge(result, temp, on='yymmdd')
-
-        result.columns = [col.lower() for col in result.columns]
-        result.loc[:, 'yymmdd'] = result.loc[:, 'yymmdd'].astype(int)
-        result = result.fillna(0)
-
-        return result
 
     def group(self, data, cd=None, lvl=0) -> dict:
         grp = {}

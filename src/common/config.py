@@ -1,9 +1,14 @@
-# Class Configuration
+# Class Configuration: Baseline Forecast
 CLS_LOAD = False
 CLS_CNS = False
 CLS_PREP = True
 CLS_TRAIN = False
 CLS_PRED = False
+
+# Class Configuration: What-IF Simulation
+CLS_WTIF_LOAD = False
+CLS_WTIF_PREP = True
+
 
 # Database Configuration
 RDMS = 'mssql+pymssql'

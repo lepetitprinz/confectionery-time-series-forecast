@@ -1,4 +1,4 @@
-from baseline.deployment.Pipleline import Pipeline
+from baseline.deployment.Pipeline import Pipeline
 
 division = 'SELL_IN'
 cust_lvl = 0    # Customer_group - Customer

@@ -1,4 +1,4 @@
-from baseline.deployment.Pipleline import Pipeline
+from baseline.deployment.Pipeline import Pipeline
 from typing import List
 
 

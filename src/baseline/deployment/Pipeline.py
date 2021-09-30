@@ -6,7 +6,6 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
-from baseline.tune.Split_bak import Split_bak
 
 
 class Pipeline(object):
@@ -46,13 +45,13 @@ class Pipeline(object):
         # ================================================================================================= #
         # 1. Load the dataset
         # ================================================================================================= #
-        sell = None
+        sales = None
         if config.CLS_LOAD:
             print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
-                sell = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
             elif self.division == 'SELL_OUT':
-                sell = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
             else:
                 raise ValueError(f"{self.division} does not exist")
 
@@ -60,12 +59,12 @@ class Pipeline(object):
             if self.save_steps_yn:
                 file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
                                            step='load', extension='csv')
-                self.io.save_object(data=sell, file_path=file_path, data_type='csv')
+                self.io.save_object(data=sales, file_path=file_path, data_type='csv')
 
         if self.load_step_yn:
             file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
                                        step='load', extension='csv')
-            sell = self.io.load_object(file_path=file_path, data_type='csv')
+            sales = self.io.load_object(file_path=file_path, data_type='csv')
 
         # ================================================================================================= #
         # 2. Check Consistency
@@ -76,7 +75,7 @@ class Pipeline(object):
             print("Step 2: Check Consistency \n")
             cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy_list, date=self.date,
                                    err_grp_map=err_grp_map, save_yn=False)
-            checked = cns.check(df=sell)
+            checked = cns.check(df=sales)
 
             # Save Step result
             if self.save_steps_yn:
@@ -95,9 +94,12 @@ class Pipeline(object):
         # Load dataset
         # Customer dataset
         cust = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
+
         # Exogenous dataset
-        exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data())
-        exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
+        exg_all = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='N'))
+        exg_partial = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='Y'))
+        exg = {'all': exg_all, 'partial': exg_partial}
+        exg_list = list(idx.lower() for idx in exg_all['idx_cd'].unique())
 
         data_preped = None
         if config.CLS_PREP:
@@ -106,7 +108,7 @@ class Pipeline(object):
             preprocess = DataPrep(date=self.date, cust=cust, division=self.division,
                                   common=self.common, hrchy=self.hrchy_list)
 
-            # Preprocess the dataset
+            # Preprocessing the dataset
             data_preped = preprocess.preprocess(data=checked, exg=exg)
 
             # Save Step result

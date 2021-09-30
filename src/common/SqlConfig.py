@@ -295,8 +295,8 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_exg_data():
-        sql = """
+    def sql_exg_data(partial_yn: str):
+        sql = f"""
             SELECT IDX_CD
                  , IDX_DTL_CD
                  , YYMM
@@ -310,6 +310,7 @@ class SqlConfig(object):
                                                 SELECT EXG_ID
                                                   FROM M4S_O110701
                                                  WHERE USE_YN = 'Y'
+                                                 AND PARTIAL_YN = '{partial_yn}'
                                                )
                              )
         """
