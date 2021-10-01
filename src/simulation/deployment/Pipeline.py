@@ -6,7 +6,7 @@ from simulation.preprocess.DataPrep import DataPrep
 
 
 class Pipeline(object):
-    def __init__(self, division: str,
+    def __init__(self, division: str, hrchy_lvl: int, lag: str,
                  save_step_yn=False, load_step_yn=False, save_db_yn=False):
         # Class configuration
         self.io = DataIO()
@@ -17,6 +17,8 @@ class Pipeline(object):
         self.division = division
         self.target_col = self.common['target_col']
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
+        self.hrchy_lvl = hrchy_lvl
+        self.lag = lag
 
         # Save & Load Configuration
         self.save_steps_yn = save_step_yn
@@ -57,8 +59,8 @@ class Pipeline(object):
         if config.CLS_WTIF_PREP:
             print("Step 2: Data Preprocessing\n")
             # Initiate data preprocessing class
-            preprocess = DataPrep(division=self.division, common=self.common,
-                                  exg_list=exg_list)
+            preprocess = DataPrep(division=self.division, common=self.common, date=self.date,
+                                  hrchy_lvl=self.hrchy_lvl, lag=self.lag)
 
             # Preprocessing the dataset
             data_preped = preprocess.preprocess(sales=sales, exg=exg)

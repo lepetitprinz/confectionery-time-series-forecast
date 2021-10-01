@@ -160,7 +160,7 @@ class SqlConfig(object):
                                       ) ITEM
                         ON SALES.SKU_CD = ITEM.SKU_CD
                     ) MST
-             WHERE (LINE_CD = 'P111' OR BRAND_CD = 'P304020')    --- EXCEPTION
+               WHERE (LINE_CD = 'P111' OR BRAND_CD = 'P304020')    --- EXCEPTION
                """
         return sql
 

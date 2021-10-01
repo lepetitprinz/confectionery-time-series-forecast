@@ -11,8 +11,8 @@ class OpenAPI(object):
         self.url = info['wea_url']
         self.service_key = info['wea_service_key']
         self.page = info['wea_page']
-        self.start_date = info['rst_start_day']
-        self.end_date = info['rst_end_day']
+        self.start_date = info['api_start_day']
+        self.end_date = info['api_end_day']
         self.stn_list = config.STN_LIST
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum']
 

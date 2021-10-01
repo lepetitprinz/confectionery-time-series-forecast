@@ -3,7 +3,7 @@ import pandas as pd
 from collections import defaultdict
 
 
-def group(hrchy, hrchy_lvl, data, cd=None, lvl=0) -> dict:
+def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0) -> dict:
     grp = {}
     col = hrchy[lvl]
 

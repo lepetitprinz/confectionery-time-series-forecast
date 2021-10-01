@@ -1,6 +1,6 @@
 # Class Configuration: Baseline Forecast
-CLS_LOAD = False
-CLS_CNS = False
+CLS_LOAD = True
+CLS_CNS = True
 CLS_PREP = True
 CLS_TRAIN = False
 CLS_PRED = False
