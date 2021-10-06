@@ -99,7 +99,8 @@ class Train(object):
         result['project_cd'] = self.common['project_cd']
         result['division_cd'] = self.division
         # result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
-        result['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
+        # result['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
+        result['data_vrsn_cd'] = '20190915-20211003'    # Todo: Exception
         result['create_user'] = 'SYSTEM'
         result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)

@@ -82,7 +82,7 @@ class Predict(object):
 
     def make_pred_result(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
-        end_date += timedelta(weeks=15) - timedelta(days=6)   # Todo: Exception
+        end_date += timedelta(days=1)  # Todo: Exception
 
         result_pred = []
         fkey = [hrchy_key + str(i+1).zfill(3) for i in range(len(df))]
@@ -98,7 +98,8 @@ class Predict(object):
         result_pred['project_cd'] = 'ENT001'
         result_pred['division_cd'] = self.division
         # result_pred['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
-        result_pred['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
+        # result_pred['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
+        result_pred['data_vrsn_cd'] = '20190915-20211003'  # Todo: Exception
         result_pred['create_user'] = 'SYSTEM'
 
         if self.hrchy_lvl_dict['item_lvl'] > 0:

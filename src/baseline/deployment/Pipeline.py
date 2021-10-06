@@ -10,7 +10,7 @@ from baseline.model.Predict import Predict
 
 class Pipeline(object):
     def __init__(self, division: str, cust_lvl: int, item_lvl: int,
-                 save_step_yn=False, load_step_yn=False, save_db_yn=False):
+                 save_step_yn=False, load_step_yn=False, save_db_yn=False, decompose_yn=False):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param cust_lvl: Customer Data Level ()
@@ -40,6 +40,7 @@ class Pipeline(object):
         self.save_steps_yn = save_step_yn
         self.load_step_yn = load_step_yn
         self.save_db_yn = save_db_yn
+        self.decompose_yn = decompose_yn
 
     def run(self):
         # ================================================================================================= #
@@ -106,7 +107,10 @@ class Pipeline(object):
             print("Step 3: Data Preprocessing\n")
             # Initiate data preprocessing class
             preprocess = DataPrep(date=self.date, cust=cust, division=self.division,
-                                  common=self.common, hrchy=self.hrchy_list)
+                                  common=self.common, hrchy=self.hrchy_list, decompose_yn=self.decompose_yn)
+
+            # Temporary process
+            checked = preprocess.make_temp_data(df=checked)
 
             # Preprocessing the dataset
             data_preped = preprocess.preprocess(data=checked, exg=exg)

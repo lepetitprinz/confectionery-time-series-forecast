@@ -3,7 +3,8 @@ import common.util as util
 
 import numpy as np
 import pandas as pd
-from collections import defaultdict
+from copy import deepcopy
+from datetime import timedelta
 
 
 class DataPrep(object):
@@ -68,11 +69,14 @@ class DataPrep(object):
         if self.decompose_yn:
             decompose = Decomposition(division=self.division,
                                       hrchy_list=self.hrchy,
-                                      hrchy_lvl_cd=self.hrchy[self.hrchy_level])
+                                      hrchy_lvl_cd=self.hrchy[self.hrchy_level],
+                                      date_range=self.date_range)
 
             util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
                                  fn=decompose.decompose,
                                  df=data_group)
+
+            decompose.dao.session.close()
 
         # Resampling
         data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
@@ -176,6 +180,40 @@ class DataPrep(object):
         seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
 
         return seq_to_cust
+
+    def make_temp_data(self, df: pd.DataFrame):
+        df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
+        df['yymmdd'] = df['yymmdd'] + timedelta(days=126)
+        length = len(df)
+
+        df1 = deepcopy(df)
+        df2 = deepcopy(df)
+        df3 = deepcopy(df)
+        df4 = deepcopy(df)
+
+        # lagging
+        df1['yymmdd'] = df1['yymmdd'] - timedelta(days=150)
+        df2['yymmdd'] = df2['yymmdd'] - timedelta(days=300)
+        df3['yymmdd'] = df3['yymmdd'] - timedelta(days=450)
+        df4['yymmdd'] = df4['yymmdd'] - timedelta(days=600)
+
+        # add random integers
+        width = 10
+        rand1 = np.random.randint(low=-1 * width, high=width, size=length)
+        rand2 = np.random.randint(low=-1 * width, high=width, size=length)
+        rand3 = np.random.randint(low=-1 * width, high=width, size=length)
+        rand4 = np.random.randint(low=-1 * width, high=width, size=length)
+
+        df1['qty'] += rand1
+        df2['qty'] += rand2
+        df3['qty'] += rand3
+        df4['qty'] += rand4
+
+        df_final = pd.concat([df, df1, df2, df3, df4], axis=0)
+        df_final['yymmdd'] = df_final['yymmdd'].dt.strftime('%Y%m%d')
+        df_final['yymmdd'] = df_final['yymmdd'].astype(np.int32)
+
+        return df_final
 
     # def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
     #     vals = df[self.target_col].values * 0.05

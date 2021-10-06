@@ -32,7 +32,8 @@ class ConsistencyCheck(object):
         return normal
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
-        normal = self.check_prod_level(df=df)
+        # normal = self.check_prod_level(df=df)
+        normal = df
         normal = self.check_unit_code(df=normal)
         normal = self.check_unit_code_map(df=normal)
 

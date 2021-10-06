@@ -7,23 +7,38 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 
 class Decomposition(object):
-    def __init__(self, division: str, hrchy_list: list, hrchy_lvl_cd: str):
+    def __init__(self, division: str, hrchy_list: list, hrchy_lvl_cd: str, date_range):
+        self.dao = DataIO()
+        self.date_range = date_range
         self.division = division
         self.hrchy_list = hrchy_list
         self.hrchy_lvl_cd = hrchy_lvl_cd
         self.x = 'qty'
         self.model = 'additive'     # additive / multiplicative
         self.tb_name = 'M4S_O110500'
-        self.save_to_db_yn = False
+        self.save_to_db_yn = True
 
     def decompose(self, df):
         data = pd.Series(data=df[self.x].to_numpy(), index=df.index)
-        data_resampled = data.resample(rule='D').sum()
+
+        data_resampled = data.resample(rule='W').sum()
+        # data_resampled = data.resample(rule='D').sum()
+
+        if len(data_resampled.index) != len(self.date_range):
+            idx_add = list(set(self.date_range) - set(data_resampled.index))
+            data_add = np.zeros(len(idx_add))
+            df_add = pd.Series(data_add, index=idx_add)
+            data_resampled = data_resampled.append(df_add)
+            data_resampled = data_resampled.sort_index()
+
+        data_resampled = data_resampled.fillna(0)
+
+        # Seasonal Decomposition
         decomposed = seasonal_decompose(x=data_resampled, model=self.model)
         item_info = df[self.hrchy_list].drop_duplicates()
         item_info = item_info.iloc[0].to_dict()
         result = pd.DataFrame(
-            {'project_cd': 'ENT001',
+            {'project_cd': 'ENT002',
              'division_cd': self.division,
              'hrchy_lvl_cd': self.hrchy_lvl_cd,
              'item_attr01_cd': item_info.get('biz_cd', np.nan),
@@ -40,6 +55,4 @@ class Decomposition(object):
 
         # Save
         if self.save_to_db_yn:
-            dao = DataIO()
-            dao.insert_to_db(df=result, tb_name=self.tb_name)
-            dao.session.close()
+            self.dao.insert_to_db(df=result, tb_name=self.tb_name)
