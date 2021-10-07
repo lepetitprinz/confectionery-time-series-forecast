@@ -11,6 +11,8 @@ info = data_io.get_dict_from_db(sql=sql_conf.sql_comm_master(),
 
 api = OpenAPI(info=info)
 data_list = api.get_api_dataset()
-for stn_data in data_list:
-    for exg_data in stn_data:
+for stn_data, stn_info in data_list:
+    for exg_data, exg_id in stn_data:
+        stn_info['idx_cd'] = exg_id
+        data_io.delete_from_db(sql_conf.del_openapi(**stn_info))
         data_io.insert_to_db(df=exg_data, tb_name='M4S_O110710')

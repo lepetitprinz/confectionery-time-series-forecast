@@ -16,7 +16,7 @@ class OpenAPI(object):
         self.stn_list = config.STN_LIST
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum']
 
-    def get_api_dataset(self) -> pd.DataFrame:
+    def get_api_dataset(self) -> list:
         data_list = []
         for stn_id in self.stn_list:
             num_rows = self.count_date_range(start_date=self.start_date, end_date=self.end_date)
@@ -24,7 +24,13 @@ class OpenAPI(object):
                                      start_date=self.start_date, end_date=self.end_date, stn_id=stn_id)
             data = self.map_xml_tree(xml_tree=xml_tree)
             data_db = self.conv_data_to_db(data=data)
-            data_list.append(data_db)
+            data_info = {
+                'idx_dtl_cd': stn_id,
+                'api_start_day': self.start_date,
+                'api_end_day': self.end_date
+            }
+
+            data_list.append((data_db, data_info))
 
         return data_list
 
@@ -63,7 +69,7 @@ class OpenAPI(object):
 
         return len(dates)
 
-    def conv_data_to_db(self, data: pd.DataFrame) -> list:
+    def conv_data_to_db(self, data: pd.DataFrame):
         converted_list = []
         for exg in self.exg_list:
             data_exg = data[['date', 'location', exg]]
@@ -72,9 +78,10 @@ class OpenAPI(object):
             data_exg['idx_cd'] = exg.upper()
             data_exg['create_user_cd'] = 'SYSTEM'
             data_exg['create_date'] = datetime.now()
-            data_exg = data_exg.rename(columns={'date': 'yymm',
-                                       exg: 'ref_val',
-                                       'location': 'idx_dtl_cd'})
-            converted_list.append(data_exg)
+            data_exg = data_exg.rename(columns={
+                                            'date': 'yymm',
+                                            exg: 'ref_val',
+                                            'location': 'idx_dtl_cd'})
+            converted_list.append((data_exg, exg.upper()))
 
         return converted_list

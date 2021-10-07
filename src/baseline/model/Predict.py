@@ -58,6 +58,8 @@ class Predict(object):
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
             try:
+                if model == 'var':
+                    print("")
                 prediction = self.model_fn[model](history=data,
                                                   cfg=self.param_grid[model],
                                                   pred_step=n_test)
@@ -76,7 +78,7 @@ class Predict(object):
     def split_variable(self, model: str, data) -> np.array:
         if self.model_info[model]['variate'] == 'multi':
             data = {'endog': data[self.target_col].values.ravel(),
-                    'exog': data[self.exo_col_list].values.ravel()}
+                    'exog': data[self.exo_col_list].values}
 
         return data
 
@@ -122,7 +124,13 @@ class Predict(object):
         result_pred = result_pred.rename(columns=config.COL_RENAME1)
         result_pred = result_pred.rename(columns=config.COL_RENAME2)
 
-        return result_pred
+        # Prediction information
+        pred_info = {'project_cd': 'ENT001',
+                     'data_vrsn_cd': '20190915-20211003',
+                     'division_cd': self.division,
+                     'fkey': hrchy_key[:-1]}
+
+        return result_pred, pred_info
 
     # def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
     #     # scaling

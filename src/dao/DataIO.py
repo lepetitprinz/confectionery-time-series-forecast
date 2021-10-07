@@ -26,6 +26,9 @@ class DataIO(object):
     def insert_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
         self.session.insert(df=df, tb_name=tb_name)
 
+    def delete_from_db(self, sql: str):
+        self.session.delete(sql=sql)
+
     def update_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
         self.session.upsert(df=df, tb_name=tb_name)
 

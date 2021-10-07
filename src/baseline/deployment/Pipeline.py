@@ -172,10 +172,11 @@ class Pipeline(object):
                                            step='train', extension='pickle')
                 self.io.save_object(data=scores, file_path=file_path, data_type='binary')
 
-            scores_db = training.make_score_result(data=scores, hrchy_key=self.hrchy_key)
+            scores_db, score_info = training.make_score_result(data=scores, hrchy_key=self.hrchy_key)
 
             # Save the training scores on the DB table
             if self.save_db_yn:
+                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
                 self.io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
 
         if self.load_step_yn:
@@ -202,7 +203,7 @@ class Pipeline(object):
                                            step='pred', extension='pickle')
                 self.io.save_object(data=prediction, file_path=file_path, data_type='binary')
 
-            prediction_db = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
+            prediction_db, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
 
             # Save the forecast results on the db table
             if self.save_db_yn:

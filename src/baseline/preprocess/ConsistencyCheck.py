@@ -50,7 +50,7 @@ class ConsistencyCheck(object):
         # save the error data
         err = self.make_err_format(df=err, err_cd='err001')
         if len(err) > 0 and self.save_yn:
-            self.io.update_to_db(df=err, tb_name=self.cns_tb_name)
+            self.io.insert_to_db(df=err, tb_name=self.cns_tb_name)
 
         return normal
 

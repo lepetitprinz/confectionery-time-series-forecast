@@ -71,8 +71,11 @@ class Train(object):
         return models
 
     def select_feature_by_variable(self, df: pd.DataFrame):
-        feature_by_variable = {'univ': df[self.target_col],
-                               'multi': df[self.exo_col_list + [self.target_col]]}
+        try:
+            feature_by_variable = {'univ': df[self.target_col],
+                                   'multi': df[self.exo_col_list + [self.target_col]]}
+        except:
+            print("")
 
         return feature_by_variable
 
@@ -87,7 +90,7 @@ class Train(object):
 
         return score
 
-    def make_score_result(self, data: dict, hrchy_key: str) -> pd.DataFrame:
+    def make_score_result(self, data: dict, hrchy_key: str):
         result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_tot_lvl,
                                                fn=self.score_to_df,
                                                df=data)
@@ -125,7 +128,13 @@ class Train(object):
         result = result.rename(columns=config.COL_RENAME1)
         result = result.rename(columns=config.COL_RENAME2)
 
-        return result
+        # set score_info
+        score_info = {'project_cd': self.common['project_cd'],
+                      'data_vrsn_cd': '20190915-20211003',
+                      'division_cd': self.division,
+                      'fkey': hrchy_key[:-1]}
+
+        return result, score_info
 
     @staticmethod
     def score_to_df(hrchy: list, data) -> List[list]:
@@ -148,10 +157,10 @@ class Train(object):
         elif self.model_info[model]['variate'] == 'multi':
             data_train = data.iloc[: data_length - n_test, :]
             data_train = {'endog': data_train[self.target_col].values.ravel(),
-                          'exog': data_train[self.exo_col_list].values.ravel()}
+                          'exog': data_train[self.exo_col_list].values}
             data_test = data.iloc[data_length - n_test:, :]
             data_test = {'endog': data_test[self.target_col],
-                         'exog': data_test[self.exo_col_list].values.ravel()}
+                         'exog': data_test[self.exo_col_list].values}
 
         # evaluation
         try:

@@ -197,7 +197,7 @@ class Algorithm(object):
         :return:
         """
         # define model
-        data = np.vstack((history['endog'], history['exog'])).T
+        data = np.hstack((history['endog'].reshape(-1, 1), history['exog']))
         model = VAR(data)
 
         # fit model

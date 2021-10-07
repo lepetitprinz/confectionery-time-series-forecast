@@ -4,6 +4,7 @@ import common.config as config
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy import Table, MetaData, insert
+from sqlalchemy.sql import text
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -71,7 +72,6 @@ class SqlSession(object):
 
         try:
             data = pd.read_sql_query(sql, self._connection)
-
             return data
 
         except SQLAlchemyError as e:
@@ -86,6 +86,11 @@ class SqlSession(object):
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
             print(f"Saving {tb_name} table is finished.")
+
+    def delete(self, sql: str):
+        statement = text(sql)
+        with self.engine.connect() as conn:
+            conn.execute(statement)
 
     def upsert(self, df: pd.DataFrame, tb_name: str):
         table = self.get_table_meta(tb_name=tb_name)

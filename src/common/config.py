@@ -1,9 +1,9 @@
 # Class Configuration: Baseline Forecast
 CLS_LOAD = False
 CLS_CNS = False
-CLS_PREP = True
+CLS_PREP = False
 CLS_TRAIN = False
-CLS_PRED = False
+CLS_PRED = True
 
 # Class Configuration: What-IF Simulation
 CLS_WTIF_LOAD = False
