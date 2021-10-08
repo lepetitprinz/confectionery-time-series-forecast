@@ -68,14 +68,14 @@ class DataPrep(object):
 
         # Drop columns
         data_drop = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
-                                          fn=self.drop_column,
-                                          df=data_resample)
+                                         fn=self.drop_column,
+                                         df=data_resample)
 
         data_rag = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
                                         fn=self.lagging,
                                         df=data_drop)
 
-        print("")
+        return data_rag
 
     def resample(self, df: pd.DataFrame):
         # Split by aggregation method
@@ -94,12 +94,12 @@ class DataPrep(object):
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
-        if len(df_resampled.index) != len(self.date_range):
-            idx_add = list(set(self.date_range) - set(df_resampled.index))
-            data_add = np.zeros((len(idx_add), df_resampled.shape[1]))
-            df_add = pd.DataFrame(data_add, index=idx_add, columns=df_resampled.columns)
-            df_resampled = df_resampled.append(df_add)
-            df_resampled = df_resampled.sort_index()
+        # if len(df_resampled.index) != len(self.date_range):
+        #     idx_add = list(set(self.date_range) - set(df_resampled.index))
+        #     data_add = np.zeros((len(idx_add), df_resampled.shape[1]))
+        #     df_add = pd.DataFrame(data_add, index=idx_add, columns=df_resampled.columns)
+        #     df_resampled = df_resampled.append(df_add)
+        #     df_resampled = df_resampled.sort_index()
 
         cols = self.hrchy_list[:self.hrchy_lvl + 1]
         data_level = df[cols].iloc[0].to_dict()

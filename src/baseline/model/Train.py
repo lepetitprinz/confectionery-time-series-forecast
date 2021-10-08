@@ -16,16 +16,18 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    def __init__(self, division: str, mst_info: dict, date: dict, exg_list: list,
-                 hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
+    def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
+                 exg_list: list, hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
         self.date = date
+        self.data_vrsn_cd = data_vrsn_cd
         self.common = common
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']    # Target column
+
         # self.exo_col_list = ['discount']     # Exogenous features
         self.exo_col_list = exg_list + ['discount']    # Exogenous features
         self.cust_code = mst_info['cust_code']
@@ -65,6 +67,8 @@ class Train(object):
         models = []
         for model in self.cand_models:
             score = self.validation(data=feature_by_variable[self.model_info[model]['variate']], model=model)
+            if score > 10 ** 20:
+                score = float(10 ** 20)
             models.append([model, np.round(score, 3)])
         models = sorted(models, key=lambda x: x[1])
 
@@ -101,9 +105,7 @@ class Train(object):
 
         result['project_cd'] = self.common['project_cd']
         result['division_cd'] = self.division
-        # result['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
-        # result['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
-        result['data_vrsn_cd'] = '20190915-20211003'    # Todo: Exception
+        result['data_vrsn_cd'] = self.data_vrsn_cd
         result['create_user'] = 'SYSTEM'
         result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
@@ -130,7 +132,7 @@ class Train(object):
 
         # set score_info
         score_info = {'project_cd': self.common['project_cd'],
-                      'data_vrsn_cd': '20190915-20211003',
+                      'data_vrsn_cd': self.data_vrsn_cd,
                       'division_cd': self.division,
                       'fkey': hrchy_key[:-1]}
 

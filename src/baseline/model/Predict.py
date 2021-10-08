@@ -10,13 +10,14 @@ import pandas as pd
 
 
 class Predict(object):
-    def __init__(self, division: str, mst_info: dict, date: dict, exg_list: list,
-                 hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
+    def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
+                 exg_list: list, hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
         self.date = date
+        self.data_vrsn_cd = data_vrsn_cd
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']    # Target features
         self.exo_col_list = exg_list + ['discount']    # Exogenous features
@@ -58,8 +59,6 @@ class Predict(object):
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
             try:
-                if model == 'var':
-                    print("")
                 prediction = self.model_fn[model](history=data,
                                                   cfg=self.param_grid[model],
                                                   pred_step=n_test)
@@ -84,7 +83,8 @@ class Predict(object):
 
     def make_pred_result(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
-        end_date += timedelta(days=1)  # Todo: Exception
+        end_date += timedelta(days=1)
+        # end_date += timedelta(weeks=15) - timedelta(days=6)   # Todo: Exception
 
         result_pred = []
         fkey = [hrchy_key + str(i+1).zfill(3) for i in range(len(df))]
@@ -99,14 +99,12 @@ class Predict(object):
         result_pred.columns = cols
         result_pred['project_cd'] = 'ENT001'
         result_pred['division_cd'] = self.division
-        # result_pred['data_vrsn_cd'] = self.date['date_from'] + '-' + self.date['date_to']
-        # result_pred['data_vrsn_cd'] = '20210416-20210912'    # Todo: Exception
-        result_pred['data_vrsn_cd'] = '20190915-20211003'  # Todo: Exception
+        result_pred['data_vrsn_cd'] = self.data_vrsn_cd
         result_pred['create_user'] = 'SYSTEM'
 
         if self.hrchy_lvl_dict['item_lvl'] > 0:
             result_pred = pd.merge(result_pred,
-                                   self.item_mst[config.COL_ITEM[: 2*self.hrchy_lvl_dict['item_lvl']]].drop_duplicates(),
+                                   self.item_mst[config.COL_ITEM[: 2 * self.hrchy_lvl_dict['item_lvl']]].drop_duplicates(),
                                    on=self.hrchy_item[:self.hrchy_lvl_dict['item_lvl']],
                                    how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
@@ -126,7 +124,7 @@ class Predict(object):
 
         # Prediction information
         pred_info = {'project_cd': 'ENT001',
-                     'data_vrsn_cd': '20190915-20211003',
+                     'data_vrsn_cd': self.data_vrsn_cd,
                      'division_cd': self.division,
                      'fkey': hrchy_key[:-1]}
 

@@ -3,6 +3,7 @@ import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from simulation.preprocess.DataPrep import DataPrep
+# from simulation.model.Train import Train
 
 
 class Pipeline(object):
@@ -42,9 +43,15 @@ class Pipeline(object):
             else:
                 raise ValueError(f"{self.division} does not exist")
 
+            # Save step result
+            if self.save_steps_yn:
+                file_path = util.make_path_simulation(module='simulation', division=self.division,
+                                                      step='load', extension='csv')
+                self.io.save_object(data=sales, file_path=file_path, data_type='csv')
+
         if self.load_step_yn:
-            file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
-                                       step='load', extension='csv')
+            file_path = util.make_path_simulation(module='simulation', division=self.division,
+                                                  step='load', extension='csv')
             sales = self.io.load_object(file_path=file_path, data_type='csv')
 
         # 1.2 Exogenous dataset
@@ -65,3 +72,15 @@ class Pipeline(object):
             # Preprocessing the dataset
             data_preped = preprocess.preprocess(sales=sales, exg=exg)
 
+            # Save step result
+            if self.save_steps_yn:
+                file_path = util.make_path_simulation(module='simulation', division=self.division,
+                                                      step='prep', extension='pickle')
+                self.io.save_object(data=sales, file_path=file_path, data_type='binary')
+        # ====================== #
+        # 3. Training
+        # ====================== #
+        if config.CLS_WTIF_TRAIN:
+            print("Step3: Training")
+            # Initiate data preprocessing class
+            # train = Train(mst_info={})

@@ -174,7 +174,7 @@ class SqlConfig(object):
                 , LINE_CD
                 , BRAND_CD
                 , ITEM_CD
-                , SALES.SKU_CD
+                , SALES.SKU_CD AS SKU_CD 
                 , YYMMDD
                 , SEQ
                 , DISCOUNT
@@ -193,7 +193,7 @@ class SqlConfig(object):
                         , RST_SALES_QTY AS QTY
                         , CREATE_DATE
                      FROM M4S_I002173
-                    WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                   -- WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']} # Todo: Exception
                    ) SALES
              LEFT OUTER JOIN (
                               SELECT ITEM_CD AS SKU_CD

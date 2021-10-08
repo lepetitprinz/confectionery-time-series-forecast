@@ -38,7 +38,7 @@ class DataPrep(object):
         # ------------------------------- #
         # convert data type
         for col in self.STR_TYPE_COLS:
-            data[col] = data[col].astype(str)
+            data[col] = data[col].astype(int).astype(str)
 
         # Mapping: cust_cd -> cust_grp_cd
         data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
@@ -89,16 +89,17 @@ class DataPrep(object):
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
 
-        #
-        conditions = [df['unit_cd'] == 'EA ',
-                      df['unit_cd'] == 'BOL',
-                      df['unit_cd'] == 'BOX']
+        # Convert unit code
+        if self.division == 'SELL_IN':
+            conditions = [df['unit_cd'] == 'EA ',
+                          df['unit_cd'] == 'BOL',
+                          df['unit_cd'] == 'BOX']
 
-        values = [df['box_ea'], df['box_bol'], 1]
-        unit_map = np.select(conditions, values)
-        df['qty'] = df['qty'].to_numpy() / unit_map
+            values = [df['box_ea'], df['box_bol'], 1]
+            unit_map = np.select(conditions, values)
+            df['qty'] = df['qty'].to_numpy() / unit_map
 
-        df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
+            df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
 
         # convert to datetime
         df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')

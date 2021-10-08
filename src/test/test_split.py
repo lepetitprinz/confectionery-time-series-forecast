@@ -19,7 +19,7 @@ data_vrsn_cd = '20210416-20210912'
 division_cd = 'SELL_IN'
 
 lvl_ratio = 5
-lvl_split = 3
+lvl_split = 4
 lvl = {'lvl_ratio': lvl_ratio, 'lvl_split': lvl_split}
 hrchy_list = config.LVL_CD_LIST
 
@@ -32,10 +32,10 @@ args_split = {'data_vrsn_cd': data_vrsn_cd, 'division_cd': division_cd, 'fkey': 
 df_ratio = io.get_df_from_db(sql=sql_conf.sql_pred_all(**args_ratio))
 df_split = io.get_df_from_db(sql=sql_conf.sql_pred_all(**args_split))
 
-file_path_ratio = util.make_path(module='object', division=division_cd, hrchy_lvl=str(lvl_ratio),
-                                 step='_ratio', extension='pickle')
-file_path_split = util.make_path(module='object', division=division_cd, hrchy_lvl=str(lvl_ratio),
-                                 step='_split', extension='pickle')
+file_path_ratio = util.make_path_baseline(module='object', division=division_cd, hrchy_lvl=str(lvl_ratio),
+                                          step='_ratio', extension='pickle')
+file_path_split = util.make_path_baseline(module='object', division=division_cd, hrchy_lvl=str(lvl_ratio),
+                                          step='_split', extension='pickle')
 
 split = Split(data_vrsn_cd=args_ratio['data_vrsn_cd'],
               division_cd=args_ratio['division_cd'],

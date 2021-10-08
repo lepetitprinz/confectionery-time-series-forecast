@@ -32,10 +32,9 @@ class ConsistencyCheck(object):
         return normal
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
-        # normal = self.check_prod_level(df=df)
-        normal = df
-        normal = self.check_unit_code(df=normal)
-        normal = self.check_unit_code_map(df=normal)
+        normal = self.check_prod_level(df=df)
+        # normal = self.check_unit_code(df=normal)
+        # normal = self.check_unit_code_map(df=normal)
 
         return normal
 
@@ -93,7 +92,7 @@ class ConsistencyCheck(object):
         df['project_cd'] = self.common['project_cd']
         df['data_vrsn_cd'] = self.data_vrsn_cd
         df['err_grp_cd'] = self.err_grp_map[err_cd]
-        df['err_cd'] = err_cd
+        df['err_cd'] = err_cd.upper()
         if self.division == 'sell_out':
             df['from_dc_cd'] = np.nan
         df['create_user_cd'] = 'SYSTEM'

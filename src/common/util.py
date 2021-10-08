@@ -100,8 +100,14 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
     return temp
 
 
-def make_path(module: str, division: str, hrchy_lvl: str, step: str, extension: str):
+def make_path_baseline(module: str, division: str, hrchy_lvl: str, step: str, extension: str):
     path = os.path.join('..', '..', module, division + '_' + str(hrchy_lvl) + step + '.' + extension)
+
+    return path
+
+
+def make_path_simulation(module: str, division: str, step: str, extension: str):
+    path = os.path.join('..', '..', module, division + '_' + step + '.' + extension)
 
     return path
 

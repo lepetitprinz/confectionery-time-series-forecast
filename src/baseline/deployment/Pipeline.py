@@ -26,6 +26,8 @@ class Pipeline(object):
         self.division = division
         self.target_col = self.common['target_col']
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
+        # self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
+        self.data_vrsn_cd = '20190915-20211003'  # Todo: Exception
 
         # Data Level Configuration
         self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(item_lvl) + '-'
@@ -58,13 +60,13 @@ class Pipeline(object):
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
-                                           step='load', extension='csv')
+                file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
+                                                    step='load', extension='csv')
                 self.io.save_object(data=sales, file_path=file_path, data_type='csv')
 
         if self.load_step_yn:
-            file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
-                                       step='load', extension='csv')
+            file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
+                                                step='load', extension='csv')
             sales = self.io.load_object(file_path=file_path, data_type='csv')
 
         # ================================================================================================= #
@@ -80,13 +82,13 @@ class Pipeline(object):
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
-                                           step='cns', extension='csv')
+                file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
+                                                    step='cns', extension='csv')
                 self.io.save_object(data=checked, file_path=file_path, data_type='csv')
 
         if self.load_step_yn:
-            file_path = util.make_path(module='data', division=self.division, hrchy_lvl='',
-                                       step='cns', extension='csv')
+            file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
+                                                step='cns', extension='csv')
             checked = self.io.load_object(file_path=file_path, data_type='csv')
 
         # ================================================================================================= #
@@ -117,13 +119,13 @@ class Pipeline(object):
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                           step='prep', extension='pickle')
+                file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                                    step='prep', extension='pickle')
                 self.io.save_object(data=data_preped, file_path=file_path, data_type='binary')
 
         if self.load_step_yn:
-            file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                       step='prep', extension='pickle')
+            file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                                step='prep', extension='pickle')
             data_preped = self.io.load_object(file_path=file_path, data_type='binary')
 
         # ================================================================================================= #
@@ -160,16 +162,17 @@ class Pipeline(object):
         if config.CLS_TRAIN:
             print("Step 4: Train\n")
             # Initiate train class
-            training = Train(division=self.division, mst_info=mst_info, date=self.date, exg_list=exg_list,
-                             hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
+            training = Train(division=self.division, mst_info=mst_info, date=self.date, data_vrsn_cd=self.data_vrsn_cd,
+                             exg_list=exg_list, hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict,
+                             common=self.common)
 
             # Train the model
             scores = training.train(df=data_preped)
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                           step='train', extension='pickle')
+                file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                                    step='train', extension='pickle')
                 self.io.save_object(data=scores, file_path=file_path, data_type='binary')
 
             scores_db, score_info = training.make_score_result(data=scores, hrchy_key=self.hrchy_key)
@@ -180,8 +183,8 @@ class Pipeline(object):
                 self.io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
 
         if self.load_step_yn:
-            file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                       step='prep', extension='pickle')
+            file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                                step='prep', extension='pickle')
             data_preped = self.io.load_object(file_path=file_path, data_type='binary')
 
         # ================================================================================================= #
@@ -191,28 +194,30 @@ class Pipeline(object):
         if config.CLS_PRED:
             print("Step 5: Forecast\n")
             # Initiate predict class
-            predict = Predict(division=self.division, mst_info=mst_info, date=self.date, exg_list=exg_list,
-                              hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict, common=self.common)
+            predict = Predict(division=self.division, mst_info=mst_info, date=self.date, data_vrsn_cd=self.data_vrsn_cd,
+                              exg_list=exg_list, hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict,
+                              common=self.common)
 
             # Forecast the model
             prediction = predict.forecast(df=data_preped)
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                           step='pred', extension='pickle')
+                file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                                    step='pred', extension='pickle')
                 self.io.save_object(data=prediction, file_path=file_path, data_type='binary')
 
             prediction_db, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
 
             # Save the forecast results on the db table
             if self.save_db_yn:
+                self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=prediction_db, tb_name='M4S_I110400')
 
             # Close DB session
             self.io.session.close()
 
         if self.load_step_yn:
-            file_path = util.make_path(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                       step='pred', extension='pickle')
+            file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
+                                                step='pred', extension='pickle')
             data_pred = self.io.load_object(file_path=file_path, data_type='binary')
