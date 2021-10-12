@@ -8,9 +8,9 @@ CLS_TRAIN = True
 CLS_PRED = True
 
 # Class Configuration: What-IF Simulation
-CLS_WTIF_LOAD = False
-CLS_WTIF_PREP = True
-CLS_WTIF_TRAIN = True
+CLS_SIM_LOAD = False
+CLS_SIM_PREP = True
+CLS_SIM_TRAIN = True
 
 # Database Configuration
 RDMS = 'mssql+pymssql'
