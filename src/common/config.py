@@ -1,3 +1,5 @@
+import numpy as np
+
 # Class Configuration: Baseline Forecast
 CLS_LOAD = True
 CLS_CNS = True
@@ -9,7 +11,6 @@ CLS_PRED = True
 CLS_WTIF_LOAD = False
 CLS_WTIF_PREP = True
 CLS_WTIF_TRAIN = True
-
 
 # Database Configuration
 RDMS = 'mssql+pymssql'
@@ -31,6 +32,66 @@ PASSWORD = 'Diam0nd123!'     # User password
 VALIDATION_METHOD = 'train_test'    # train_test / walk-walk_forward
 
 # Model Hyper-parameters
+
+# 1.Time Series Forecast
+
+# 2.What-If Simulation
+PARAM_GRIDS_SIM = {
+    'rf': {  # Random Forest
+        'n_estimators': list(np.arange(100, 500, 100)),
+        'criterion': ['squared_error'],
+        'min_samples_split': list(np.arange(2, 6, 1)),  # minimum number of samples required to split inner node
+        'min_samples_leaf': list(np.arange(1, 6, 1)),   # have the effect of smoothing the model
+        'max_features': ['auto']
+    },
+    'gb': {  # Gradient Boost
+        'n_estimators': list(np.arange(100, 500, 100)),
+        'criterion': ['friedman_mse'],
+        'min_samples_split': list(np.arange(2, 6, 1)),  # minimum number of samples required to split inner node
+        'min_samples_leaf': list(np.arange(1, 6, 1)),   # have the effect of smoothing the model
+        'max_features': ['auto']
+    },
+    'et': {  # Extremely Randomized Trees
+        'n_estimators': list(np.arange(100, 500, 100)),
+        'criterion': ['squared_error'],
+        'min_samples_split': list(np.arange(2, 6, 1)),  # minimum number of samples required to split inner node
+        'min_samples_leaf': list(np.arange(1, 6, 1)),   # have the effect of smoothing the model
+        'max_features': ['auto']
+    },
+    'mlp': {  # Multi-layer Perceptron
+        'units': [8, 16, 32],
+        'batch_size': 32,
+    }
+}
+
+PARAM_GRIDS_BEST = {
+    'rf': {  # Random Forest
+        'n_estimators': 100,
+        'criterion': 'squared_error',
+        'min_samples_split': 2,  # minimum number of samples required to split inner node
+        'min_samples_leaf': 2,   # have the effect of smoothing the model
+        'max_features': 'auto'
+    },
+    'gb': {  # Gradient Boost
+        'n_estimators':100,
+        'criterion': ['friedman_mse'],
+        'min_samples_split': 2,  # minimum number of samples required to split inner node
+        'min_samples_leaf': 2,   # have the effect of smoothing the model
+        'max_features': 'auto'
+    },
+    'et': {  # Extremely Randomized Trees
+        'n_estimators': 100,
+        'criterion': 'squared_error',
+        'min_samples_split': 2,  # minimum number of samples required to split inner node
+        'min_samples_leaf': 2,   # have the effect of smoothing the model
+        'max_features': 'auto'
+    },
+    'mlp': {  # Multi-layer Perceptron
+        'units': 8,
+        'batch_size': 32,
+    }
+}
+
 # Deep Learning model Hyper-parameters
 LSTM_UNIT = 32
 EPOCHS = 100

@@ -23,9 +23,8 @@ class Algorithm(object):
         regr.fit(data['x_train'], data['y_train'])
 
         yhat = regr.predict(data['x_test'])
-        err = mean_squared_error(data['y_test'], yhat, squared=True)
 
-        return err
+        return yhat
 
     # Random Forest
     @staticmethod
@@ -41,6 +40,24 @@ class Algorithm(object):
         regr.fit(data['x_train'], data['y_train'])
 
         yhat = regr.predict(data['x_test'])
-        err = mean_squared_error(data['y_test'], yhat, squared=True)
 
-        return err
+        return yhat
+
+    # Extremely Randomized Trees
+    @staticmethod
+    def extra_trees(data: dict, cfg: dict):
+        """
+
+        """
+        regr = ExtraTreesRegressor(
+            n_estimators=ast.literal_eval(cfg['n_estimators']),
+            criterion=cfg['criterion'],
+            max_features=cfg['max_features'],
+            min_samples_split=cfg['min_samples_split'],
+            min_samples_leaf=cfg['min_samples_leaf']
+        )
+        regr.fit(data['x_train'], data['y_train'])
+
+        yhat = regr.predict(data['x_test'])
+
+        return yhat

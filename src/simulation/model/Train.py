@@ -1,78 +1,118 @@
-import common.util as util
 import common.config as config
 from simulation.model.Algorithm import Algorithm
 
 import os
 import pickle
 
+from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
 
 
 class Train(object):
-    def __init__(self, mst_info: dict, hrchy_lvl: int, grid_search_yn: bool, param_grid={}):
-        # Class Configuration
-        self.algorithm = Algorithm()
+    estimators = {'rf': Algorithm.random_forest,
+                  'gb': Algorithm.gradient_boost,
+                  'et': Algorithm.extra_trees}
 
+    def __init__(self, data_version: str, mst_info: dict, hrchy_lvl: int,
+                 grid_search_yn: bool, save_obj_yn: bool):
+        # Data Configuration
+        self.data_version = data_version
         self.hrchy_lvl = hrchy_lvl
 
-        # Training configuration
+        # Train Option configuration
+        self.scoring = 'neg_root_mean_squared_error'
+        self.cv = 5
         self.grid_search_yn = grid_search_yn
+        self.save_obj_yn = save_obj_yn
 
         # Algorithm Configuration
+        self.param_grids = config.PARAM_GRIDS_SIM
         self.param_best = mst_info['param_grid']
-        self.param_grid = param_grid
-        self.model_fn = {'rf': self.algorithm.random_forest,
-                         'extr': self.algorithm.e}
+        self.model_info = mst_info['model_mst']
+        self.model_candidates = list(self.model_info.keys())
 
-    def train(self, df):
-        if self.grid_search_yn:
-            pass
-        else:
-            scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
-                                      fn=self.resample,
-                                      df=df)
+    def train(self, data, hrchy_code, verbose=False):
+        best_model = self.evaluation(
+            data=data,
+            estimators=self.model_candidates,
+            grid_search_yn=self.grid_search_yn,
+            scoring=self.scoring,
+            cv=self.cv,
+            verbose=verbose
+        )
+        if self.save_obj_yn:
+            self.save_best_result(estimator=best_model, hrchy_code=hrchy_code)
 
-    def grid_search_cross_validation(self, data: dict, regr: str):
-        # Grid search cross validation
-        regr_best = self.get_best_hyper_param(x=train['x'], y=train['y'],
-                                               regr=regr,
-                                               regressors=self.REGRESSORS,
-                                               param_grids=self.param_grids)
-        model_bests[model_key] = regr_best
-        regr_bests[type_key] = model_bests
+        return best_model
 
-        return regr_bests
+    def evaluation(self, data, estimators: list, grid_search_yn: bool, verbose: bool,
+                   scoring='neg_root_mean_squared_error', cv=5):
+        # Execute grid search cross validation
+        results = []
+        for estimator in estimators:
+            if grid_search_yn:
+                score, params = self.grid_search_cv(
+                    data=data,
+                    estimator=self.estimators[estimator],
+                    param_grid=self.param_grids[estimator],
+                    scoring=scoring,
+                    cv=cv,
+                    verbose=verbose
+                )
+            else:
+                score, params = self.cross_validation(
+                    data=data,
+                    estimator=self.estimators[estimator],
+                    param_grid=self.param_best[estimator],
+                    scoring=scoring,
+                    cv=cv,
+                    verbose=verbose
+                )
+            # append each result
+            results.append((estimator, params, score))
+
+        # Get best model
+        results = sorted(results, key=lambda x: x[-1])  # Sort by score
+        best_model = results[0]
+
+        return best_model
 
     @staticmethod
-    def get_best_hyper_param(x, y, regressors, param_grids, regr, scoring='neg_root_mean_squared_error'):
-        # Select regressor algorithm
-        regressor = regressors[regr]
+    def grid_search_cv(data, estimator, param_grid: dict, scoring, cv: int, verbose: bool):
+        gsc = GridSearchCV(
+            estimator=estimator,
+            param_grid=param_grid,
+            scoring=scoring,
+            cv=cv
+        )
+        result = gsc.fit(data['x_train'], data['y_train'])
 
-        # Define parameter grid
-        param_grid = param_grids[regr]
+        if verbose:
+            print("Best: %f using %s" % (result.best_score_, result.best_params_))
+            for test_mean, train_mean, param in zip(
+                    result.cv_results_['mean_test_score'],
+                    result.cv_results_['mean_train_score'],
+                    result.cv_results_['params']):
+                print("Train: %f // Test : %f with: %r" % (train_mean, test_mean, param))
 
-        # Initialize Grid Search object
-        gscv = GridSearchCV(estimator=regressor, param_grid=param_grid,
-                            scoring=scoring, n_jobs=1, cv=5, verbose=1)
+        return result.best_score_, result.best_params_
 
-        # Fit gscv
-        print(f'Tuning {regr}')
-        gscv.fit(x, y)
+    @staticmethod
+    def cross_validation(data: dict, estimator, param_grid: dict, scoring: str, cv: int, verbose: bool):
+        regr = estimator()
+        regr.set_params(**param_grid)
+        scores = cross_val_score(regr, data['x_train'], data['y_train'],
+                                 scoring=scoring, cv=cv)
 
-        # Get best paramters and score
-        best_params = gscv.best_params_
-        # best_score = gscv.best_score_
+        score = sum(scores) / len(scores)
 
-        # Update regressor paramters
-        regressor.set_params(**best_params)
+        if verbose:
+            print(f'Estimator: {type(regr).__name__}, Score: {score}')
 
-        return regressor
+        return score, param_grid
 
-    def save_best_params(self, regr: str, regr_bests: dict, type_apply: str):
-        for type_key, type_val in regr_bests.items():
-            for model_key, model_val in type_val.items():
-                best_params = model_val.get_params()
-                f = open(os.path.join(self.path_res_pred, type_apply, type_key,
-                                      regr + '_params_' + model_key + '.pickle'), 'wb')
-                pickle.dump(best_params, f)
-                f.close()
+    def save_best_result(self, estimator, hrchy_code: str):
+        f = open(os.path.join(
+            self.data_version + '_' + str(self.hrchy_lvl) + '_' + hrchy_code + '.pickle'), 'wb')
+        pickle.dump(estimator, f)
+        f.close()

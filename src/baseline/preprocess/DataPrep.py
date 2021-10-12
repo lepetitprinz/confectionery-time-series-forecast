@@ -182,7 +182,8 @@ class DataPrep(object):
 
         return seq_to_cust
 
-    def make_temp_data(self, df: pd.DataFrame):
+    @staticmethod
+    def make_temp_data(df: pd.DataFrame):
         df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
         df['yymmdd'] = df['yymmdd'] + timedelta(days=126)
         length = len(df)

@@ -16,11 +16,14 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
+    estimators = {'ar': Algorithm.ar,
+                  'arima': Algorithm.arima,
+                  'hw': Algorithm.hw,
+                  'var': Algorithm.var,
+                  'sarima': Algorithm.sarimax}
+
     def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
                  exg_list: list, hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
-        # Class Configuration
-        self.algorithm = Algorithm()
-
         # Data Configuration
         self.date = date
         self.data_vrsn_cd = data_vrsn_cd
@@ -44,12 +47,7 @@ class Train(object):
         # Algorithm Configuration
         self.param_grid = mst_info['param_grid']
         self.model_info = mst_info['model_mst']
-        self.cand_models = list(self.model_info.keys())
-        self.model_fn = {'ar': self.algorithm.ar,
-                         'arima': self.algorithm.arima,
-                         'hw': self.algorithm.hw,
-                         'var': self.algorithm.var,
-                         'sarima': self.algorithm.sarimax}
+        self.model_candidates = list(self.model_info.keys())
 
         # Training Configuration
         self.validation_method = config.VALIDATION_METHOD
@@ -65,7 +63,7 @@ class Train(object):
         feature_by_variable = self.select_feature_by_variable(df=df)
 
         models = []
-        for model in self.cand_models:
+        for model in self.model_candidates:
             score = self.validation(data=feature_by_variable[self.model_info[model]['variate']], model=model)
             if score > 10 ** 20:
                 score = float(10 ** 20)
@@ -75,11 +73,12 @@ class Train(object):
         return models
 
     def select_feature_by_variable(self, df: pd.DataFrame):
+        feature_by_variable = None
         try:
             feature_by_variable = {'univ': df[self.target_col],
                                    'multi': df[self.exo_col_list + [self.target_col]]}
-        except:
-            print("")
+        except ValueError:
+            print("Data dose not have some columns  `   ")
 
         return feature_by_variable
 
@@ -91,6 +90,9 @@ class Train(object):
 
         elif self.validation_method == 'walk_forward':
             score = self.walk_fwd_validation(data=data, model=model)
+
+        else:
+            raise ValueError
 
         return score
 
@@ -166,7 +168,7 @@ class Train(object):
 
         # evaluation
         try:
-            yhat = self.model_fn[model](history=data_train, cfg=self.param_grid[model], pred_step=n_test)
+            yhat = self.estimators[model](history=data_train, cfg=self.param_grid[model], pred_step=n_test)
             yhat = np.nan_to_num(yhat)
 
             err = 0
@@ -193,7 +195,7 @@ class Train(object):
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
         predictions = []
         for train, test in dataset:
-            yhat = self.model_fn[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
+            yhat = self.estimators[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
             yhat = np.nan_to_num(yhat)
             err = mean_squared_error(test, yhat, squared=False)
             predictions.append(err)

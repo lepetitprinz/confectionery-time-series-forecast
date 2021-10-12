@@ -3,11 +3,11 @@ import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from simulation.preprocess.DataPrep import DataPrep
-# from simulation.model.Train import Train
+from simulation.model.Train import Train
 
 
 class Pipeline(object):
-    def __init__(self, division: str, hrchy_lvl: int, lag: str,
+    def __init__(self, data_version: str, division: str, hrchy_lvl: int, lag: str,
                  save_step_yn=False, load_step_yn=False, save_db_yn=False):
         # Class configuration
         self.io = DataIO()
@@ -15,6 +15,7 @@ class Pipeline(object):
         self.common = self.io.get_dict_from_db(sql=SqlConfig.sql_comm_master(), key='OPTION_CD', val='OPTION_VAL')
 
         # Data Configuration
+        self.data_version = data_version
         self.division = division
         self.target_col = self.common['target_col']
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
@@ -66,8 +67,13 @@ class Pipeline(object):
         if config.CLS_WTIF_PREP:
             print("Step 2: Data Preprocessing\n")
             # Initiate data preprocessing class
-            preprocess = DataPrep(division=self.division, common=self.common, date=self.date,
-                                  hrchy_lvl=self.hrchy_lvl, lag=self.lag)
+            preprocess = DataPrep(
+                division=self.division,
+                common=self.common,
+                date=self.date,
+                hrchy_lvl=self.hrchy_lvl,
+                lag=self.lag
+            )
 
             # Preprocessing the dataset
             data_preped = preprocess.preprocess(sales=sales, exg=exg)
@@ -83,4 +89,8 @@ class Pipeline(object):
         if config.CLS_WTIF_TRAIN:
             print("Step3: Training")
             # Initiate data preprocessing class
-            # train = Train(mst_info={})
+            train = Train(
+                data_version=self.data_version,
+                model_cfg=None
+
+            )

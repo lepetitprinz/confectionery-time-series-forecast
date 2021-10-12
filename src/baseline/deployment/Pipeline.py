@@ -108,8 +108,14 @@ class Pipeline(object):
         if config.CLS_PREP:
             print("Step 3: Data Preprocessing\n")
             # Initiate data preprocessing class
-            preprocess = DataPrep(date=self.date, cust=cust, division=self.division,
-                                  common=self.common, hrchy=self.hrchy_list, decompose_yn=self.decompose_yn)
+            preprocess = DataPrep(
+                date=self.date,
+                cust=cust,
+                division=self.division,
+                common=self.common,
+                hrchy=self.hrchy_list,
+                decompose_yn=self.decompose_yn
+            )
 
             # Temporary process
             checked = preprocess.make_temp_data(df=checked)
@@ -162,9 +168,16 @@ class Pipeline(object):
         if config.CLS_TRAIN:
             print("Step 4: Train\n")
             # Initiate train class
-            training = Train(division=self.division, mst_info=mst_info, date=self.date, data_vrsn_cd=self.data_vrsn_cd,
-                             exg_list=exg_list, hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict,
-                             common=self.common)
+            training = Train(
+                division=self.division,
+                mst_info=mst_info,
+                date=self.date,
+                data_vrsn_cd=self.data_vrsn_cd,
+                exg_list=exg_list,
+                hrchy_lvl_dict=self.hrchy_lvl,
+                hrchy_dict=self.hrchy_dict,
+                common=self.common
+            )
 
             # Train the model
             scores = training.train(df=data_preped)
@@ -194,9 +207,15 @@ class Pipeline(object):
         if config.CLS_PRED:
             print("Step 5: Forecast\n")
             # Initiate predict class
-            predict = Predict(division=self.division, mst_info=mst_info, date=self.date, data_vrsn_cd=self.data_vrsn_cd,
-                              exg_list=exg_list, hrchy_lvl_dict=self.hrchy_lvl, hrchy_dict=self.hrchy_dict,
-                              common=self.common)
+            predict = Predict(
+                division=self.division,
+                mst_info=mst_info, date=self.date,
+                data_vrsn_cd=self.data_vrsn_cd,
+                exg_list=exg_list,
+                hrchy_lvl_dict=self.hrchy_lvl,
+                hrchy_dict=self.hrchy_dict,
+                common=self.common
+            )
 
             # Forecast the model
             prediction = predict.forecast(df=data_preped)
