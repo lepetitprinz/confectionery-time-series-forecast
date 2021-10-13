@@ -375,3 +375,9 @@ class SqlConfig(object):
                AND FKEY LIKE '%{kwargs['fkey']}%'
         """
         return sql
+
+    @staticmethod
+    def sql_pred_item(**kwargs):
+        sql = f"""
+            SELECT 
+        """

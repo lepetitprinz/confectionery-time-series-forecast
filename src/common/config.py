@@ -8,8 +8,8 @@ CLS_TRAIN = True
 CLS_PRED = True
 
 # Class Configuration: What-IF Simulation
-CLS_SIM_LOAD = False
-CLS_SIM_PREP = True
+CLS_SIM_LOAD = True
+CLS_SIM_PREP = False
 CLS_SIM_TRAIN = True
 
 # Database Configuration
@@ -73,7 +73,7 @@ PARAM_GRIDS_BEST = {
         'max_features': 'auto'
     },
     'gb': {  # Gradient Boost
-        'n_estimators':100,
+        'n_estimators': 100,
         'criterion': ['friedman_mse'],
         'min_samples_split': 2,  # minimum number of samples required to split inner node
         'min_samples_leaf': 2,   # have the effect of smoothing the model

@@ -1,20 +1,31 @@
-from simulation.model.Algorithm import Algorithm
+import common.util as util
 
 import os
 import pickle
 
+# Algorithm
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+
 
 class Predict(object):
-    estimators = {'rf': Algorithm.random_forest,
-                  'gb': Algorithm.gradient_boost,
-                  'et': Algorithm.extra_trees}
+    estimators = {'rf': RandomForestRegressor,
+                  'gb': GradientBoostingRegressor,
+                  'et': ExtraTreesRegressor}
 
-    def __init__(self, data_version: str, mst_info: dict, hrchy_lvl: int):
+    def __init__(self, data_version: str, hrchy_lvl: int,
+                 scaling_yn: bool, grid_search_yn: bool, save_obj_yn: bool):
         # Data Configuration
         self.data_version = data_version
         self.hrchy_lvl = hrchy_lvl
 
-    def prediction(self, data, hrchy_code):
+        # Prediction Option configuration
+        self.scaling_yn = scaling_yn
+        self.grid_search_yn = grid_search_yn
+        self.save_obj_yn = save_obj_yn
+
+    def predict(self, data, hrchy_code):
         # Load best estimator
         estimator = self.load_best_estimator(hrchy_code=hrchy_code)
 

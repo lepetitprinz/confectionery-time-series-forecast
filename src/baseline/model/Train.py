@@ -97,9 +97,9 @@ class Train(object):
         return score
 
     def make_score_result(self, data: dict, hrchy_key: str):
-        result = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_tot_lvl,
-                                               fn=self.score_to_df,
-                                               df=data)
+        result = util.hrchy_recursion_extend_key(hrchy_lvl=self.hrchy_tot_lvl,
+                                                 fn=self.score_to_df,
+                                                 df=data)
 
         result = pd.DataFrame(result)
         cols = self.hrchy + ['stat_cd', 'rmse']

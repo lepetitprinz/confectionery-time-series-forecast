@@ -1,6 +1,5 @@
 import common.util as util
 
-import numpy as np
 import pandas as pd
 from copy import deepcopy
 
@@ -10,7 +9,7 @@ class DataPrep(object):
     STR_TYPE_COL = ['sku_cd']
     LAG_OPTION = {'w1': 1, 'w2': 2}
 
-    def __init__(self, division: str, common: dict, date: dict, hrchy_lvl: int, lag: str):
+    def __init__(self, division: str, hrchy_lvl: int, lag: str, common: dict, date: dict):
         self.division = division
         self.date_col = 'yymmdd'
         self.input_col = ['discount']
@@ -23,9 +22,12 @@ class DataPrep(object):
                                         freq=common['resample_rule'])
         self.lag = lag
 
-        # Data Level Configuration
+        # Data Configuration
         self.hrchy_lvl = hrchy_lvl
         self.hrchy_list = common['hrchy_item'].split(',')[:hrchy_lvl]
+
+        #
+        self.exg_list = []
 
     def preprocess(self, sales: pd.DataFrame, exg: dict):
         # ------------------------------- #
@@ -43,6 +45,8 @@ class DataPrep(object):
         # ------------------------------- #
         # 2. Preprocess Exogenous dataset
         # ------------------------------- #
+        self.exg_list = [exg.lower() for exg in list(exg['all']['idx_cd'].unique())]
+
         exg_all = util.prep_exg_all(data=exg['all'])
         exg_partial = util.prep_exg_partial(data=exg['partial'])
 
@@ -79,16 +83,17 @@ class DataPrep(object):
 
     def resample(self, df: pd.DataFrame):
         # Split by aggregation method
+        col_avg = list(set(self.col_agg_map['avg']).intersection(set(self.exg_list)))
+        df_avg = df[col_avg]
         df_sum = df[self.col_agg_map['sum']]
-        df_avg = df[self.col_agg_map['avg']]
 
         # resampling
-        df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
         df_avg_resampled = df_avg.resample(rule=self.resample_rule).mean()
+        df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
 
         # fill NaN
-        df_sum_resampled = df_sum_resampled.fillna(value=0)
         df_avg_resampled = df_avg_resampled.fillna(value=0)
+        df_sum_resampled = df_sum_resampled.fillna(value=0)
 
         # Concatenate aggregation
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)

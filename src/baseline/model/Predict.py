@@ -44,9 +44,9 @@ class Predict(object):
                          'sarima': self.algorithm.sarimax}
 
     def forecast(self, df):
-        prediction = util.hrchy_recursion_with_key(hrchy_lvl=self.hrchy_tot_lvl,
-                                                   fn=self.forecast_model,
-                                                   df=df)
+        prediction = util.hrchy_recursion_extend_key(hrchy_lvl=self.hrchy_tot_lvl,
+                                                     fn=self.forecast_model,
+                                                     df=df)
 
         return prediction
 

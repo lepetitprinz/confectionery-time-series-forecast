@@ -66,13 +66,27 @@ def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> dict:
     return temp
 
 
-def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
+def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> None:
+    if lvl == 0:
+        for key, val in df.items():
+            hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
+
+    elif lvl < hrchy_lvl:
+        for key_hrchy, val_hrchy in val.items():
+            hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
+
+    elif lvl == hrchy_lvl:
+        for key_hrchy, val_hrchy in val.items():
+            fn(key_hrchy, val_hrchy)
+
+
+def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
     if lvl == 0:
         temp = []
         for key, val in df.items():
             hrchy.append(key)
-            result = hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val,
-                                              lvl=lvl+1, hrchy=hrchy)
+            result = hrchy_recursion_extend_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val,
+                                                lvl=lvl+1, hrchy=hrchy)
             temp.extend(result)
             hrchy.remove(key)
 
@@ -80,8 +94,8 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
         temp = []
         for key_hrchy, val_hrchy in val.items():
             hrchy.append(key_hrchy)
-            result = hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy,
-                                              lvl=lvl+1, hrchy=hrchy)
+            result = hrchy_recursion_extend_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy,
+                                                lvl=lvl+1, hrchy=hrchy)
             temp.extend(result)
             hrchy.remove(key_hrchy)
 
@@ -106,7 +120,7 @@ def make_path_baseline(module: str, division: str, hrchy_lvl: str, step: str, ex
     return path
 
 
-def make_path_simulation(module: str, division: str, step: str, extension: str):
+def make_path_sim(module: str, division: str, step: str, extension: str):
     path = os.path.join('..', '..', module, division + '_' + step + '.' + extension)
 
     return path

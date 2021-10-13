@@ -1,13 +1,14 @@
 from simulation.deployment.Pipeline import Pipeline
 
-division = 'SELL_IN'
+division = 'sell_in'
 hrchy_lvl = 4
 lag = 'w1'
 
-save_step_yn = True
-load_step_yn = True
+save_obj_yn = True
+load_obj_yn = True
 save_db_yn = False
+grid_search_yn = False
 
 pipeline = Pipeline(division=division, hrchy_lvl=hrchy_lvl, lag=lag,
-                    save_step_yn=save_step_yn, load_step_yn=load_step_yn)
+                    save_obj_yn=save_obj_yn, load_obj_yn=load_obj_yn, save_db_yn=save_db_yn)
 pipeline.run()
