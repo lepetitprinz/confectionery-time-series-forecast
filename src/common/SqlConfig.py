@@ -379,5 +379,55 @@ class SqlConfig(object):
     @staticmethod
     def sql_pred_item(**kwargs):
         sql = f"""
-            SELECT 
-        """
+            SELECT DATA_VRSN_CD
+                 , DIVISION_CD
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR04_CD
+                 , WEEK
+                 , YYMMDD
+                 , SUM(RESULT_SALES) AS QTY
+              FROM (
+                   SELECT DATA_VRSN_CD
+                        , DIVISION_CD
+                        , WEEK
+                        , YYMMDD
+                        , RESULT_SALES
+                        , ITEM_ATTR01_CD
+                        , ITEM_ATTR02_CD
+                        , ITEM_ATTR03_CD
+                        , ITEM_ATTR04_CD
+                        , ITEM_CD
+                   FROM M4S_O110600
+                   WHERE 1 = 1
+                     AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+                     AND DIVISION_CD = '{kwargs['division_cd']}'
+                     AND FKEY LIKE '%{kwargs['fkey']}%'
+                     AND ITEM_ATTR04_CD ='{kwargs['item_cd']}'
+                  ) PRED
+             GROUP BY DATA_VRSN_CD
+                    , DIVISION_CD
+                    , ITEM_ATTR01_CD
+                    , ITEM_ATTR02_CD
+                    , ITEM_ATTR03_CD
+                    , ITEM_ATTR04_CD
+                    , YYMMDD
+                    , WEEK
+                """
+        return sql
+
+    @staticmethod
+    def sql_sales_item(**kwargs):
+        sql = f"""
+            SELECT WEEK
+                 , SUM(RST_SALES_QTY) AS QTY
+              FROM (
+                    SELECT *
+                      FROM M4S_I002175
+                     WHERE 1 = 1
+                       AND ITEM_ATTR04_CD = {kwargs['item_cd']}
+                       AND WEEK = {kwargs['week']}
+                   ) SALES
+             GROUP BY WEEK
+                    """

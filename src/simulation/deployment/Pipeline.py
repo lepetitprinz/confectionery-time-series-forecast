@@ -21,7 +21,7 @@ class Pipeline(object):
         self.lag = lag
 
         # Execution Configuration
-        self.scaling_yn = True
+        self.scaling_yn = False
         self.grid_search_yn = grid_search_yn
 
         # Save & Load Configuration
@@ -92,6 +92,7 @@ class Pipeline(object):
             # Initiate data preprocessing class
             train = Train(
                 data_version=data_load.data_version,
+                division=self.division,
                 hrchy_lvl=data_load.hrchy_lvl,
                 common=data_load.common,
                 algorithms=data_load.algorithms,

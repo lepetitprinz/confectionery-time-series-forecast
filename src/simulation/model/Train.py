@@ -19,10 +19,11 @@ class Train(object):
                   'gb': GradientBoostingRegressor,
                   'et': ExtraTreesRegressor}
 
-    def __init__(self, data_version: str, hrchy_lvl: int, common, algorithms: list, parameters: dict,
+    def __init__(self, data_version: str, division: str, hrchy_lvl: int, common, algorithms: list, parameters: dict,
                  scaling_yn: bool, grid_search_yn: bool, save_obj_yn: bool):
         # Data Configuration
         self.data_version = data_version
+        self.division = division
         self.hrchy_lvl = hrchy_lvl
         self.target_col = common['target_col']
 
@@ -92,13 +93,27 @@ class Train(object):
                     verbose=verbose
                 )
             # append each result
-            results.append((estimator, params, score))
+            results.append([estimator, params, score])
 
         # Get best model
         results = sorted(results, key=lambda x: x[-1], reverse=True)  # Sort by score
         best_model = results[0]
 
+        est_fit = self.fit_model(
+            data=data,
+            model=self.estimators[best_model[0]],
+            params=best_model[1]
+        )
+        best_model.append(est_fit)
+
         return best_model
+
+    @staticmethod
+    def fit_model(data, model, params):
+        estimator = model().set_params(**params)
+        estimator.fit(data['x_train'], data['y_train'])
+
+        return estimator
 
     @staticmethod
     def grid_search_cv(data, estimator, param_grid: dict, scoring, cv: int, verbose: bool):
@@ -111,12 +126,12 @@ class Train(object):
         result = gsc.fit(data['x_train'], data['y_train'])
 
         if verbose:
-            print("Best: %f using %s" % (result.best_score_, result.best_params_))
+            print(f"Best: {result.best_score_} using {result.best_params_}")
             for test_mean, train_mean, param in zip(
                     result.cv_results_['mean_test_score'],
                     result.cv_results_['mean_train_score'],
                     result.cv_results_['params']):
-                print("Train: %f // Test : %f with: %r" % (train_mean, test_mean, param))
+                print(f"Train: {train_mean} // Test: {test_mean} with: {param}")
 
         return result.best_score_, result.best_params_
 
@@ -124,9 +139,7 @@ class Train(object):
     def cross_validation(data: dict, estimator, param_grid: dict, scoring: str, cv: int, verbose: bool):
         regr = estimator()
         regr.set_params(**param_grid)
-        scores = cross_val_score(regr, data['x_train'], data['y_train'],
-                                 scoring=scoring, cv=cv)
-
+        scores = cross_val_score(regr, data['x_train'], data['y_train'], scoring=scoring, cv=cv)
         score = sum(scores) / len(scores)
 
         if verbose:
@@ -136,13 +149,15 @@ class Train(object):
 
     def save_best_model(self, estimator, hrchy_code: str):
         f = open(os.path.join('..', '..', 'simulation', 'best_models',
-                 self.data_version + '_' + str(self.hrchy_lvl) + '_' + hrchy_code + '.pickle'), 'wb')
+                 self.data_version + '_' + self.division + '_' + str(self.hrchy_lvl) +
+                              '_' + hrchy_code + '.pickle'), 'wb')
         pickle.dump(estimator, f)
         f.close()
 
     def save_scaler(self, scaler, hrchy_code: str):
         f = open(os.path.join('..', '..', 'simulation', 'scaler',
-                 self.data_version + '_' + str(self.hrchy_lvl) + '_' + hrchy_code + '.pickle'), 'wb')
+                 self.data_version + '_' + self.division + '_' + str(self.hrchy_lvl) +
+                              '_' + hrchy_code + '.pickle'), 'wb')
         pickle.dump(scaler, f)
         f.close()
 

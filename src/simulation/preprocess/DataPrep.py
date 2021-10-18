@@ -5,9 +5,10 @@ from copy import deepcopy
 
 
 class DataPrep(object):
-    DROP_COL_SALE = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week', 'cust_cd']
-    STR_TYPE_COL = ['sku_cd']
-    LAG_OPTION = {'w1': 1, 'w2': 2}
+    drop_col_sale = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week', 'cust_cd']
+    str_type_col = ['sku_cd']
+    sim_col = ['']
+    lag_option = {'w1': 1, 'w2': 2}
 
     def __init__(self, division: str, hrchy_lvl: int, lag: str, common: dict, date: dict):
         self.division = division
@@ -34,10 +35,10 @@ class DataPrep(object):
         # 1. Preprocess sales dataset
         # ------------------------------- #
         # Drop columns
-        sales = sales.drop(columns=self.DROP_COL_SALE)
+        sales = sales.drop(columns=self.drop_col_sale)
 
         # convert data type
-        for col in self.STR_TYPE_COL:
+        for col in self.str_type_col:
             sales[col] = sales[col].astype(str)
 
         sales[self.input_col] = sales[self.input_col].fillna(0)
@@ -58,9 +59,9 @@ class DataPrep(object):
         exg_all[self.date_col] = pd.to_datetime(exg_all[self.date_col], format='%Y%m%d')
 
         # Merge sales data & exogenous data
-        data = pd.merge(sales, exg_all, on=self.date_col, how='left')
+        # data = pd.merge(sales, exg_all, on=self.date_col, how='left')    # ToDo: Exception
+        data = sales
 
-        #
         data = data.set_index(keys=self.date_col)
 
         data_group = util.group(data=data, hrchy=self.hrchy_list, hrchy_lvl=self.hrchy_lvl-1)
@@ -83,17 +84,23 @@ class DataPrep(object):
 
     def resample(self, df: pd.DataFrame):
         # Split by aggregation method
-        col_avg = list(set(self.col_agg_map['avg']).intersection(set(self.exg_list)))
-        df_avg = df[col_avg]
-        df_sum = df[self.col_agg_map['sum']]
+        cols = set(df.columns)
+        col_avg = list(cols.intersection(set(self.col_agg_map['avg'])))
+        col_sum = list(cols.intersection(set(self.col_agg_map['sum'])))
 
-        # resampling
-        df_avg_resampled = df_avg.resample(rule=self.resample_rule).mean()
-        df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
+        # Average method
+        df_avg_resampled = pd.DataFrame()
+        if col_avg:
+            df_avg = df[col_avg]
+            df_avg_resampled = df_avg.resample(rule=self.resample_rule).mean()
+            df_avg_resampled = df_avg_resampled.fillna(value=0)
 
-        # fill NaN
-        df_avg_resampled = df_avg_resampled.fillna(value=0)
-        df_sum_resampled = df_sum_resampled.fillna(value=0)
+        # Sum method
+        df_sum_resampled = pd.DataFrame()
+        if col_sum:
+            df_sum = df[col_sum]
+            df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
+            df_sum_resampled = df_sum_resampled.fillna(value=0)
 
         # Concatenate aggregation
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
@@ -118,7 +125,7 @@ class DataPrep(object):
         params: option: w1 / w2 / w1-w2
         """
         lagged = deepcopy(data[self.target_col])
-        lagged = lagged.shift(periods=self.LAG_OPTION[self.lag])
+        lagged = lagged.shift(periods=self.lag_option[self.lag])
         lagged = pd.DataFrame(lagged.values, columns=[self.target_col + '_lag'], index=lagged.index)
         result = pd.concat([data, lagged], axis=1)
         result = result.fillna(0)

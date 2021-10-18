@@ -9,7 +9,7 @@ CLS_PRED = True
 
 # Class Configuration: What-IF Simulation
 CLS_SIM_LOAD = True
-CLS_SIM_PREP = False
+CLS_SIM_PREP = True
 CLS_SIM_TRAIN = True
 
 # Database Configuration
