@@ -420,14 +420,10 @@ class SqlConfig(object):
     @staticmethod
     def sql_sales_item(**kwargs):
         sql = f"""
-            SELECT WEEK
-                 , SUM(RST_SALES_QTY) AS QTY
-              FROM (
-                    SELECT *
-                      FROM M4S_I002175
-                     WHERE 1 = 1
-                       AND ITEM_ATTR04_CD = {kwargs['item_cd']}
-                       AND WEEK = {kwargs['week']}
-                   ) SALES
-             GROUP BY WEEK
-                    """
+            SELECT YYMMDD
+                 , RST_SALES_QTY AS QTY_LAG
+              FROM M4S_I002175
+             WHERE ITEM_ATTR04_CD = '{kwargs['item_cd']}'
+               AND YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
+                """
+        return sql
