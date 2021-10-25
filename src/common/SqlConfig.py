@@ -111,6 +111,7 @@ class SqlConfig(object):
 
     # SELL-IN Table
     @staticmethod
+    # ToDo : Exception YYMMDD + 15 week
     def sql_sell_in(**kwargs):
         sql = f""" 
             SELECT *
@@ -122,7 +123,7 @@ class SqlConfig(object):
                          , BRAND_CD
                          , ITEM_CD
                          , SALES.SKU_CD
-                         , CONVERT(CHAR, DATEADD(WEEK, 15, CONVERT(DATE, YYMMDD)), 112) AS YYMMDD
+                         , CONVERT(CHAR, DATEADD(WEEK, 15, CONVERT(DATE, YYMMDD)), 112) AS YYMMDD 
                         -- , YYMMDD
                          , SEQ
                          , FROM_DC_CD
@@ -438,4 +439,22 @@ class SqlConfig(object):
              WHERE ITEM_ATTR04_CD = '{kwargs['item_cd']}'
                AND YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
                 """
+        return sql
+
+    # SELL-OUT Table
+    @staticmethod
+    def sql_sell_out_temp(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , SOLD_CUST_GRP_CD AS CUST_CD
+                 , ITEM_CD AS SKU_CD
+                 , YYMMDD
+                 , SEQ
+                 , DISCOUNT
+                 , WEEK
+                 , RST_SALES_QTY AS QTY
+                 , CREATE_DATE
+              FROM M4S_I002173
+             WHERE YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
+        """
         return sql

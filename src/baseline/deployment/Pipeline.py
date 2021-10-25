@@ -26,8 +26,8 @@ class Pipeline(object):
         self.division = division
         self.target_col = self.common['target_col']
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
-        # self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
-        self.data_vrsn_cd = '20190915-20211003'  # Todo: Exception
+        self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
+        # self.data_vrsn_cd = '20190915-20211003'  # Todo: Exception
 
         # Data Level Configuration
         self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(item_lvl) + '-'
