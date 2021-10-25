@@ -64,7 +64,8 @@ class Train(object):
 
         models = []
         for model in self.model_candidates:
-            score = self.validation(data=feature_by_variable[self.model_info[model]['variate']], model=model)
+            score = self.evaluation(data=feature_by_variable[self.model_info[model]['variate']], model=model)
+            # Exception
             if score > 10 ** 20:
                 score = float(10 ** 20)
             models.append([model, np.round(score, 3)])
@@ -82,8 +83,7 @@ class Train(object):
 
         return feature_by_variable
 
-    def validation(self, data, model: str) -> float:
-        score = 0.
+    def evaluation(self, data, model: str) -> float:
         # if len(data) > int(self.model_info[model]['input_width']):
         if self.validation_method == 'train_test':
             score = self.train_test_validation(data=data, model=model)
@@ -96,9 +96,9 @@ class Train(object):
 
         return score
 
-    def make_score_result(self, data: dict, hrchy_key: str):
+    def make_score_result(self, data: dict, hrchy_key: str, fn):
         result = util.hrchy_recursion_extend_key(hrchy_lvl=self.hrchy_tot_lvl,
-                                                 fn=self.score_to_df,
+                                                 fn=fn,
                                                  df=data)
 
         result = pd.DataFrame(result)
@@ -147,6 +147,16 @@ class Train(object):
             result.append(hrchy + [algorithm.upper(), score])
 
         return result
+
+    @staticmethod
+    def best_score_to_df(hrchy: list, data) -> list:
+        result = []
+        for algorithm, score in data:
+            result.append(hrchy + [algorithm.upper(), score])
+
+        result = sorted(result, key=lambda x: x[2])
+
+        return [result[0]]
 
     def train_test_validation(self, model: str, data) -> np.array:
         # split dataset

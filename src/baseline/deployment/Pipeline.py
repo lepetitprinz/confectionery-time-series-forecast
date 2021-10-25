@@ -10,7 +10,7 @@ from baseline.model.Predict import Predict
 
 class Pipeline(object):
     def __init__(self, division: str, cust_lvl: int, item_lvl: int,
-                 save_step_yn=False, load_step_yn=False, save_db_yn=False, decompose_yn=False):
+                 save_step_yn=False, save_db_yn=False, decompose_yn=False):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param cust_lvl: Customer Data Level ()
@@ -40,7 +40,6 @@ class Pipeline(object):
 
         # Save & Load Configuration
         self.save_steps_yn = save_step_yn
-        self.load_step_yn = load_step_yn
         self.save_db_yn = save_db_yn
         self.decompose_yn = decompose_yn
 
@@ -64,7 +63,7 @@ class Pipeline(object):
                                                     step='load', extension='csv')
                 self.io.save_object(data=sales, file_path=file_path, data_type='csv')
 
-        if self.load_step_yn:
+        else:
             file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
                                                 step='load', extension='csv')
             sales = self.io.load_object(file_path=file_path, data_type='csv')
@@ -86,7 +85,7 @@ class Pipeline(object):
                                                     step='cns', extension='csv')
                 self.io.save_object(data=checked, file_path=file_path, data_type='csv')
 
-        if self.load_step_yn:
+        else:
             file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
                                                 step='cns', extension='csv')
             checked = self.io.load_object(file_path=file_path, data_type='csv')
@@ -129,7 +128,7 @@ class Pipeline(object):
                                                     step='prep', extension='pickle')
                 self.io.save_object(data=data_preped, file_path=file_path, data_type='binary')
 
-        if self.load_step_yn:
+        else:
             file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
                                                 step='prep', extension='pickle')
             data_preped = self.io.load_object(file_path=file_path, data_type='binary')
@@ -188,14 +187,27 @@ class Pipeline(object):
                                                     step='train', extension='pickle')
                 self.io.save_object(data=scores, file_path=file_path, data_type='binary')
 
-            scores_db, score_info = training.make_score_result(data=scores, hrchy_key=self.hrchy_key)
+            # Make score result
+            # All scores
+            scores_db, score_info = training.make_score_result(data=scores,
+                                                               hrchy_key=self.hrchy_key,
+                                                               fn=training.score_to_df)
 
-            # Save the training scores on the DB table
+            # Save all of the training scores on the DB table
             if self.save_db_yn:
                 self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
                 self.io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
 
-        if self.load_step_yn:
+            # Best scores
+            scores_best_db, score_best_info = training.make_score_result(data=scores,
+                                                                         hrchy_key=self.hrchy_key,
+                                                                         fn=training.best_score_to_df)
+            # Save best of the training scores on the DB table
+            if self.save_db_yn:
+                self.io.delete_from_db(sql=self.sql_conf.del_best_score(**score_best_info))
+                self.io.insert_to_db(df=scores_best_db, tb_name='M4S_O110610')
+
+        else:
             file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
                                                 step='prep', extension='pickle')
             data_preped = self.io.load_object(file_path=file_path, data_type='binary')
@@ -236,7 +248,7 @@ class Pipeline(object):
             # Close DB session
             self.io.session.close()
 
-        if self.load_step_yn:
+        else:
             file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
                                                 step='pred', extension='pickle')
             data_pred = self.io.load_object(file_path=file_path, data_type='binary')

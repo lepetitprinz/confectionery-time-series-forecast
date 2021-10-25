@@ -42,7 +42,7 @@ class Train(object):
 
     def train(self, data):
         util.hrchy_recursion_with_key(
-            hrchy_lvl=self.hrchy_lvl - 1,
+            hrchy_lvl=self.hrchy_lvl-1,
             fn=self.train_best,
             df=data
         )

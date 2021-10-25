@@ -101,8 +101,8 @@ class Simulate(object):
     def load_best_estimator(self, hrchy_code: str):
         # path = os.path.join(self.data_version + '_' + self.division_cd + '_' + str(self.hrchy_lvl) +
         #                     '_' + hrchy_code + '.pickle')
-        path = os.path.join('..', '..', 'simulation', 'best_models',
-            self.data_version + '_' + self.division_cd + '_' + '4' + '_' + hrchy_code + '.pickle')
+        path = os.path.join('..', '..', 'simulation', 'best_models', self.data_version + '_' + self.division_cd +
+                            '_' + '4' + '_' + hrchy_code + '.pickle')
         f = open(path, 'rb')
         estimator = pickle.load(f)
 

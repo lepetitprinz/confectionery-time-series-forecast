@@ -1,11 +1,11 @@
 import numpy as np
 
 # Class Configuration: Baseline Forecast
-CLS_LOAD = True
-CLS_CNS = True
-CLS_PREP = True
+CLS_LOAD = False
+CLS_CNS = False
+CLS_PREP = False
 CLS_TRAIN = True
-CLS_PRED = True
+CLS_PRED = False
 
 # Class Configuration: What-IF Simulation
 CLS_SIM_LOAD = True

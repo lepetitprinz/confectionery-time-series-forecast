@@ -365,6 +365,18 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
+    def del_best_score(**kwargs):
+        sql = f"""
+            DELETE 
+              FROM M4S_O110610
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND FKEY LIKE '%{kwargs['fkey']}%'
+        """
+        return sql
+
+    @staticmethod
     def del_prediction(**kwargs):
         sql = f"""
             DELETE

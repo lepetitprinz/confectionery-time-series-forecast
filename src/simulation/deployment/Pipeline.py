@@ -10,8 +10,8 @@ from simulation.model.Train import Train
 
 
 class Pipeline(object):
-    def __init__(self, division: str, hrchy_lvl: int, lag: str,
-                 grid_search_yn=False, save_obj_yn=False, load_obj_yn=False, save_db_yn=False):
+    def __init__(self, division: str, hrchy_lvl: int, lag: str, scaling_yn=False,
+                 grid_search_yn=False, save_obj_yn=False, save_db_yn=False):
         # Class Configuration
         self.io = DataIO()
 
@@ -21,12 +21,11 @@ class Pipeline(object):
         self.lag = lag
 
         # Execution Configuration
-        self.scaling_yn = False
+        self.scaling_yn = scaling_yn
         self.grid_search_yn = grid_search_yn
 
         # Save & Load Configuration
         self.save_obj_yn = save_obj_yn
-        self.load_obj_yn = load_obj_yn
         self.save_db_yn = save_db_yn
 
     def run(self):
@@ -46,10 +45,10 @@ class Pipeline(object):
         #             module='simulation', division=self.division, step='load', extension='pickle')
         #         self.io.save_object(data=data_load, file_path=file_path, data_type='binary')
         #
-        # if self.load_obj_yn:
-        #     file_path = util.make_path_sim(
-        #         module='simulation', division=self.division, step='load', extension='pickle')
-        #     data_load = self.io.load_object(file_path=file_path, data_type='binary')
+        else:
+            file_path = util.make_path_sim(
+                module='simulation', division=self.division, step='load', extension='pickle')
+            data_load = self.io.load_object(file_path=file_path, data_type='binary')
 
         # ====================== #
         # 2. Data Preprocessing
@@ -79,7 +78,7 @@ class Pipeline(object):
                                                extension='pickle')
                 self.io.save_object(data=data_prep, file_path=file_path, data_type='binary')
 
-        if self.load_obj_yn:
+        else:
             file_path = util.make_path_sim(module='simulation', division=self.division, step='prep', extension='pickle')
             data_prep = self.io.load_object(file_path=file_path, data_type='binary')
 

@@ -7,13 +7,13 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 
 class Decomposition(object):
-    def __init__(self, division: str, hrchy_list: list, hrchy_lvl_cd: str, date_range):
+    def __init__(self, common, division: str, hrchy_list: list, hrchy_lvl_cd: str, date_range):
         self.dao = DataIO()
         self.date_range = date_range
         self.division = division
         self.hrchy_list = hrchy_list
         self.hrchy_lvl_cd = hrchy_lvl_cd
-        self.x = 'qty'
+        self.x = common['target_col']
         self.model = 'additive'     # additive / multiplicative
         self.tb_name = 'M4S_O110500'
         self.save_to_db_yn = True

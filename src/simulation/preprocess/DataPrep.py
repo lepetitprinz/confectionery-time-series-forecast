@@ -5,18 +5,19 @@ from copy import deepcopy
 
 
 class DataPrep(object):
-    drop_col_sale = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week', 'cust_cd']
+    drop_col = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week', 'cust_cd']
     str_type_col = ['sku_cd']
-    sim_col = ['']
     lag_option = {'w1': 1, 'w2': 2}
 
     def __init__(self, division: str, hrchy_lvl: int, lag: str, common: dict, date: dict):
         self.division = division
-        self.date_col = 'yymmdd'
+        self.date_col = common['date_col']
         self.input_col = ['discount']
         self.target_col = common['target_col']
-        self.col_agg_map = {'sum': ['qty'],
-                            'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min']}
+        self.col_agg_map = {'sum': common['agg_sum'].split(','),
+                            'avg': common['agg_avg'].split(',')}
+        # self.col_agg_map = {'sum': ['qty'],
+        #                     'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min']}
         self.resample_rule = common['resample_rule']
         self.date_range = pd.date_range(start=date['date_from'],
                                         end=date['date_to'],
@@ -35,7 +36,7 @@ class DataPrep(object):
         # 1. Preprocess sales dataset
         # ------------------------------- #
         # Drop columns
-        sales = sales.drop(columns=self.drop_col_sale)
+        sales = sales.drop(columns=self.drop_col)
 
         # convert data type
         for col in self.str_type_col:

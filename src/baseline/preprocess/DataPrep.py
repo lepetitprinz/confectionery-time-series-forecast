@@ -16,6 +16,7 @@ class DataPrep(object):
         # Dataset configuration
         self.division = division
         self.cust = cust
+        self.common = common
         self.target_col = common['target_col']
         self.col_agg_map = {'sum': ['qty'],
                             'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min']}
@@ -67,7 +68,8 @@ class DataPrep(object):
 
         # Decomposition
         if self.decompose_yn:
-            decompose = Decomposition(division=self.division,
+            decompose = Decomposition(common=self.common,
+                                      division=self.division,
                                       hrchy_list=self.hrchy,
                                       hrchy_lvl_cd=self.hrchy[self.hrchy_level],
                                       date_range=self.date_range)
