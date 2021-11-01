@@ -94,7 +94,7 @@ class ConsistencyCheck(object):
         df['err_grp_cd'] = self.err_grp_map[err_cd]
         df['err_cd'] = err_cd.upper()
         if self.division == 'sell_out':
-            df['from_dc_cd'] = np.nan
+            df['from_dc_cd'] = ''
         df['create_user_cd'] = 'SYSTEM'
 
         df = df.rename(columns={'biz_cd': 'item_attr01_cd',

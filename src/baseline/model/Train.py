@@ -22,10 +22,9 @@ class Train(object):
                   'var': Algorithm.var,
                   'sarima': Algorithm.sarimax}
 
-    def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
+    def __init__(self, division: str, mst_info: dict, data_vrsn_cd: str,
                  exg_list: list, hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
         # Data Configuration
-        self.date = date
         self.data_vrsn_cd = data_vrsn_cd
         self.common = common
         self.division = division    # SELL-IN / SELL-OUT

@@ -1,12 +1,5 @@
 import numpy as np
 
-# Class Configuration: Baseline Forecast
-CLS_LOAD = False
-CLS_CNS = False
-CLS_PREP = False
-CLS_TRAIN = True
-CLS_PRED = False
-
 # Class Configuration: What-IF Simulation
 CLS_SIM_LOAD = True
 CLS_SIM_PREP = True
@@ -14,19 +7,19 @@ CLS_SIM_TRAIN = True
 
 # Database Configuration
 RDMS = 'mssql+pymssql'
-HOST = '10.109.16.49'    # Database IP adress
+HOST = '10.109.2.135'    # Database IP adress
 DATABASE = 'BISCM'      # Database name
 PORT = '1433'
 USER = 'matrix'    # User name
 PASSWORD = 'Diam0nd123!'     # User password
 
-# Database Configuration (temp)
+# Database Configuration
 # RDMS = 'mssql+pymssql'
-# HOST = '10.112.33.101'    # Database IP adress
+# HOST = '10.109.16.49'    # Database IP adress
 # DATABASE = 'BISCM'      # Database name
 # PORT = '1433'
-# USER = 'sa'    # User name
-# PASSWORD = 'matrixadm'     # User password
+# USER = 'matrix'    # User name
+# PASSWORD = 'Diam0nd123!'     # User password
 
 # Algorithm configuration
 VALIDATION_METHOD = 'train_test'    # train_test / walk-walk_forward

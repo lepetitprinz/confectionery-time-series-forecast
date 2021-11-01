@@ -17,11 +17,10 @@ class DataPrep(object):
         self.division = division
         self.cust = cust
         self.common = common
-        self.target_col = common['target_col']
-        self.col_agg_map = {'sum': ['qty'],
-                            'avg': ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min']}
-        self.seq_to_cust_map = {}
+        self.date_col = common['date_col']
         self.resample_rule = common['resample_rule']
+        self.col_agg_map = {'sum': common['agg_sum'].split(','),
+                            'avg': common['agg_avg'].split(',')}
         self.date_range = pd.date_range(start=date['date_from'],
                                         end=date['date_to'],
                                         freq=common['resample_rule'])
@@ -57,7 +56,7 @@ class DataPrep(object):
         # 3. Preprocess merged dataset
         # ------------------------------- #
         # Merge sales data & exogenous(all) data
-        data = pd.merge(data, exg_all, on='yymmdd', how='left')
+        data = pd.merge(data, exg_all, on=self.date_col, how='left')
 
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
@@ -104,8 +103,8 @@ class DataPrep(object):
             df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
 
         # convert to datetime
-        df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
-        df = df.set_index(keys=['yymmdd'])
+        df[self.date_col] = pd.to_datetime(df[self.date_col], format='%Y%m%d')
+        df = df.set_index(keys=[self.date_col])
 
         # add noise feature
         # df = self.add_noise_feat(df=df)
@@ -184,10 +183,9 @@ class DataPrep(object):
 
         return seq_to_cust
 
-    @staticmethod
-    def make_temp_data(df: pd.DataFrame):
-        df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
-        df['yymmdd'] = df['yymmdd'] + timedelta(days=126)
+    def make_temp_data(self, df: pd.DataFrame):
+        df[self.date_col] = pd.to_datetime(df[self.date_col], format='%Y%m%d')
+        df[self.date_col] = df[self.date_col] + timedelta(days=126)
         length = len(df)
 
         df1 = deepcopy(df)
@@ -196,10 +194,10 @@ class DataPrep(object):
         df4 = deepcopy(df)
 
         # lagging
-        df1['yymmdd'] = df1['yymmdd'] - timedelta(days=150)
-        df2['yymmdd'] = df2['yymmdd'] - timedelta(days=300)
-        df3['yymmdd'] = df3['yymmdd'] - timedelta(days=450)
-        df4['yymmdd'] = df4['yymmdd'] - timedelta(days=600)
+        df1[self.date_col] = df1[self.date_col] - timedelta(days=150)
+        df2[self.date_col] = df2[self.date_col] - timedelta(days=300)
+        df3[self.date_col] = df3[self.date_col] - timedelta(days=450)
+        df4[self.date_col] = df4[self.date_col] - timedelta(days=600)
 
         # add random integers
         width = 10
@@ -214,8 +212,8 @@ class DataPrep(object):
         df4['qty'] += rand4
 
         df_final = pd.concat([df, df1, df2, df3, df4], axis=0)
-        df_final['yymmdd'] = df_final['yymmdd'].dt.strftime('%Y%m%d')
-        df_final['yymmdd'] = df_final['yymmdd'].astype(np.int32)
+        df_final[self.date_col] = df_final[self.date_col].dt.strftime('%Y%m%d')
+        df_final[self.date_col] = df_final[self.date_col].astype(np.int32)
 
         return df_final
 

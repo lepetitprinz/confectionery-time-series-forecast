@@ -21,7 +21,6 @@ class Predict(object):
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']    # Target features
         self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
         self.cal_mst = mst_info['cal_mst']

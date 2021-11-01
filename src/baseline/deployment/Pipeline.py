@@ -9,14 +9,29 @@ from baseline.model.Predict import Predict
 
 
 class Pipeline(object):
-    def __init__(self, division: str, cust_lvl: int, item_lvl: int,
-                 save_step_yn=False, save_db_yn=False, decompose_yn=False):
+    def __init__(self, division: str, lvl_cfg: dict, io_cfg: dict, exec_cfg: dict):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
-        :param cust_lvl: Customer Data Level ()
-        :param item_lvl: Product Data Level (Biz/Line/Brand/Item/SKU)
-        :param save_step_yn: Save result of each step
+        :param lvl_cfg: Data Level Configuration
+            - cust_lvl: Customer Level (Customer Group - Customer)
+            - item_lvl: Item Level (Biz/Line/Brand/Item/SKU)
+        :param io_cfg: Data I/O Configuration
+            - save_step_yn: Save Each Step Object or not
+            - save_db_yn: Save Result to DB or not
+            - decompose_yn: Decompose Sales data or not
+        :param exec_cfg: Execute Configuration
         """
+        # I/O & Execution Configuration
+        self.exec_cfg = exec_cfg
+        self.save_steps_yn = io_cfg['save_step_yn']
+        self.save_db_yn = io_cfg['save_db_yn']
+        self.decompose_yn = io_cfg['decompose_yn']
+
+        self.path_load = util.make_path_baseline(module='data', division=division, hrchy_lvl='',
+                                                 step='load', extension='csv')
+        self.path_cns = util.make_path_baseline(module='data', division=division, hrchy_lvl='',
+                                                step='cns', extension='csv')
+
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
@@ -30,68 +45,63 @@ class Pipeline(object):
         # self.data_vrsn_cd = '20190915-20211003'  # Todo: Exception
 
         # Data Level Configuration
-        self.hrchy_key = "C" + str(cust_lvl) + '-' + "P" + str(item_lvl) + '-'
-        self.hrchy_lvl = {'cust_lvl': cust_lvl, 'item_lvl': item_lvl}
+        self.hrchy_key = "C" + str(lvl_cfg['cust_lvl']) + '-' + "P" + str(lvl_cfg['item_lvl']) + '-'
+        self.hrchy_lvl = {'cust_lvl': lvl_cfg['cust_lvl'], 'item_lvl': lvl_cfg['item_lvl']}
         self.hrchy_cust = self.common['hrchy_cust'].split(',')
         self.hrchy_item = self.common['hrchy_item'].split(',')
         self.hrchy_dict = {'hrchy_cust': self.common['hrchy_cust'].split(','),
                            'hrchy_item': self.common['hrchy_item'].split(',')}
-        self.hrchy_list = self.hrchy_cust[:cust_lvl] + self.hrchy_item[:item_lvl]
+        self.hrchy_list = self.hrchy_cust[:lvl_cfg['cust_lvl']] + self.hrchy_item[:lvl_cfg['item_lvl']]
 
-        # Save & Load Configuration
-        self.save_steps_yn = save_step_yn
-        self.save_db_yn = save_db_yn
-        self.decompose_yn = decompose_yn
+        # Path Configuration
+        self.path = {
+            'load': util.make_path_baseline(module='data', division=division, hrchy_lvl='',
+                                            step='load', extension='csv'),
+            'cns': util.make_path_baseline(module='data', division=division, hrchy_lvl='',
+                                           step='cns', extension='csv'),
+            'prep': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy_key,
+                                            step='prep', extension='pickle'),
+            'train': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy_key,
+                                             step='train', extension='pickle'),
+            'pred': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy_key,
+                                            step='pred', extension='pickle')
+        }
 
     def run(self):
         # ================================================================================================= #
         # 1. Load the dataset
         # ================================================================================================= #
         sales = None
-        if config.CLS_LOAD:
+        if self.exec_cfg['cls_load']:
             print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
             elif self.division == 'SELL_OUT':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
-            else:
-                raise ValueError(f"{self.division} does not exist")
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
-                                                    step='load', extension='csv')
-                self.io.save_object(data=sales, file_path=file_path, data_type='csv')
-
-        else:
-            file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
-                                                step='load', extension='csv')
-            sales = self.io.load_object(file_path=file_path, data_type='csv')
-
+                self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
         # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
         checked = None
-        err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD', val='ATTR01_VAL')
-        if config.CLS_CNS:
+        if self.exec_cfg['cls_cns']:
             print("Step 2: Check Consistency \n")
+            if not self.exec_cfg['cls_load']:
+                sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
+            err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD',
+                                                   val='ATTR01_VAL')
             cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy_list, date=self.date,
                                    err_grp_map=err_grp_map, save_yn=False)
             checked = cns.check(df=sales)
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
-                                                    step='cns', extension='csv')
-                self.io.save_object(data=checked, file_path=file_path, data_type='csv')
-
-        else:
-            file_path = util.make_path_baseline(module='data', division=self.division, hrchy_lvl='',
-                                                step='cns', extension='csv')
-            checked = self.io.load_object(file_path=file_path, data_type='csv')
+                self.io.save_object(data=checked, file_path=self.path['cns'], data_type='csv')
 
         # ================================================================================================= #
-        # 3. Data Preprocessing
+        # 3.0 Load Dataset
         # ================================================================================================= #
         # Load dataset
         # Customer dataset
@@ -103,9 +113,15 @@ class Pipeline(object):
         exg = {'all': exg_all, 'partial': exg_partial}
         exg_list = list(idx.lower() for idx in exg_all['idx_cd'].unique())
 
+        # ================================================================================================= #
+        # 3. Data Preprocessing
+        # ================================================================================================= #
         data_preped = None
-        if config.CLS_PREP:
+        if self.exec_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
+            if not self.exec_cfg['cls_cns']:
+                checked = self.io.load_object(file_path=self.path['cns'], data_type='csv')
+
             # Initiate data preprocessing class
             preprocess = DataPrep(
                 date=self.date,
@@ -115,24 +131,15 @@ class Pipeline(object):
                 hrchy=self.hrchy_list,
                 decompose_yn=self.decompose_yn
             )
-
             # Temporary process
-            checked = preprocess.make_temp_data(df=checked)
+            # checked = preprocess.make_temp_data(df=checked)
 
             # Preprocessing the dataset
             data_preped = preprocess.preprocess(data=checked, exg=exg)
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                                    step='prep', extension='pickle')
-                self.io.save_object(data=data_preped, file_path=file_path, data_type='binary')
-
-        else:
-            file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                                step='prep', extension='pickle')
-            data_preped = self.io.load_object(file_path=file_path, data_type='binary')
-
+                self.io.save_object(data=data_preped, file_path=self.path['prep'], data_type='binary')
         # ================================================================================================= #
         # 4.0. Load information
         # ================================================================================================= #
@@ -142,7 +149,6 @@ class Pipeline(object):
         cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
         item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
-        # item_mst['sku_cd'] = item_mst['sku_cd'].astype(str)
 
         # Load Algorithm & Hyper-parameter Information
         model_mst = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
@@ -163,29 +169,26 @@ class Pipeline(object):
         # ================================================================================================= #
         # 4. Training
         # ================================================================================================= #
-        scores = None
-        if config.CLS_TRAIN:
+        if self.exec_cfg['cls_train']:
             print("Step 4: Train\n")
+            if not self.exec_cfg['cls_prep']:
+                data_preped = self.io.load_object(file_path=self.path['prep'], data_type='binary')
             # Initiate train class
             training = Train(
                 division=self.division,
                 mst_info=mst_info,
-                date=self.date,
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
                 hrchy_lvl_dict=self.hrchy_lvl,
                 hrchy_dict=self.hrchy_dict,
                 common=self.common
             )
-
-            # Train the model
+            # Train the models
             scores = training.train(df=data_preped)
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                                    step='train', extension='pickle')
-                self.io.save_object(data=scores, file_path=file_path, data_type='binary')
+                self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
             # Make score result
             # All scores
@@ -206,18 +209,13 @@ class Pipeline(object):
             if self.save_db_yn:
                 self.io.delete_from_db(sql=self.sql_conf.del_best_score(**score_best_info))
                 self.io.insert_to_db(df=scores_best_db, tb_name='M4S_O110610')
-
-        else:
-            file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                                step='prep', extension='pickle')
-            data_preped = self.io.load_object(file_path=file_path, data_type='binary')
-
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
-        data_pred = None
-        if config.CLS_PRED:
+        if self.exec_cfg['cls_pred']:
             print("Step 5: Forecast\n")
+            if not self.exec_cfg['cls_prep']:
+                data_preped = self.io.load_object(file_path=self.path['prep'], data_type='binary')
             # Initiate predict class
             predict = Predict(
                 division=self.division,
@@ -228,15 +226,12 @@ class Pipeline(object):
                 hrchy_dict=self.hrchy_dict,
                 common=self.common
             )
-
             # Forecast the model
             prediction = predict.forecast(df=data_preped)
 
             # Save Step result
             if self.save_steps_yn:
-                file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                                    step='pred', extension='pickle')
-                self.io.save_object(data=prediction, file_path=file_path, data_type='binary')
+                self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
 
             prediction_db, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
 
@@ -247,8 +242,3 @@ class Pipeline(object):
 
             # Close DB session
             self.io.session.close()
-
-        else:
-            file_path = util.make_path_baseline(module='result', division=self.division, hrchy_lvl=self.hrchy_key,
-                                                step='pred', extension='pickle')
-            data_pred = self.io.load_object(file_path=file_path, data_type='binary')

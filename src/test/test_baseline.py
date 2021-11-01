@@ -1,19 +1,33 @@
 from baseline.deployment.Pipeline import Pipeline
 
+# Sales Data configuration
 division = 'SELL_IN'
-cust_lvl = 0    # Customer_group - Customer
-prod_lvl = 5    # Biz - Line - Brand - Item - SKU
 
-save_step_yn = False
-save_db_yn = False
-decompose_yn = False
+# Level Configuration
+lvl_cfg = {
+    'cust_lvl': 0,   # Customer_group - Customer
+    'item_lvl': 5    # Biz - Line - Brand - Item - SKU
+}
+# Data IO Configuration
+io_cfg = {
+    'save_step_yn': False,
+    'save_db_yn': False,
+    'decompose_yn': False
+}
+
+# Execute Configuration
+exec_cfg = {
+    'cls_load': False,
+    'cls_cns': False,
+    'cls_prep': True,
+    'cls_train': False,
+    'cls_pred': False
+}
 
 pipeline = Pipeline(division=division,
-                    cust_lvl=cust_lvl,
-                    item_lvl=prod_lvl,
-                    save_step_yn=save_step_yn,
-                    save_db_yn=save_db_yn,
-                    decompose_yn=decompose_yn)
-
+                    lvl_cfg=lvl_cfg,
+                    io_cfg=io_cfg,
+                    exec_cfg=exec_cfg)
+# Execute Baseline Forecast
 pipeline.run()
 
