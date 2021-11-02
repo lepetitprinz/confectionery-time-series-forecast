@@ -5,7 +5,7 @@ division = 'SELL_IN'
 
 # Level Configuration
 lvl_cfg = {
-    'cust_lvl': 0,   # Customer_group - Customer
+    'cust_lvl': 0,   # Customer group - Customer
     'item_lvl': 5    # Biz - Line - Brand - Item - SKU
 }
 # Data IO Configuration
@@ -28,6 +28,7 @@ pipeline = Pipeline(division=division,
                     lvl_cfg=lvl_cfg,
                     io_cfg=io_cfg,
                     exec_cfg=exec_cfg)
+
 # Execute Baseline Forecast
 pipeline.run()
 

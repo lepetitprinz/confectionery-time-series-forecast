@@ -6,6 +6,8 @@ import pandas as pd
 from copy import deepcopy
 from datetime import timedelta
 
+from sklearn.impute import KNNImputer
+
 
 class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
@@ -19,18 +21,24 @@ class DataPrep(object):
         self.common = common
         self.date_col = common['date_col']
         self.resample_rule = common['resample_rule']
-        self.col_agg_map = {'sum': common['agg_sum'].split(','),
-                            'avg': common['agg_avg'].split(',')}
-        self.date_range = pd.date_range(start=date['date_from'],
-                                        end=date['date_to'],
-                                        freq=common['resample_rule'])
+        self.col_agg_map = {
+            'sum': common['agg_sum'].split(','),
+            'avg': common['agg_avg'].split(',')
+        }
+        self.date_range = pd.date_range(
+            start=date['date_from'],
+            end=date['date_to'],
+            freq=common['resample_rule']
+        )
 
         # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = len(hrchy) - 1
 
-        # Save & Load configuration
+        # Execute configuration
         self.decompose_yn = decompose_yn
+        self.impute_yn = True
+        self.imputer = 'knn'    # knn / iter
 
     def preprocess(self, data: pd.DataFrame, exg: dict) -> dict:
         # ------------------------------- #
@@ -50,7 +58,7 @@ class DataPrep(object):
         exg_all = util.prep_exg_all(data=exg['all'])
 
         # preprocess exogenous(partial) data
-        exg_partial = util.prep_exg_partial(data=exg['partial'])
+        # exg_partial = util.prep_exg_partial(data=exg['partial'])
 
         # ------------------------------- #
         # 3. Preprocess merged dataset
@@ -176,6 +184,16 @@ class DataPrep(object):
         df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
 
         return df_resampled
+
+    # def impute_data(self, feature: pd.Series):
+    #     imputer = None
+    #     if self.imputer == 'knn':
+    #         imputer = KNNImputer(n_neighbors=5, weights='uniform', metric='nan_euclidean')
+    #
+    #     imputer.fit(feature)
+    #     feature_trans = imputer.transform(feature)
+    #
+    #     return feature_trans
 
     @staticmethod
     def make_seq_to_cust_map(df: pd.DataFrame):

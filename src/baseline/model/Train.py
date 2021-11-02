@@ -78,7 +78,7 @@ class Train(object):
             feature_by_variable = {'univ': df[self.target_col],
                                    'multi': df[self.exo_col_list + [self.target_col]]}
         except ValueError:
-            print("Data dose not have some columns  `   ")
+            print("Data dose not have some columns")
 
         return feature_by_variable
 

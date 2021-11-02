@@ -27,11 +27,6 @@ class Pipeline(object):
         self.save_db_yn = io_cfg['save_db_yn']
         self.decompose_yn = io_cfg['decompose_yn']
 
-        self.path_load = util.make_path_baseline(module='data', division=division, hrchy_lvl='',
-                                                 step='load', extension='csv')
-        self.path_cns = util.make_path_baseline(module='data', division=division, hrchy_lvl='',
-                                                step='cns', extension='csv')
-
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
@@ -209,6 +204,7 @@ class Pipeline(object):
             if self.save_db_yn:
                 self.io.delete_from_db(sql=self.sql_conf.del_best_score(**score_best_info))
                 self.io.insert_to_db(df=scores_best_db, tb_name='M4S_O110610')
+
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
@@ -216,6 +212,7 @@ class Pipeline(object):
             print("Step 5: Forecast\n")
             if not self.exec_cfg['cls_prep']:
                 data_preped = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+
             # Initiate predict class
             predict = Predict(
                 division=self.division,
