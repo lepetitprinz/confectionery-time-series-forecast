@@ -73,7 +73,7 @@ class DataPrep(object):
 
         # Grouping
         # data_group = self.group(data=data)
-        data_group = util.group(hrchy=self.hrchy, hrchy_lvl=self.hrchy_level, data=data)
+        data_group = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
 
         # Decomposition
         if self.exec_cfg['decompose_yn']:
@@ -207,10 +207,13 @@ class DataPrep(object):
     def impute_data(self, df: pd.DataFrame, feat: str):
         feature = deepcopy(df[feat])
         if self.imputer == 'knn':
-            feature = feature.str.replace(0, np.nan)
+            feature = np.where(feature.values == 0, np.nan, feature.values)
+            feature = feature.reshape(1, -1)
             imputer = KNNImputer(n_neighbors=5, weights='uniform', metric='nan_euclidean')
             imputer.fit(feature)
             feature = imputer.transform(feature)
+            feature = feature.ravel()
+
 
         elif self.imputer == 'before':
             for i in range(1, len(feature)):

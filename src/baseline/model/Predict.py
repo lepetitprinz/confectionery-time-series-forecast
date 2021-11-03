@@ -59,8 +59,8 @@ class Predict(object):
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
             try:
                 prediction = self.estimators[model](history=data,
-                                                  cfg=self.param_grid[model],
-                                                  pred_step=n_test)
+                                                    cfg=self.param_grid[model],
+                                                    pred_step=n_test)
             except ValueError:
                 prediction = [0] * n_test
             models.append(hrchy + [model.upper(), prediction])
@@ -94,14 +94,14 @@ class Predict(object):
                 # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
         result_pred = pd.DataFrame(result_pred)
-        cols = ['fkey'] + self.rchy['apply'] + ['stat_cd', 'yymmdd', 'result_sales']
+        cols = ['fkey'] + self.hrchy['apply'] + ['stat_cd', 'yymmdd', 'result_sales']
         result_pred.columns = cols
         result_pred['project_cd'] = 'ENT001'
         result_pred['division_cd'] = self.division
         result_pred['data_vrsn_cd'] = self.data_vrsn_cd
         result_pred['create_user'] = 'SYSTEM'
 
-        if self.hrchy['lvl']['item']  > 0:
+        if self.hrchy['lvl']['item'] > 0:
             result_pred = pd.merge(result_pred,
                                    self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
                                    on=self.hrchy['list']['item'][: self.hrchy['lvl']['item']],
