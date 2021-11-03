@@ -15,7 +15,7 @@ class Pipeline(object):
         :param lvl_cfg: Data Level Configuration
             - cust_lvl: Customer Level (Customer Group - Customer)
             - item_lvl: Item Level (Biz/Line/Brand/Item/SKU)
-        :param io_cfg: Data I/O Configuration
+        :param exec_cfg: Data I/O Configuration
             - save_step_yn: Save Each Step Object or not
             - save_db_yn: Save Result to DB or not
             - decompose_yn: Decompose Sales data or not
@@ -34,19 +34,23 @@ class Pipeline(object):
 
         # Data Configuration
         self.division = division
-        self.target_col = self.common['target_col']
         self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
         self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
-        # self.data_vrsn_cd = '20190915-20211003'  # Todo: Exception
 
         # Data Level Configuration
-        self.hrchy_key = "C" + str(lvl_cfg['cust_lvl']) + '-' + "P" + str(lvl_cfg['item_lvl']) + '-'
-        self.hrchy_lvl = {'cust_lvl': lvl_cfg['cust_lvl'], 'item_lvl': lvl_cfg['item_lvl']}
-        self.hrchy_cust = self.common['hrchy_cust'].split(',')
-        self.hrchy_item = self.common['hrchy_item'].split(',')
-        self.hrchy_dict = {'hrchy_cust': self.common['hrchy_cust'].split(','),
-                           'hrchy_item': self.common['hrchy_item'].split(',')}
-        self.hrchy_list = self.hrchy_cust[:lvl_cfg['cust_lvl']] + self.hrchy_item[:lvl_cfg['item_lvl']]
+        self.hrchy = {
+            'key': "C" + str(lvl_cfg['cust_lvl']) + '-' + "P" + str(lvl_cfg['item_lvl']) + '-',
+            'lvl': {
+                'cust': lvl_cfg['cust_lvl'],
+                'item': lvl_cfg['item_lvl']
+            },
+            'list': {
+                'cust': self.common['hrchy_cust'].split(','),
+                'item': self.common['hrchy_item'].split(',')
+            },
+            'apply': self.common['hrchy_cust'].split(',')[:lvl_cfg['cust_lvl']] +
+                     self.common['hrchy_item'].split(',')[:lvl_cfg['cust_lvl']]
+        }
 
         # Path Configuration
         self.path = {
@@ -54,11 +58,11 @@ class Pipeline(object):
                                             step='load', extension='csv'),
             'cns': util.make_path_baseline(module='data', division=division, hrchy_lvl='',
                                            step='cns', extension='csv'),
-            'prep': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy_key,
+            'prep': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy['key'],
                                             step='prep', extension='pickle'),
-            'train': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy_key,
+            'train': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy['key'],
                                              step='train', extension='pickle'),
-            'pred': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy_key,
+            'pred': util.make_path_baseline(module='result', division=division, hrchy_lvl=self.hrchy['key'],
                                             step='pred', extension='pickle')
         }
 
@@ -87,7 +91,7 @@ class Pipeline(object):
                 sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
             err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD',
                                                    val='ATTR01_VAL')
-            cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy_list, date=self.date,
+            cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy, date=self.date,
                                    err_grp_map=err_grp_map, save_yn=False)
             checked = cns.check(df=sales)
 
@@ -123,7 +127,7 @@ class Pipeline(object):
                 cust=cust,
                 division=self.division,
                 common=self.common,
-                hrchy=self.hrchy_list,
+                hrchy=self.hrchy,
                 exec_cfg=self.exec_cfg
             )
             # Temporary process
@@ -174,9 +178,9 @@ class Pipeline(object):
                 mst_info=mst_info,
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
-                hrchy_lvl_dict=self.hrchy_lvl,
-                hrchy_dict=self.hrchy_dict,
-                common=self.common
+                hrchy=self.hrchy,
+                common=self.common,
+                exec_cfg=self.exec_cfg
             )
             # Train the models
             scores = training.train(df=data_preped)
@@ -188,7 +192,7 @@ class Pipeline(object):
             # Make score result
             # All scores
             scores_db, score_info = training.make_score_result(data=scores,
-                                                               hrchy_key=self.hrchy_key,
+                                                               hrchy_key=self.hrchy['key'],
                                                                fn=training.score_to_df)
 
             # Save all of the training scores on the DB table
@@ -198,7 +202,7 @@ class Pipeline(object):
 
             # Best scores
             scores_best_db, score_best_info = training.make_score_result(data=scores,
-                                                                         hrchy_key=self.hrchy_key,
+                                                                         hrchy_key=self.hrchy['key'],
                                                                          fn=training.best_score_to_df)
             # Save best of the training scores on the DB table
             if self.exec_cfg['save_db_yn']:
@@ -219,8 +223,7 @@ class Pipeline(object):
                 mst_info=mst_info, date=self.date,
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
-                hrchy_lvl_dict=self.hrchy_lvl,
-                hrchy_dict=self.hrchy_dict,
+                hrchy=self.hrchy,
                 common=self.common
             )
             # Forecast the model
@@ -230,7 +233,7 @@ class Pipeline(object):
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
 
-            prediction_db, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
+            prediction_db, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy['key'])
 
             # Save the forecast results on the db table
             if self.exec_cfg['save_db_yn']:

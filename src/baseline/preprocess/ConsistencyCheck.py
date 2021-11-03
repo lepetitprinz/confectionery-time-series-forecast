@@ -7,7 +7,7 @@ import pandas as pd
 
 
 class ConsistencyCheck(object):
-    def __init__(self, division: str, common: dict, hrchy: list, date: dict,
+    def __init__(self, division: str, common: dict, hrchy: dict, date: dict,
                  err_grp_map: dict, save_yn: bool):
         # Class Configuration
         self.io = DataIO()

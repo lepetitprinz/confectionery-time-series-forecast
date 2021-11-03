@@ -24,10 +24,12 @@ step_cfg = {
     'cls_pred': False
 }
 
-pipeline = Pipeline(division=division,
-                    lvl_cfg=lvl_cfg,
-                    exec_cfg=exec_cfg,
-                    step_cfg=step_cfg)
+pipeline = Pipeline(
+    division=division,
+    lvl_cfg=lvl_cfg,
+    exec_cfg=exec_cfg,
+    step_cfg=step_cfg
+)
 
 # Execute Baseline Forecast
 pipeline.run()

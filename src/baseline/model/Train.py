@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Tuple
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
 
 # Tensorflow library
 # from tensorflow.keras import backend as K
@@ -22,9 +23,10 @@ class Train(object):
                   'var': Algorithm.var,
                   'sarima': Algorithm.sarimax}
 
-    def __init__(self, division: str, mst_info: dict, data_vrsn_cd: str,
-                 exg_list: list, hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
+    def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
+                 hrchy: dict, exg_list: list,  exec_cfg: dict):
         # Data Configuration
+        self.exec_cfg = exec_cfg
         self.data_vrsn_cd = data_vrsn_cd
         self.common = common
         self.division = division    # SELL-IN / SELL-OUT
@@ -37,11 +39,7 @@ class Train(object):
         self.item_mst = mst_info['item_mst']
 
         # Data Level Configuration
-        self.hrchy_lvl_dict = hrchy_lvl_dict
-        self.hrchy_tot_lvl = hrchy_lvl_dict['cust_lvl'] + hrchy_lvl_dict['item_lvl'] - 1
-        self.hrchy_cust = hrchy_dict['hrchy_cust']
-        self.hrchy_item = hrchy_dict['hrchy_item']
-        self.hrchy = self.hrchy_cust[:hrchy_lvl_dict['cust_lvl']] + self.hrchy_item[:hrchy_lvl_dict['item_lvl']]
+        self.hrchy = hrchy
 
         # Algorithm Configuration
         self.param_grid = mst_info['param_grid']
@@ -52,7 +50,8 @@ class Train(object):
         self.validation_method = config.VALIDATION_METHOD
 
     def train(self, df) -> dict:
-        scores = util.hrchy_recursion(hrchy_lvl=self.hrchy_tot_lvl,
+        hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
+        scores = util.hrchy_recursion(hrchy_lvl=hrchy_tot_lvl,
                                       fn=self.train_model,
                                       df=df)
 
@@ -96,12 +95,13 @@ class Train(object):
         return score
 
     def make_score_result(self, data: dict, hrchy_key: str, fn):
-        result = util.hrchy_recursion_extend_key(hrchy_lvl=self.hrchy_tot_lvl,
+        hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
+        result = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl,
                                                  fn=fn,
                                                  df=data)
 
         result = pd.DataFrame(result)
-        cols = self.hrchy + ['stat_cd', 'rmse']
+        cols = self.hrchy['apply'] + ['stat_cd', 'rmse']
         result.columns = cols
 
         result['project_cd'] = self.common['project_cd']
@@ -113,17 +113,17 @@ class Train(object):
 
         # Merge information
         # Item Names
-        if self.hrchy_lvl_dict['item_lvl'] > 0:
+        if self.hrchy['lvl']['item'] > 0:
             result = pd.merge(result,
-                              self.item_mst[config.COL_ITEM[: 2 * self.hrchy_lvl_dict['item_lvl']]].drop_duplicates(),
-                              on=self.hrchy_item[:self.hrchy_lvl_dict['item_lvl']],
+                              self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
+                              on=self.hrchy['list']['item'][:self.hrchy['lvl']['item']],
                               how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
         # Customer Names
-        if self.hrchy_lvl_dict['cust_lvl'] > 0:
+        if self.hrchy['lvl']['cust'] > 0:
             result = pd.merge(result,
-                              self.cust_grp[config.COL_CUST[: 2 * self.hrchy_lvl_dict['cust_lvl']]].drop_duplicates(),
-                              on=self.hrchy_cust[:self.hrchy_lvl_dict['cust_lvl']],
+                              self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
+                              on=self.hrchy['list']['cust'][:self.hrchy['lvl']['cust']],
                               how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
             result = result.fillna('-')
 
@@ -132,10 +132,12 @@ class Train(object):
         result = result.rename(columns=config.COL_RENAME2)
 
         # set score_info
-        score_info = {'project_cd': self.common['project_cd'],
-                      'data_vrsn_cd': self.data_vrsn_cd,
-                      'division_cd': self.division,
-                      'fkey': hrchy_key[:-1]}
+        score_info = {
+            'project_cd': self.common['project_cd'],
+            'data_vrsn_cd': self.data_vrsn_cd,
+            'division_cd': self.division,
+            'fkey': hrchy_key[:-1]
+        }
 
         return result, score_info
 
@@ -159,21 +161,23 @@ class Train(object):
 
     def train_test_validation(self, model: str, data) -> np.array:
         # split dataset
-        data_train = None
-        data_test = None
-        data_length = len(data)
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
+        data_train, data_test = self.split_data(data=data, model=model, n_test=n_test)
 
-        if self.model_info[model]['variate'] == 'univ':
-            data_train = data.iloc[: data_length - n_test]
-            data_test = data.iloc[data_length - n_test:]
-        elif self.model_info[model]['variate'] == 'multi':
-            data_train = data.iloc[: data_length - n_test, :]
-            data_train = {'endog': data_train[self.target_col].values.ravel(),
-                          'exog': data_train[self.exo_col_list].values}
-            data_test = data.iloc[data_length - n_test:, :]
-            data_test = {'endog': data_test[self.target_col],
-                         'exog': data_test[self.exo_col_list].values}
+        if self.exec_cfg['scaling_yn']:
+            x_train, x_test = self.scaling(
+                train=data_train,
+                test=data_test
+            )
+
+        data_train = {
+            'endog': data_train[self.target_col].values.ravel(),
+            'exog': x_train
+        }
+        data_test = {
+            'endog': data_test[self.target_col].values,
+            'exog': x_test
+        }
 
         # evaluation
         try:
@@ -213,6 +217,27 @@ class Train(object):
         rmse = np.mean(predictions)
 
         return rmse
+
+    def split_data(self, data: pd.DataFrame, model: str, n_test: int):
+        data_length = len(data)
+
+        data_train, data_test = None, None
+        if self.model_info[model]['variate'] == 'univ':
+            data_train = data.iloc[: data_length - n_test]
+            data_test = data.iloc[data_length - n_test:]
+        elif self.model_info[model]['variate'] == 'multi':
+            data_train = data.iloc[: data_length - n_test, :]
+            data_test = data.iloc[data_length - n_test:, :]
+
+        return data_train, data_test
+
+    def scaling(self, train, test) -> tuple:
+        scaler = MinMaxScaler()
+        x_train_scaled = scaler.fit_transform(train)
+        x_test_scaled = scaler.transform(test)
+
+        return x_train_scaled, x_test_scaled
+
 
     def window_generator(self, df, model: str) -> List[Tuple]:
         data_length = len(df)

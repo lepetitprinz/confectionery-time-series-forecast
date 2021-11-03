@@ -10,8 +10,16 @@ import pandas as pd
 
 
 class Predict(object):
+    estimators = {
+        'ar': Algorithm.ar,
+        'arima': Algorithm.arima,
+        'hw': Algorithm.hw,
+        'var': Algorithm.var,
+        'sarima': Algorithm.sarimax
+    }
+
     def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
-                 exg_list: list, hrchy_lvl_dict: dict, hrchy_dict: dict, common: dict):
+                 exg_list: list, hrchy: dict, common: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
@@ -26,24 +34,16 @@ class Predict(object):
         self.cal_mst = mst_info['cal_mst']
 
         # Data Level Configuration
-        self.hrchy_lvl_dict = hrchy_lvl_dict
-        self.hrchy_tot_lvl = hrchy_lvl_dict['cust_lvl'] + hrchy_lvl_dict['item_lvl'] - 1
-        self.hrchy_cust = hrchy_dict['hrchy_cust']
-        self.hrchy_item = hrchy_dict['hrchy_item']
-        self.hrchy = self.hrchy_cust[:hrchy_lvl_dict['cust_lvl']] + self.hrchy_item[:hrchy_lvl_dict['item_lvl']]
+        self.hrchy = hrchy
 
         # Algorithms
         self.param_grid = mst_info['param_grid']
         self.model_info = mst_info['model_mst']
         self.cand_models = list(self.model_info.keys())
-        self.model_fn = {'ar': self.algorithm.ar,
-                         'arima': self.algorithm.arima,
-                         'hw': self.algorithm.hw,
-                         'var': self.algorithm.var,
-                         'sarima': self.algorithm.sarimax}
 
     def forecast(self, df):
-        prediction = util.hrchy_recursion_extend_key(hrchy_lvl=self.hrchy_tot_lvl,
+        hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
+        prediction = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl,
                                                      fn=self.forecast_model,
                                                      df=df)
 
@@ -58,7 +58,7 @@ class Predict(object):
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
             try:
-                prediction = self.model_fn[model](history=data,
+                prediction = self.estimators[model](history=data,
                                                   cfg=self.param_grid[model],
                                                   pred_step=n_test)
             except ValueError:
@@ -94,23 +94,23 @@ class Predict(object):
                 # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
         result_pred = pd.DataFrame(result_pred)
-        cols = ['fkey'] + self.hrchy + ['stat_cd', 'yymmdd', 'result_sales']
+        cols = ['fkey'] + self.rchy['apply'] + ['stat_cd', 'yymmdd', 'result_sales']
         result_pred.columns = cols
         result_pred['project_cd'] = 'ENT001'
         result_pred['division_cd'] = self.division
         result_pred['data_vrsn_cd'] = self.data_vrsn_cd
         result_pred['create_user'] = 'SYSTEM'
 
-        if self.hrchy_lvl_dict['item_lvl'] > 0:
+        if self.hrchy['lvl']['item']  > 0:
             result_pred = pd.merge(result_pred,
-                                   self.item_mst[config.COL_ITEM[: 2 * self.hrchy_lvl_dict['item_lvl']]].drop_duplicates(),
-                                   on=self.hrchy_item[:self.hrchy_lvl_dict['item_lvl']],
+                                   self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
+                                   on=self.hrchy['list']['item'][: self.hrchy['lvl']['item']],
                                    how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
-        if self.hrchy_lvl_dict['cust_lvl'] > 0:
+        if self.hrchy['lvl']['cust'] > 0:
             result_pred = pd.merge(result_pred,
-                                   self.cust_grp[config.COL_CUST[: 2 * self.hrchy_lvl_dict['cust_lvl']]].drop_duplicates(),
-                                   on=self.hrchy_cust[:self.hrchy_lvl_dict['cust_lvl']],
+                                   self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
+                                   on=self.hrchy['list']['cust'][: self.hrchy['lvl']['cust']],
                                    how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
             result_pred = result_pred.fillna('-')

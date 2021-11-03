@@ -15,9 +15,9 @@ class DataPrep(object):
     STR_TYPE_COLS = ['cust_cd', 'sku_cd']
 
     def __init__(self, date: dict, cust: pd.DataFrame, division: str, common: dict,
-                 hrchy: list, exec_cfg: dict):
-        self.exec_cfg = exec_cfg
+                 hrchy: dict, exec_cfg: dict):
         # Dataset configuration
+        self.exec_cfg = exec_cfg
         self.division = division
         self.cust = cust
         self.common = common
@@ -29,18 +29,18 @@ class DataPrep(object):
         }
         self.date_range = pd.date_range(
             start=date['date_from'],
-            end=date['date_to'],
+            periods=52 * ((int(date['date_to'][:4]) - int(date['date_from'][:4])) + 1) + 1,
             freq=common['resample_rule']
         )
 
         # Hierarchy configuration
         self.hrchy = hrchy
-        self.hrchy_level = len(hrchy) - 1
+        self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
 
         # Execute option
         self.imputer = 'knn'
         self.outlier_method = 'std'
-        self.quantile_range = 0.05
+        self.quantile_range = 0.02
 
     def preprocess(self, data: pd.DataFrame, exg: dict) -> dict:
         # ------------------------------- #
@@ -77,22 +77,27 @@ class DataPrep(object):
 
         # Decomposition
         if self.exec_cfg['decompose_yn']:
-            decompose = Decomposition(common=self.common,
-                                      division=self.division,
-                                      hrchy_list=self.hrchy,
-                                      hrchy_lvl_cd=self.hrchy[self.hrchy_level],
-                                      date_range=self.date_range)
+            decompose = Decomposition(
+                common=self.common,
+                division=self.division,
+                hrchy=self.hrchy,
+                date_range=self.date_range
+            )
 
-            util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
-                                 fn=decompose.decompose,
-                                 df=data_group)
+            util.hrchy_recursion(
+                hrchy_lvl=self.hrchy_level,
+                fn=decompose.decompose,
+                df=data_group
+            )
 
             decompose.dao.session.close()
 
         # Resampling
-        data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_level,
-                                             fn=self.resample,
-                                             df=data_group)
+        data_resample = util.hrchy_recursion(
+            hrchy_lvl=self.hrchy_level,
+            fn=self.resample,
+            df=data_group
+        )
 
         return data_resample
 

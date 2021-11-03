@@ -7,7 +7,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 
 class Decomposition(object):
-    def __init__(self, common, division: str, hrchy_list: list, hrchy_lvl_cd: str, date_range):
+    def __init__(self, common, division: str, hrchy: dict, date_range):
         self.dao = DataIO()
         self.date_range = date_range
         self.division = division
