@@ -197,7 +197,7 @@ class DataPrep(object):
         return df
 
     def add_data_level(self, org, resampled):
-        cols = self.hrchy[:self.hrchy_level + 1]
+        cols = self.hrchy['apply'][:self.hrchy_level + 1]
         data_level = org[cols].iloc[0].to_dict()
         data_lvl = pd.DataFrame(data_level, index=resampled.index)
         df_resampled = pd.concat([resampled, data_lvl], axis=1)
@@ -208,12 +208,10 @@ class DataPrep(object):
         feature = deepcopy(df[feat])
         if self.imputer == 'knn':
             feature = np.where(feature.values == 0, np.nan, feature.values)
-            feature = feature.reshape(1, -1)
-            imputer = KNNImputer(n_neighbors=5, weights='uniform', metric='nan_euclidean')
-            imputer.fit(feature)
-            feature = imputer.transform(feature)
+            feature = feature.reshape(-1, 1)
+            imputer = KNNImputer(n_neighbors=3)
+            feature = imputer.fit_transform(feature)
             feature = feature.ravel()
-
 
         elif self.imputer == 'before':
             for i in range(1, len(feature)):

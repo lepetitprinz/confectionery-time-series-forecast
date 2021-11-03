@@ -164,20 +164,24 @@ class Train(object):
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
         data_train, data_test = self.split_data(data=data, model=model, n_test=n_test)
 
-        if self.exec_cfg['scaling_yn']:
-            x_train, x_test = self.scaling(
-                train=data_train,
-                test=data_test
-            )
+        if self.model_info[model]['variate'] == 'multi':
+            x_train = data_train[self.exo_col_list].values
+            x_test = data_test[self.exo_col_list].values
 
-        data_train = {
-            'endog': data_train[self.target_col].values.ravel(),
-            'exog': x_train
-        }
-        data_test = {
-            'endog': data_test[self.target_col].values,
-            'exog': x_test
-        }
+            if self.exec_cfg['scaling_yn']:
+                x_train, x_test = self.scaling(
+                    train=data_train,
+                    test=data_test
+                )
+
+            data_train = {
+                'endog': data_train[self.target_col].values.ravel(),
+                'exog': x_train
+            }
+            data_test = {
+                'endog': data_test[self.target_col].values,
+                'exog': x_test
+            }
 
         # evaluation
         try:
