@@ -9,7 +9,7 @@ from baseline.model.Predict import Predict
 
 
 class Pipeline(object):
-    def __init__(self, division: str, lvl_cfg: dict, io_cfg: dict, exec_cfg: dict):
+    def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param lvl_cfg: Data Level Configuration
@@ -19,13 +19,13 @@ class Pipeline(object):
             - save_step_yn: Save Each Step Object or not
             - save_db_yn: Save Result to DB or not
             - decompose_yn: Decompose Sales data or not
-        :param exec_cfg: Execute Configuration
+        :param step_cfg: Execute Configuration
         """
         # I/O & Execution Configuration
+        self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.save_steps_yn = io_cfg['save_step_yn']
-        self.save_db_yn = io_cfg['save_db_yn']
-        self.decompose_yn = io_cfg['decompose_yn']
+
+        self.decompose_yn = exec_cfg['decompose_yn']
 
         # Class Configuration
         self.io = DataIO()
@@ -67,7 +67,7 @@ class Pipeline(object):
         # 1. Load the dataset
         # ================================================================================================= #
         sales = None
-        if self.exec_cfg['cls_load']:
+        if self.step_cfg['cls_load']:
             print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
@@ -75,15 +75,15 @@ class Pipeline(object):
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
 
             # Save Step result
-            if self.save_steps_yn:
+            if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
         # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
         checked = None
-        if self.exec_cfg['cls_cns']:
+        if self.step_cfg['cls_cns']:
             print("Step 2: Check Consistency \n")
-            if not self.exec_cfg['cls_load']:
+            if not self.step_cfg['cls_load']:
                 sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
             err_grp_map = self.io.get_dict_from_db(sql=self.sql_conf.sql_err_grp_map(), key='COMM_DTL_CD',
                                                    val='ATTR01_VAL')
@@ -92,7 +92,7 @@ class Pipeline(object):
             checked = cns.check(df=sales)
 
             # Save Step result
-            if self.save_steps_yn:
+            if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=checked, file_path=self.path['cns'], data_type='csv')
 
         # ================================================================================================= #
@@ -112,9 +112,9 @@ class Pipeline(object):
         # 3. Data Preprocessing
         # ================================================================================================= #
         data_preped = None
-        if self.exec_cfg['cls_prep']:
+        if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
-            if not self.exec_cfg['cls_cns']:
+            if not self.step_cfg['cls_cns']:
                 checked = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
             # Initiate data preprocessing class
@@ -124,7 +124,7 @@ class Pipeline(object):
                 division=self.division,
                 common=self.common,
                 hrchy=self.hrchy_list,
-                decompose_yn=self.decompose_yn
+                exec_cfg=self.exec_cfg
             )
             # Temporary process
             # checked = preprocess.make_temp_data(df=checked)
@@ -133,7 +133,7 @@ class Pipeline(object):
             data_preped = preprocess.preprocess(data=checked, exg=exg)
 
             # Save Step result
-            if self.save_steps_yn:
+            if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=data_preped, file_path=self.path['prep'], data_type='binary')
         # ================================================================================================= #
         # 4.0. Load information
@@ -164,9 +164,9 @@ class Pipeline(object):
         # ================================================================================================= #
         # 4. Training
         # ================================================================================================= #
-        if self.exec_cfg['cls_train']:
+        if self.step_cfg['cls_train']:
             print("Step 4: Train\n")
-            if not self.exec_cfg['cls_prep']:
+            if not self.step_cfg['cls_prep']:
                 data_preped = self.io.load_object(file_path=self.path['prep'], data_type='binary')
             # Initiate train class
             training = Train(
@@ -182,7 +182,7 @@ class Pipeline(object):
             scores = training.train(df=data_preped)
 
             # Save Step result
-            if self.save_steps_yn:
+            if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
             # Make score result
@@ -192,7 +192,7 @@ class Pipeline(object):
                                                                fn=training.score_to_df)
 
             # Save all of the training scores on the DB table
-            if self.save_db_yn:
+            if self.exec_cfg['save_db_yn']:
                 self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
                 self.io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
 
@@ -201,16 +201,16 @@ class Pipeline(object):
                                                                          hrchy_key=self.hrchy_key,
                                                                          fn=training.best_score_to_df)
             # Save best of the training scores on the DB table
-            if self.save_db_yn:
+            if self.exec_cfg['save_db_yn']:
                 self.io.delete_from_db(sql=self.sql_conf.del_best_score(**score_best_info))
                 self.io.insert_to_db(df=scores_best_db, tb_name='M4S_O110610')
 
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
-        if self.exec_cfg['cls_pred']:
+        if self.step_cfg['cls_pred']:
             print("Step 5: Forecast\n")
-            if not self.exec_cfg['cls_prep']:
+            if not self.step_cfg['cls_prep']:
                 data_preped = self.io.load_object(file_path=self.path['prep'], data_type='binary')
 
             # Initiate predict class
@@ -227,13 +227,13 @@ class Pipeline(object):
             prediction = predict.forecast(df=data_preped)
 
             # Save Step result
-            if self.save_steps_yn:
+            if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
 
             prediction_db, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy_key)
 
             # Save the forecast results on the db table
-            if self.save_db_yn:
+            if self.exec_cfg['save_db_yn']:
                 self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=prediction_db, tb_name='M4S_I110400')
 

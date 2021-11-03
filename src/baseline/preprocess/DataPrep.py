@@ -1,6 +1,7 @@
 from baseline.analysis.Decomposition import Decomposition
 import common.util as util
 
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -14,7 +15,8 @@ class DataPrep(object):
     STR_TYPE_COLS = ['cust_cd', 'sku_cd']
 
     def __init__(self, date: dict, cust: pd.DataFrame, division: str, common: dict,
-                 hrchy: list, decompose_yn=False):
+                 hrchy: list, exec_cfg: dict):
+        self.exec_cfg = exec_cfg
         # Dataset configuration
         self.division = division
         self.cust = cust
@@ -35,10 +37,10 @@ class DataPrep(object):
         self.hrchy = hrchy
         self.hrchy_level = len(hrchy) - 1
 
-        # Execute configuration
-        self.decompose_yn = decompose_yn
-        self.impute_yn = True
-        self.imputer = 'knn'    # knn / iter
+        # Execute option
+        self.imputer = 'knn'
+        self.outlier_method = 'std'
+        self.quantile_range = 0.05
 
     def preprocess(self, data: pd.DataFrame, exg: dict) -> dict:
         # ------------------------------- #
@@ -74,7 +76,7 @@ class DataPrep(object):
         data_group = util.group(hrchy=self.hrchy, hrchy_lvl=self.hrchy_level, data=data)
 
         # Decomposition
-        if self.decompose_yn:
+        if self.exec_cfg['decompose_yn']:
             decompose = Decomposition(common=self.common,
                                       division=self.division,
                                       hrchy_list=self.hrchy,
@@ -155,85 +157,98 @@ class DataPrep(object):
         return grp
 
     def resample(self, df: pd.DataFrame):
-        # Split by aggregation method
-        df_sum = df[self.col_agg_map['sum']]
-        df_avg = df[self.col_agg_map['avg']]
-
-        # resampling
-        df_sum_resampled = df_sum.resample(rule=self.resample_rule).sum()
-        df_avg_resampled = df_avg.resample(rule=self.resample_rule).mean()
-
-        # fill NaN
-        df_sum_resampled = df_sum_resampled.fillna(value=0)
-        df_avg_resampled = df_avg_resampled.fillna(value=0)
+        df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
+        df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
 
         # Concatenate aggregation
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
         if len(df_resampled.index) != len(self.date_range):
-            idx_add = list(set(self.date_range) - set(df_resampled.index))
-            data_add = np.zeros((len(idx_add), df_resampled.shape[1]))
-            df_add = pd.DataFrame(data_add, index=idx_add, columns=df_resampled.columns)
-            df_resampled = df_resampled.append(df_add)
-            df_resampled = df_resampled.sort_index()
+            df_resampled = self.fill_missing_date(df=df_resampled)
 
-        cols = self.hrchy[:self.hrchy_level + 1]
-        data_level = df[cols].iloc[0].to_dict()
-        data_lvl = pd.DataFrame(data_level, index=df_resampled.index)
-        df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
+        # Add data level
+        df_resampled = self.add_data_level(org=df, resampled=df_resampled)
 
         return df_resampled
 
-    # def impute_data(self, feature: pd.Series):
-    #     imputer = None
-    #     if self.imputer == 'knn':
-    #         imputer = KNNImputer(n_neighbors=5, weights='uniform', metric='nan_euclidean')
-    #
-    #     imputer.fit(feature)
-    #     feature_trans = imputer.transform(feature)
-    #
-    #     return feature_trans
+    def resample_by_agg(self, df, agg: str):
+        resampled = pd.DataFrame()
+        col_agg = set(df.columns).intersection(set(self.col_agg_map[agg]))
+        if len(col_agg) > 0:
+            resampled = df[self.col_agg_map[agg]]
+            resampled = resampled.resample(rule=self.resample_rule).sum()  # resampling
+            resampled = resampled.fillna(value=0)  # fill NaN
+
+        return resampled
+
+    def fill_missing_date(self, df):
+        idx_add = list(set(self.date_range) - set(df.index))
+        data_add = np.zeros((len(idx_add), df.shape[1]))
+        df_add = pd.DataFrame(data_add, index=idx_add, columns=df.columns)
+        df = df.append(df_add)
+        df = df.sort_index()
+
+        return df
+
+    def add_data_level(self, org, resampled):
+        cols = self.hrchy[:self.hrchy_level + 1]
+        data_level = org[cols].iloc[0].to_dict()
+        data_lvl = pd.DataFrame(data_level, index=resampled.index)
+        df_resampled = pd.concat([resampled, data_lvl], axis=1)
+
+        return df_resampled
+
+    def impute_data(self, df: pd.DataFrame, feat: str):
+        feature = deepcopy(df[feat])
+        if self.imputer == 'knn':
+            feature = feature.str.replace(0, np.nan)
+            imputer = KNNImputer(n_neighbors=5, weights='uniform', metric='nan_euclidean')
+            imputer.fit(feature)
+            feature = imputer.transform(feature)
+
+        elif self.imputer == 'before':
+            for i in range(1, len(feature)):
+                if feature[i] == 0:
+                    feature[i] = feature[i-1]
+
+        elif self.imputer == 'avg':
+            for i in range(1, len(feature)-1):
+                if feature[i] == 0:
+                    feature[i] = (feature[i-1] + feature[i+1]) / 2
+
+        df[feat] = feature
+
+        return df
+
+    def remove_outlier(self, df: pd.DataFrame, feat: str):
+        feature = deepcopy(df[feat])
+        lower, upper = 0, 0
+
+        if self.outlier_method == 'std':
+            feature = feature.values
+            mean = np.mean(feature)
+            std = np.std(feature)
+            cut_off = std * 3    # 99.7%
+            lower = mean - cut_off
+            upper = mean + cut_off
+
+        elif self.outlier_method == 'quantile':
+            lower = feature.quantile(self.quantile_range)
+            upper = feature.quantile(1 - self.quantile_range)
+
+        feature = np.where(feature < lower, lower, feature)
+        feature = np.where(feature > upper, upper, feature)
+
+        df[feat] = feature
+
+        return df
 
     @staticmethod
     def make_seq_to_cust_map(df: pd.DataFrame):
         seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
 
         return seq_to_cust
-
-    def make_temp_data(self, df: pd.DataFrame):
-        df[self.date_col] = pd.to_datetime(df[self.date_col], format='%Y%m%d')
-        df[self.date_col] = df[self.date_col] + timedelta(days=126)
-        length = len(df)
-
-        df1 = deepcopy(df)
-        df2 = deepcopy(df)
-        df3 = deepcopy(df)
-        df4 = deepcopy(df)
-
-        # lagging
-        df1[self.date_col] = df1[self.date_col] - timedelta(days=150)
-        df2[self.date_col] = df2[self.date_col] - timedelta(days=300)
-        df3[self.date_col] = df3[self.date_col] - timedelta(days=450)
-        df4[self.date_col] = df4[self.date_col] - timedelta(days=600)
-
-        # add random integers
-        width = 10
-        rand1 = np.random.randint(low=-1 * width, high=width, size=length)
-        rand2 = np.random.randint(low=-1 * width, high=width, size=length)
-        rand3 = np.random.randint(low=-1 * width, high=width, size=length)
-        rand4 = np.random.randint(low=-1 * width, high=width, size=length)
-
-        df1['qty'] += rand1
-        df2['qty'] += rand2
-        df3['qty'] += rand3
-        df4['qty'] += rand4
-
-        df_final = pd.concat([df, df1, df2, df3, df4], axis=0)
-        df_final[self.date_col] = df_final[self.date_col].dt.strftime('%Y%m%d')
-        df_final[self.date_col] = df_final[self.date_col].astype(np.int32)
-
-        return df_final
 
     # def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
     #     vals = df[self.target_col].values * 0.05
@@ -242,23 +257,5 @@ class DataPrep(object):
     #     vals = np.where(vals < 0, vals * -1, vals)
     #     noise = np.random.randint(-vals, vals)
     #     df['exo'] = df[self.target_col].values + noise
-    #
-    #     return df
-
-    # def smoothing(self, df: pd.DataFrame) -> pd.DataFrame:
-    #     for i, col in enumerate(df.columns):
-    #         min_val = 0
-    #         max_val = 0
-    #         if self.smooth_method == 'quantile':
-    #             min_val = df[col].quantile(self.smooth_rate)
-    #             max_val = df[col].quantile(1 - self.smooth_rate)
-    #         elif self.smooth_method == 'sigma':
-    #             mean = np.mean(df[col].values)
-    #             std = np.std(df[col].values)
-    #             min_val = mean - 2 * std
-    #             max_val = mean + 2 * std
-    #
-    #         df[col] = np.where(df[col].values < min_val, min_val, df[col].values)
-    #         df[col] = np.where(df[col].values > max_val, max_val, df[col].values)
     #
     #     return df

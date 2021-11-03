@@ -9,14 +9,14 @@ lvl_cfg = {
     'item_lvl': 5    # Biz - Line - Brand - Item - SKU
 }
 # Data IO Configuration
-io_cfg = {
+exec_cfg = {
     'save_step_yn': False,
     'save_db_yn': False,
     'decompose_yn': False
 }
 
 # Execute Configuration
-exec_cfg = {
+step_cfg = {
     'cls_load': False,
     'cls_cns': False,
     'cls_prep': True,
@@ -26,8 +26,8 @@ exec_cfg = {
 
 pipeline = Pipeline(division=division,
                     lvl_cfg=lvl_cfg,
-                    io_cfg=io_cfg,
-                    exec_cfg=exec_cfg)
+                    exec_cfg=exec_cfg,
+                    step_cfg=step_cfg)
 
 # Execute Baseline Forecast
 pipeline.run()
