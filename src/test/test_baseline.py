@@ -5,23 +5,27 @@ division = 'SELL_IN'
 
 # Level Configuration
 lvl_cfg = {
-    'cust_lvl': 0,   # Customer group - Customer
+    'cust_lvl': 1,   # Customer group - Customer
     'item_lvl': 5    # Biz - Line - Brand - Item - SKU
 }
 # Data IO Configuration
 exec_cfg = {
-    'save_step_yn': False,
+    'save_step_yn': True,
     'save_db_yn': False,
-    'decompose_yn': False
+    'decompose_yn': False,
+    'scaling_yn': False,
+    'impute_yn': True,
+    'rm_outlier_yn': True
 }
 
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
+    'cls_prep': False,
     'cls_train': False,
-    'cls_pred': False
+    'cls_pred': True,
+    'cls_rpt': False
 }
 
 pipeline = Pipeline(

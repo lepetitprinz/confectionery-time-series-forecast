@@ -82,16 +82,16 @@ class Predict(object):
 
     def make_pred_result(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
-        end_date += timedelta(days=1)
-        # end_date += timedelta(weeks=15) - timedelta(days=6)   # Todo: Exception
+        end_date -= timedelta(days=6)    # Week start day
 
         result_pred = []
-        fkey = [hrchy_key + str(i+1).zfill(3) for i in range(len(df))]
+        # fkey = [hrchy_key + str(i+1).zfill(5) for i in range(len(df))]
         for i, pred in enumerate(df):
             for j, prediction in enumerate(pred[-1]):
-                result_pred.append([fkey[i]] + pred[:-1] +
+                prediction = np.round(prediction, 3)
+                prediction = np.clip(prediction, a_min=None, a_max=10**10-1)
+                result_pred.append([hrchy_key + pred[0] + '-' + pred[5]] + pred[:-1] +
                                    [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
-                # results.append([fkey[i]] + pred[:-1] + [pred[-1].index[j], result])
 
         result_pred = pd.DataFrame(result_pred)
         cols = ['fkey'] + self.hrchy['apply'] + ['stat_cd', 'yymmdd', 'result_sales']
@@ -99,7 +99,7 @@ class Predict(object):
         result_pred['project_cd'] = 'ENT001'
         result_pred['division_cd'] = self.division
         result_pred['data_vrsn_cd'] = self.data_vrsn_cd
-        result_pred['create_user'] = 'SYSTEM'
+        result_pred['create_user_cd'] = 'SYSTEM'
 
         if self.hrchy['lvl']['item'] > 0:
             result_pred = pd.merge(result_pred,
@@ -128,6 +128,21 @@ class Predict(object):
                      'fkey': hrchy_key[:-1]}
 
         return result_pred, pred_info
+
+    @staticmethod
+    def make_pred_best(pred, score):
+        best = pd.merge(
+            pred,
+            score,
+            on=['project_cd', 'data_vrsn_cd', 'division_cd', 'fkey'],
+            how='inner',
+            suffixes=('', '_DROP')
+        ).filter(regex='^(?!.*_DROP)')
+        best = best.rename(columns={'create_user': 'create_user_cd'})
+        best = best.drop(columns=['rmse'])
+
+        return best
+
 
     # def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
     #     # scaling

@@ -33,15 +33,15 @@ class ConsistencyCheck(object):
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
         normal = self.check_prod_level(df=df)
-        # normal = self.check_unit_code(df=normal)
-        # normal = self.check_unit_code_map(df=normal)
+        normal = self.check_unit_code(df=normal)
+        normal = self.check_unit_code_map(df=normal)
 
         return normal
 
     # Error 1
     def check_prod_level(self, df: pd.DataFrame):
         test_df = deepcopy(df)
-        test_df = test_df[self.hrchy]
+        test_df = test_df[self.hrchy['apply']]
         na_rows = test_df.isna().sum(axis=1) > 0
         err = df[na_rows].fillna('')
         normal = df[~na_rows]

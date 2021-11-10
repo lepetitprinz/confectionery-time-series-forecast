@@ -108,7 +108,8 @@ class Train(object):
         result['division_cd'] = self.division
         result['data_vrsn_cd'] = self.data_vrsn_cd
         result['create_user'] = 'SYSTEM'
-        result['fkey'] = [hrchy_key + str(i+1).zfill(3) for i in range(len(result))]
+        result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
+        # result['fkey'] = [hrchy_key + str(i+1).zfill(5) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
 
         # Merge information

@@ -1,18 +1,16 @@
 from baseline.analysis.Decomposition import Decomposition
+from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
 import common.util as util
 
-from copy import deepcopy
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from datetime import timedelta
-
 from sklearn.impute import KNNImputer
 
 
 class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
-    STR_TYPE_COLS = ['cust_cd', 'sku_cd']
+    STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 
     def __init__(self, date: dict, cust: pd.DataFrame, division: str, common: dict,
                  hrchy: dict, exec_cfg: dict):
@@ -32,7 +30,10 @@ class DataPrep(object):
             periods=52 * ((int(date['date_to'][:4]) - int(date['date_from'][:4])) + 1) + 1,
             freq=common['resample_rule']
         )
-
+        self.exg_map = {
+            '1005': '108',
+            '1033': '159'
+        }
         # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
@@ -42,7 +43,7 @@ class DataPrep(object):
         self.outlier_method = 'std'
         self.quantile_range = 0.02
 
-    def preprocess(self, data: pd.DataFrame, exg: dict) -> dict:
+    def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> dict:
         # ------------------------------- #
         # 1. Preprocess sales dataset
         # ------------------------------- #
@@ -50,26 +51,25 @@ class DataPrep(object):
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(int).astype(str)
 
+        # convert datetime column
+        data[self.date_col] = data[self.date_col].astype(np.int64)
+
         # Mapping: cust_cd -> cust_grp_cd
-        data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
+        # data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
         data['cust_grp_cd'] = data['cust_grp_cd'].fillna('-')
 
-        # ------------------------------- #
         # 2. Preprocess Exogenous dataset
-        # ------------------------------- #
-        exg_all = util.prep_exg_all(data=exg['all'])
+        exg = util.prep_exg_all(data=exg)
 
-        # preprocess exogenous(partial) data
-        # exg_partial = util.prep_exg_partial(data=exg['partial'])
-
-        # ------------------------------- #
         # 3. Preprocess merged dataset
-        # ------------------------------- #
+
         # Merge sales data & exogenous(all) data
-        data = pd.merge(data, exg_all, on=self.date_col, how='left')
+        data = self.merge_exg(data=data, exg=exg)
 
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
+
+        # Feature engineering
 
         # Grouping
         # data_group = self.group(data=data)
@@ -101,13 +101,24 @@ class DataPrep(object):
 
         return data_resample
 
+    def merge_exg(self, data: pd.DataFrame, exg: dict):
+        cust_grp_list = list(data['cust_grp_cd'].unique())
+
+        merged = pd.DataFrame()
+        for cust_grp in cust_grp_list:
+            temp = data[data['cust_grp_cd'] == cust_grp]
+            temp = pd.merge(temp, exg[self.exg_map[cust_grp]], on=self.date_col, how='left')
+            merged = pd.concat([merged, temp])
+
+        return merged
+
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
-
+        df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
         # Convert unit code
         if self.division == 'SELL_IN':
-            conditions = [df['unit_cd'] == 'EA ',
+            conditions = [df['unit_cd'] == 'EA',
                           df['unit_cd'] == 'BOL',
                           df['unit_cd'] == 'BOX']
 
@@ -182,7 +193,7 @@ class DataPrep(object):
         col_agg = set(df.columns).intersection(set(self.col_agg_map[agg]))
         if len(col_agg) > 0:
             resampled = df[self.col_agg_map[agg]]
-            resampled = resampled.resample(rule=self.resample_rule).sum()  # resampling
+            resampled = resampled.resample(rule=self.resample_rule).sum()    # resampling
             resampled = resampled.fillna(value=0)  # fill NaN
 
         return resampled
@@ -235,7 +246,7 @@ class DataPrep(object):
             feature = feature.values
             mean = np.mean(feature)
             std = np.std(feature)
-            cut_off = std * 3    # 99.7%
+            cut_off = std * 2.5    # 99.7%
             lower = mean - cut_off
             upper = mean + cut_off
 
@@ -243,7 +254,8 @@ class DataPrep(object):
             lower = feature.quantile(self.quantile_range)
             upper = feature.quantile(1 - self.quantile_range)
 
-        feature = np.where(feature < lower, lower, feature)
+        feature = np.where(feature < 0, 0, feature)
+        # feature = np.where(feature < lower, lower, feature)
         feature = np.where(feature > upper, upper, feature)
 
         df[feat] = feature

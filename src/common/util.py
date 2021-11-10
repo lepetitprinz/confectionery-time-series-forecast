@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 from collections import defaultdict
 
@@ -29,10 +30,10 @@ def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0) -> dict:
         temp = {}
         for code in code_list:
             sliced = None
+            if isinstance(data, dict):
+                sliced = data[cd][data[cd][col] == code]
             if isinstance(data, pd.DataFrame):
                 sliced = data[data[col] == code]
-            elif isinstance(data, dict):
-                sliced = data[cd][data[cd][col] == code]
             temp[code] = sliced
 
         return temp
@@ -114,8 +115,8 @@ def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrc
     return temp
 
 
-def make_path_baseline(module: str, division: str, hrchy_lvl: str, step: str, extension: str):
-    path = os.path.join('..', '..', module, division + '_' + str(hrchy_lvl) + step + '.' + extension)
+def make_path_baseline(module: str, division: str, data_vrsn: str, hrchy_lvl: str, step: str, extension: str):
+    path = os.path.join('..', '..', module, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step + '.' + extension)
 
     return path
 
@@ -139,6 +140,30 @@ def prep_exg_all(data: pd.DataFrame):
     for lvl1, lvl2, date, val in zip(data['idx_dtl_cd'], data['idx_cd'], data['yymm'], data['ref_val']):
         exg_map[lvl1][lvl2].append((date, val))
 
+    weather_map = {}
+    for location, val1 in exg_map.items():
+        weather = pd.DataFrame()
+        for key2, val2 in val1.items():
+            temp = pd.DataFrame(val2, columns=['yymmdd', key2])
+            temp = temp.sort_values(by='yymmdd')
+            if len(weather) == 0:
+                weather = pd.concat([weather, temp], axis=1, join='outer')
+            else:
+                weather = pd.merge(weather, temp, on='yymmdd')
+
+        weather.columns = [col.lower() for col in weather.columns]
+        weather.loc[:, 'yymmdd'] = weather.loc[:, 'yymmdd'].astype(np.int64)
+        weather = weather.fillna(0)
+        weather_map[location] = weather
+
+    return weather_map
+
+
+def prep_exg_all_bak(data: pd.DataFrame):
+    exg_map = defaultdict(lambda: defaultdict(list))
+    for lvl1, lvl2, date, val in zip(data['idx_dtl_cd'], data['idx_cd'], data['yymm'], data['ref_val']):
+        exg_map[lvl1][lvl2].append((date, val))
+
     result = pd.DataFrame()
     for key1, val1 in exg_map.items():
         for key2, val2 in val1.items():
@@ -150,7 +175,7 @@ def prep_exg_all(data: pd.DataFrame):
                 result = pd.merge(result, temp, on='yymmdd')
 
     result.columns = [col.lower() for col in result.columns]
-    result.loc[:, 'yymmdd'] = result.loc[:, 'yymmdd'].astype(int)
+    result.loc[:, 'yymmdd'] = result.loc[:, 'yymmdd'].astype(np.int64)
     result = result.fillna(0)
 
     return result
