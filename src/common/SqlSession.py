@@ -75,7 +75,7 @@ class SqlSession(object):
             return data
 
         except SQLAlchemyError as e:
-            error = str(e.__dict__['orig'])
+            error = str(e)
             return error
 
     def insert(self, df: pd.DataFrame, tb_name: str):

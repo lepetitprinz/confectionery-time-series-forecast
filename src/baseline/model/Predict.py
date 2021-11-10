@@ -134,7 +134,7 @@ class Predict(object):
         best = pd.merge(
             pred,
             score,
-            on=['project_cd', 'data_vrsn_cd', 'division_cd', 'fkey'],
+            on=['project_cd', 'data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
             how='inner',
             suffixes=('', '_DROP')
         ).filter(regex='^(?!.*_DROP)')

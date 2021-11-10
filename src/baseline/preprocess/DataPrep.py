@@ -43,10 +43,12 @@ class DataPrep(object):
         self.outlier_method = 'std'
         self.quantile_range = 0.02
 
-    def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> dict:
+    def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> tuple:
         # ------------------------------- #
         # 1. Preprocess sales dataset
         # ------------------------------- #
+        exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
+
         # convert data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(int).astype(str)
@@ -61,8 +63,6 @@ class DataPrep(object):
         # 2. Preprocess Exogenous dataset
         exg = util.prep_exg_all(data=exg)
 
-        # 3. Preprocess merged dataset
-
         # Merge sales data & exogenous(all) data
         data = self.merge_exg(data=data, exg=exg)
 
@@ -70,6 +70,11 @@ class DataPrep(object):
         data = self.conv_data_type(df=data)
 
         # Feature engineering
+        fe = FeatureEngineering(
+            common=self.common,
+            exg_list=exg_list
+        )
+        data, exg_list = fe.feature_selection(data=data)
 
         # Grouping
         # data_group = self.group(data=data)
@@ -99,7 +104,7 @@ class DataPrep(object):
             df=data_group
         )
 
-        return data_resample
+        return data_resample, exg_list
 
     def merge_exg(self, data: pd.DataFrame, exg: dict):
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -192,7 +197,7 @@ class DataPrep(object):
         resampled = pd.DataFrame()
         col_agg = set(df.columns).intersection(set(self.col_agg_map[agg]))
         if len(col_agg) > 0:
-            resampled = df[self.col_agg_map[agg]]
+            resampled = df[col_agg]
             resampled = resampled.resample(rule=self.resample_rule).sum()    # resampling
             resampled = resampled.fillna(value=0)  # fill NaN
 

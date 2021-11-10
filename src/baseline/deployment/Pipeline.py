@@ -161,11 +161,11 @@ class Pipeline(object):
                 exec_cfg=self.exec_cfg
             )
             # Preprocessing the dataset
-            data_prep = preprocess.preprocess(data=check, exg=exg)
+            data_prep, exg_list = preprocess.preprocess(data=check, exg=exg)
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=data_prep, file_path=self.path['prep'], data_type='binary')
+                self.io.save_object(data=(data_prep, exg_list), file_path=self.path['prep'], data_type='binary')
 
             print("Data preprocessing is finished\n")
         # ================================================================================================= #
@@ -203,7 +203,7 @@ class Pipeline(object):
         if self.step_cfg['cls_train']:
             print("Step 4: Train\n")
             if not self.step_cfg['cls_prep']:
-                data_prep = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                data_prep, exg_list = self.io.load_object(file_path=self.path['prep'], data_type='binary')
             # Initiate train class
             training = Train(
                 division=self.division,
@@ -215,13 +215,13 @@ class Pipeline(object):
                 exec_cfg=self.exec_cfg
             )
             # Train the models
-            # scores = training.train(df=data_prep)
+            scores = training.train(df=data_prep)
 
             # Save Step result
-            # if self.exec_cfg['save_step_yn']:
-            #     self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
-            scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
+            # scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
 
             # Make score result
             # All scores
@@ -262,7 +262,7 @@ class Pipeline(object):
         if self.step_cfg['cls_pred']:
             print("Step 5: Forecast\n")
             if not self.step_cfg['cls_prep']:
-                data_prep = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                data_prep, exg_list = self.io.load_object(file_path=self.path['prep'], data_type='binary')
 
             if not self.step_cfg['cls_train']:
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
@@ -277,13 +277,13 @@ class Pipeline(object):
                 common=self.common
             )
             # Forecast the model
-            # prediction = predict.forecast(df=data_prep)
+            prediction = predict.forecast(df=data_prep)
 
             # Save Step result
-            # if self.exec_cfg['save_step_yn']:
-            #     self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
 
-            prediction = self.io.load_object(file_path=self.path['pred'], data_type='binary')
+            # prediction = self.io.load_object(file_path=self.path['pred'], data_type='binary')
 
             pred_all, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy['key'])
             pred_best = predict.make_pred_best(pred=pred_all, score=scores_best)
