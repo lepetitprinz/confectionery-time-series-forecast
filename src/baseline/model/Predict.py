@@ -24,6 +24,7 @@ class Predict(object):
         self.algorithm = Algorithm()
 
         # Data Configuration
+        self.cnt = 0
         self.date = date
         self.data_vrsn_cd = data_vrsn_cd
         self.division = division    # SELL-IN / SELL-OUT
@@ -50,6 +51,12 @@ class Predict(object):
         return prediction
 
     def forecast_model(self, hrchy, df):
+        # Show prediction progress
+        self.cnt += 1
+        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+
+        # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=df)
 
         models = []
@@ -58,9 +65,11 @@ class Predict(object):
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
             try:
-                prediction = self.estimators[model](history=data,
-                                                    cfg=self.param_grid[model],
-                                                    pred_step=n_test)
+                prediction = self.estimators[model](
+                    history=data,
+                    cfg=self.param_grid[model],
+                    pred_step=n_test
+                )
             except ValueError:
                 prediction = [0] * n_test
             models.append(hrchy + [model.upper(), prediction])
@@ -75,12 +84,14 @@ class Predict(object):
 
     def split_variable(self, model: str, data) -> np.array:
         if self.model_info[model]['variate'] == 'multi':
-            data = {'endog': data[self.target_col].values.ravel(),
-                    'exog': data[self.exo_col_list].values}
+            data = {
+                'endog': data[self.target_col].values.ravel(),
+                'exog': data[self.exo_col_list].values
+            }
 
         return data
 
-    def make_pred_result(self, df, hrchy_key: str):
+    def make_db_format_pred_all(self, df, hrchy_key: str):
         end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
         end_date -= timedelta(days=6)    # Week start day
 
@@ -130,7 +141,7 @@ class Predict(object):
         return result_pred, pred_info
 
     @staticmethod
-    def make_pred_best(pred, score):
+    def make_db_format_pred_best(pred, score):
         best = pd.merge(
             pred,
             score,

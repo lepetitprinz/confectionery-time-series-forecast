@@ -12,12 +12,11 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 
-    def __init__(self, date: dict, cust: pd.DataFrame, division: str, common: dict,
+    def __init__(self, date: dict, division: str, common: dict,
                  hrchy: dict, exec_cfg: dict):
         # Dataset configuration
         self.exec_cfg = exec_cfg
         self.division = division
-        self.cust = cust
         self.common = common
         self.date_col = common['date_col']
         self.resample_rule = common['resample_rule']
@@ -30,9 +29,11 @@ class DataPrep(object):
             periods=52 * ((int(date['date_to'][:4]) - int(date['date_from'][:4])) + 1) + 1,
             freq=common['resample_rule']
         )
+        # Exogenous variable map
         self.exg_map = {
             '1005': '108',
-            '1033': '159'
+            '1033': '159',
+            '1067': '999'
         }
         # Hierarchy configuration
         self.hrchy = hrchy
@@ -56,10 +57,6 @@ class DataPrep(object):
         # convert datetime column
         data[self.date_col] = data[self.date_col].astype(np.int64)
 
-        # Mapping: cust_cd -> cust_grp_cd
-        # data = pd.merge(data, self.cust, on=['cust_cd'], how='left')
-        data['cust_grp_cd'] = data['cust_grp_cd'].fillna('-')
-
         # 2. Preprocess Exogenous dataset
         exg = util.prep_exg_all(data=exg)
 
@@ -77,8 +74,7 @@ class DataPrep(object):
         data, exg_list = fe.feature_selection(data=data)
 
         # Grouping
-        # data_group = self.group(data=data)
-        data_group = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
+        data_group, hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
 
         # Decomposition
         if self.exec_cfg['decompose_yn']:
@@ -104,7 +100,7 @@ class DataPrep(object):
             df=data_group
         )
 
-        return data_resample, exg_list
+        return data_resample, exg_list, hrchy_cnt
 
     def merge_exg(self, data: pd.DataFrame, exg: dict):
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -185,20 +181,32 @@ class DataPrep(object):
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
+        missed_rate = 0
         if len(df_resampled.index) != len(self.date_range):
+            missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
 
         # Add data level
         df_resampled = self.add_data_level(org=df, resampled=df_resampled)
 
-        return df_resampled
+        return df_resampled, missed_rate
+
+    def check_missing_data(self, df):
+        tot_len = len(self.date_range)
+        missed = tot_len - len(df.index)
+        missed_rate = round((missed / tot_len) * 100, 1)
+
+        return missed_rate
 
     def resample_by_agg(self, df, agg: str):
         resampled = pd.DataFrame()
         col_agg = set(df.columns).intersection(set(self.col_agg_map[agg]))
         if len(col_agg) > 0:
             resampled = df[col_agg]
-            resampled = resampled.resample(rule=self.resample_rule).sum()    # resampling
+            if agg == 'sum':
+                resampled = resampled.resample(rule=self.resample_rule).sum()  # resampling
+            elif agg == 'avg':
+                resampled = resampled.resample(rule=self.resample_rule).mean()
             resampled = resampled.fillna(value=0)  # fill NaN
 
         return resampled
@@ -259,8 +267,8 @@ class DataPrep(object):
             lower = feature.quantile(self.quantile_range)
             upper = feature.quantile(1 - self.quantile_range)
 
-        feature = np.where(feature < 0, 0, feature)
-        # feature = np.where(feature < lower, lower, feature)
+        # feature = np.where(feature < 0, 0, feature)
+        feature = np.where(feature < lower, lower, feature)    # Todo:
         feature = np.where(feature > upper, upper, feature)
 
         df[feat] = feature

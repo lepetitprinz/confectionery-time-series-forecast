@@ -30,8 +30,9 @@ class FeatureEngineering(object):
                 coef = np.corrcoef(target, data[exg].values)[0][1]
             coef_list.append((exg, abs(coef)))
 
+         # Rank the feature importance
         coef_list = sorted(coef_list, key=lambda x: x[1], reverse=True)
-        exg_list = coef_list[:self.n_feature_to_select]
+        exg_list = coef_list[:self.n_feature_to_select]    # Feature select
         drop_exg_list = coef_list[self.n_feature_to_select:]
 
         exg_list = [exg for exg, p in exg_list]

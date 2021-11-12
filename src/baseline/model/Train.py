@@ -10,9 +10,6 @@ from typing import List, Tuple
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-# Tensorflow library
-# from tensorflow.keras import backend as K
-# from tensorflow.keras.callbacks import EarlyStopping
 warnings.filterwarnings('ignore')
 
 
@@ -26,6 +23,7 @@ class Train(object):
     def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
                  hrchy: dict, exg_list: list,  exec_cfg: dict):
         # Data Configuration
+        self.cnt = 0
         self.exec_cfg = exec_cfg
         self.data_vrsn_cd = data_vrsn_cd
         self.common = common
@@ -58,6 +56,12 @@ class Train(object):
         return scores
 
     def train_model(self, df) -> List[List[np.array]]:
+        # Show training progress
+        self.cnt += 1
+        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+
+        # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=df)
 
         models = []
@@ -242,7 +246,6 @@ class Train(object):
         x_test_scaled = scaler.transform(test)
 
         return x_train_scaled, x_test_scaled
-
 
     def window_generator(self, df, model: str) -> List[Tuple]:
         data_length = len(df)

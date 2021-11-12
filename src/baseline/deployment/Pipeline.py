@@ -12,7 +12,7 @@ import os
 
 class Pipeline(object):
 
-    def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict):
+    def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param lvl_cfg: Data Level Configuration
@@ -30,6 +30,7 @@ class Pipeline(object):
         # I/O & Execution Configuration
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
+        self.exec_rslt_cfg = exec_rslt_cfg
 
         self.decompose_yn = exec_cfg['decompose_yn']
 
@@ -52,6 +53,7 @@ class Pipeline(object):
 
         # Data Level Configuration
         self.hrchy = {
+            'cnt': 0,
             'key': "C" + str(lvl_cfg['cust_lvl']) + '-' + "P" + str(lvl_cfg['item_lvl']) + '-',
             'lvl': {
                 'cust': lvl_cfg['cust_lvl'],
@@ -140,7 +142,6 @@ class Pipeline(object):
 
         # Exogenous dataset
         exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='N'))
-        exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
 
         # ================================================================================================= #
         # 3. Data Preprocessing
@@ -154,18 +155,18 @@ class Pipeline(object):
             # Initiate data preprocessing class
             preprocess = DataPrep(
                 date=self.date,
-                cust=cust,
                 division=self.division,
                 common=self.common,
                 hrchy=self.hrchy,
                 exec_cfg=self.exec_cfg
             )
             # Preprocessing the dataset
-            data_prep, exg_list = preprocess.preprocess(data=check, exg=exg)
+            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=check, exg=exg)
+            self.hrchy['cnt'] = hrchy_cnt
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=(data_prep, exg_list), file_path=self.path['prep'], data_type='binary')
+                self.io.save_object(data=(data_prep, exg_list, hrchy_cnt), file_path=self.path['prep'], data_type='binary')
 
             print("Data preprocessing is finished\n")
         # ================================================================================================= #
@@ -203,7 +204,8 @@ class Pipeline(object):
         if self.step_cfg['cls_train']:
             print("Step 4: Train\n")
             if not self.step_cfg['cls_prep']:
-                data_prep, exg_list = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                self.hrchy['cnt'] = hrchy_cnt
             # Initiate train class
             training = Train(
                 division=self.division,
@@ -214,14 +216,16 @@ class Pipeline(object):
                 common=self.common,
                 exec_cfg=self.exec_cfg
             )
-            # Train the models
-            scores = training.train(df=data_prep)
 
-            # Save Step result
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
+            if not self.exec_rslt_cfg['train']:
+                # Train the models
+                scores = training.train(df=data_prep)
 
-            # scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
+                # Save Step result
+                if self.exec_cfg['save_step_yn']:
+                    self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
+            else:
+                scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
 
             # Make score result
             # All scores
@@ -230,7 +234,6 @@ class Pipeline(object):
                 hrchy_key=self.hrchy['key'],
                 fn=training.score_to_df
             )
-
             # Best scores
             scores_best, score_best_info = training.make_score_result(
                 data=scores,
@@ -238,7 +241,7 @@ class Pipeline(object):
                 fn=training.best_score_to_df
             )
 
-            # exception
+            # Exception (Insert Error)
             scores_db.loc[:, 'item_nm'] = ''
             scores_best.loc[:, 'item_nm'] = ''
 
@@ -268,7 +271,8 @@ class Pipeline(object):
         if self.step_cfg['cls_pred']:
             print("Step 5: Forecast\n")
             if not self.step_cfg['cls_prep']:
-                data_prep, exg_list = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                self.hrchy['cnt'] = hrchy_cnt
 
             if not self.step_cfg['cls_train']:
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
@@ -282,17 +286,20 @@ class Pipeline(object):
                 hrchy=self.hrchy,
                 common=self.common
             )
-            # Forecast the model
-            prediction = predict.forecast(df=data_prep)
+            if not self.exec_rslt_cfg['predict']:
+                # Forecast the model
+                prediction = predict.forecast(df=data_prep)
 
-            # Save Step result
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
+                # Save Step result
+                if self.exec_cfg['save_step_yn']:
+                    self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
+            else:
+                # Load predicted object
+                prediction = self.io.load_object(file_path=self.path['pred'], data_type='binary')
 
-            # prediction = self.io.load_object(file_path=self.path['pred'], data_type='binary')
-
-            pred_all, pred_info = predict.make_pred_result(df=prediction, hrchy_key=self.hrchy['key'])
-            pred_best = predict.make_pred_best(pred=pred_all, score=scores_best)
+            # Make database format
+            pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
+            pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
 
             pred_all.loc[:, 'item_nm'] = ''
             pred_best.loc[:, 'item_nm'] = ''

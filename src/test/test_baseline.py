@@ -28,11 +28,19 @@ step_cfg = {
     'cls_rpt': True
 }
 
+# Load result configuration
+exec_rslt_cfg = {
+    'train': False,
+    'predict': False
+}
+
+
 pipeline = Pipeline(
     division=division,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
-    step_cfg=step_cfg
+    step_cfg=step_cfg,
+    exec_rslt_cfg=exec_rslt_cfg
 )
 
 # Execute Baseline Forecast

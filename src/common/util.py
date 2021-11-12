@@ -4,7 +4,7 @@ import pandas as pd
 from collections import defaultdict
 
 
-def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0) -> dict:
+def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0, cnt=0) -> tuple:
     grp = {}
     col = hrchy[lvl]
 
@@ -22,26 +22,27 @@ def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0) -> dict:
                 sliced = data[data[col] == code]
             elif isinstance(data, dict):
                 sliced = data[cd][data[cd][col] == code]
-            result = group(hrchy=hrchy, hrchy_lvl=hrchy_lvl, data={code: sliced},
-                           cd=code, lvl=lvl + 1)
+            result, cnt = group(hrchy=hrchy, hrchy_lvl=hrchy_lvl, data={code: sliced},
+                                cd=code, lvl=lvl + 1, cnt=cnt)
             grp[code] = result
 
     elif lvl == hrchy_lvl:
         temp = {}
         for code in code_list:
+            cnt += 1
             sliced = None
-            if isinstance(data, dict):
-                sliced = data[cd][data[cd][col] == code]
             if isinstance(data, pd.DataFrame):
                 sliced = data[data[col] == code]
+            elif isinstance(data, dict):
+                sliced = data[cd][data[cd][col] == code]
             temp[code] = sliced
 
-        return temp
+        return temp, cnt
 
-    return grp
+    return grp, cnt
 
 
-def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> dict:
+def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
     temp = None
     if lvl == 0:
         temp = {}
