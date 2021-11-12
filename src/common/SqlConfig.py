@@ -354,19 +354,7 @@ class SqlConfig(object):
     def del_score(**kwargs):
         sql = f"""
             DELETE 
-              FROM M4S_I110410
-             WHERE PROJECT_CD = '{kwargs['project_cd']}'
-               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
-               AND DIVISION_CD = '{kwargs['division_cd']}'
-               AND FKEY LIKE '%{kwargs['fkey']}%'
-        """
-        return sql
-
-    @staticmethod
-    def del_best_score(**kwargs):
-        sql = f"""
-            DELETE 
-              FROM M4S_O110610
+              FROM {kwargs['table_nm']}
              WHERE PROJECT_CD = '{kwargs['project_cd']}'
                AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
@@ -456,6 +444,9 @@ class SqlConfig(object):
         """
         return sql
 
+    ########
+    # Temp #
+    ########
     @staticmethod
     def sql_sell_in_temp_comp(**kwargs):
         sql = f"""
@@ -481,8 +472,6 @@ class SqlConfig(object):
         """
         return sql
 
-        # SELL-IN Table
-
     @staticmethod
     def sql_sell_in_temp(**kwargs):
         sql = f""" 
@@ -501,8 +490,8 @@ class SqlConfig(object):
                          , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
                                 WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
                                 WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
-                               ELSE 0
-                           END AS RST_SALES_QTY
+                                ELSE 0
+                            END AS RST_SALES_QTY
                       FROM (
                             SELECT DIVISION_CD
                                  , SOLD_CUST_GRP_CD
@@ -554,21 +543,42 @@ class SqlConfig(object):
                                                                        , ITEM_CD
                                                                        , PRICE_START_YYMMDD
                                                                        , FAC_PRICE
-                                                                  FROM M4S_I002041
-                                                                  WHERE PRICE_QTY_UNIT_CD = 'EA'
-                                                                    AND FAC_PRICE <> 0
-                                                                  ) EA
+                                                                    FROM M4S_I002041
+                                                                   WHERE PRICE_QTY_UNIT_CD = 'EA'
+                                                                     AND FAC_PRICE <> 0
+                                                                 ) EA
                                                     ON BOX.PROJECT_CD = EA.PROJECT_CD
                                                    AND BOX.ITEM_CD = EA.ITEM_CD
                                                    AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
-                  ) UNIT
+                                                ) UNIT
                                            ON SALES.SKU_CD = UNIT.SKU_CD
-              ) SALES
-     ) SALES
-GROUP BY DIVISION_CD
-     , SOLD_CUST_GRP_CD
-     , SKU_CD
-     , YY
-     , WEEK
+                            ) SALES
+                    ) SALES
+             GROUP BY DIVISION_CD
+                    , SOLD_CUST_GRP_CD
+                    , SKU_CD
+                    , YY
+                    , WEEK
                 """
+        return sql
+
+    @staticmethod
+    def sql_item_mst_sell_out_temp():
+        sql = """
+              SELECT SKU_CD
+                   , SKU_NM
+                FROM (
+                      SELECT SKU_CD
+                           , SKU_NM
+                           , ROW_NUMBER() over (PARTITION BY SKU_CD ORDER BY SKU_NM) AS DUP
+                        FROM (
+                              SELECT SELL_BARCD AS SKU_CD
+                                   , PROD_NM    AS SKU_NM
+                                FROM TEST_NEW.dbo.SELLOUT_PAST_HOME_MASTER
+                               GROUP BY SELL_BARCD
+                                      , PROD_NM
+                             ) ITEM_MST
+                     ) ITEM_MST
+              WHERE DUP = 1  
+            """
         return sql

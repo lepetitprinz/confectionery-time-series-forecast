@@ -22,9 +22,9 @@ exec_cfg = {
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
+    'cls_prep': False,
+    'cls_train': False,
+    'cls_pred': False,
     'cls_rpt': True
 }
 

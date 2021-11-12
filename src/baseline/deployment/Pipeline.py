@@ -225,34 +225,40 @@ class Pipeline(object):
 
             # Make score result
             # All scores
-            scores_db, score_info = training.make_score_result(data=scores,
-                                                               hrchy_key=self.hrchy['key'],
-                                                               fn=training.score_to_df)
+            scores_db, score_info = training.make_score_result(
+                data=scores,
+                hrchy_key=self.hrchy['key'],
+                fn=training.score_to_df
+            )
+
+            # Best scores
+            scores_best, score_best_info = training.make_score_result(
+                data=scores,
+                hrchy_key=self.hrchy['key'],
+                fn=training.best_score_to_df
+            )
 
             # exception
             scores_db.loc[:, 'item_nm'] = ''
-
-            # Save all of the training scores on the DB table
-            if self.exec_cfg['save_db_yn']:
-                print("Save training all scores on DB")
-                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
-                self.io.insert_to_db(df=scores_db, tb_name='M4S_I110410')
-
-            # Best scores
-            scores_best, score_best_info = training.make_score_result(data=scores,
-                                                                      hrchy_key=self.hrchy['key'],
-                                                                      fn=training.best_score_to_df)
-            # exception
             scores_best.loc[:, 'item_nm'] = ''
 
             # Save best scores
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
 
-            # Save best of the training scores on the DB table
             if self.exec_cfg['save_db_yn']:
+                # Save best of the training scores on the DB table
+                print("Save training all scores on DB")
+                table_nm = 'M4S_I110410'
+                score_info['table_nm'] = table_nm
+                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
+                self.io.insert_to_db(df=scores_db, tb_name=table_nm)
+
+                # Save best of the training scores on the DB table
                 print("Save training best scores on DB")
-                self.io.delete_from_db(sql=self.sql_conf.del_best_score(**score_best_info))
+                table_nm = 'M4S_O110610'
+                score_best_info['table_nm'] = table_nm
+                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_best_info))
                 self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
 
             print("Training is finished\n")
