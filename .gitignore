@@ -5,4 +5,3 @@ src/__pycache__/config.cpython-38.pyc
 *.csv
 *.zip
 bak/src_bak_210607.zip
-*.pickle
