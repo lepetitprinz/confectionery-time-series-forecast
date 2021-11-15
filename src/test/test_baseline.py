@@ -30,8 +30,8 @@ step_cfg = {
 
 # Load result configuration
 exec_rslt_cfg = {
-    'train': False,
-    'predict': False
+    'train': True,
+    'predict': True
 }
 
 

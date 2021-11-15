@@ -26,7 +26,7 @@ class DataPrep(object):
         }
         self.date_range = pd.date_range(
             start=date['date_from'],
-            periods=52 * ((int(date['date_to'][:4]) - int(date['date_from'][:4])) + 1) + 1,
+            end=date['date_to'],
             freq=common['resample_rule']
         )
         # Exogenous variable map
@@ -93,6 +93,19 @@ class DataPrep(object):
 
             decompose.dao.session.close()
 
+        # Check Missing Values
+        # data_miss_rate = util.hrchy_recursion(
+        #     hrchy_lvl=self.hrchy_level,
+        #     fn=self.check_missiing_value,
+        #     df=data_group
+        # )
+        print("Week Count: ", len(self.date_range))
+        miss_rate = util.hrchy_recursion(
+            hrchy_lvl=self.hrchy_level,
+            fn=self.check_missiing_value,
+            df=data_group
+        )
+
         # Resampling
         data_resample = util.hrchy_recursion(
             hrchy_lvl=self.hrchy_level,
@@ -101,6 +114,30 @@ class DataPrep(object):
         )
 
         return data_resample, exg_list, hrchy_cnt
+
+    # Temp
+    @staticmethod
+    def make_miss_df(data):
+        results = []
+        hist = []
+        for key_lvl1, val_lvl1 in data.items():
+            for key_lvl2, val_lvl2 in val_lvl1.items():
+                for key_lvl3, val_lvl3 in val_lvl2.items():
+                    for key_lvl4, val_lvl4 in val_lvl3.items():
+                        for key_lvl5, val_lvl5 in val_lvl4.items():
+                            for key_lvl6, val_lvl6 in val_lvl5.items():
+                                results.append([key_lvl1, key_lvl2, key_lvl3, key_lvl4, key_lvl5, key_lvl6,
+                                                val_lvl6[0], val_lvl6[1]])
+                                hist.append([key_lvl6, val_lvl6[0]])
+
+        miss_df = pd.DataFrame(results, columns=['sp1', 'biz', 'line', 'brand', 'item', 'sku', 'cnt', 'rate'])
+        miss_df.to_csv('missed_rate.csv', index=False, encoding='CP949')
+
+        # Make histogram
+        hist_df = pd.DataFrame(hist, columns=['sku', 'cnt'])
+        ax = hist_df['cnt'].hist(bins=50)
+        fig = ax.get_figure()
+        fig.savefig('cnt_hist.png')
 
     def merge_exg(self, data: pd.DataFrame, exg: dict):
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -183,20 +220,38 @@ class DataPrep(object):
         # Check and add dates when sales does not exist
         missed_rate = 0
         if len(df_resampled.index) != len(self.date_range):
-            missed_rate = self.check_missing_data(df=df_resampled)
+            # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
 
         # Add data level
         df_resampled = self.add_data_level(org=df, resampled=df_resampled)
 
-        return df_resampled, missed_rate
+        return df_resampled
+
+    def check_missiing_value(self,  df: pd.DataFrame):
+        df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
+        df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
+
+        # Concatenate aggregation
+        df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
+
+        # Check and add dates when sales does not exist
+        missed_rate = 0
+        if len(df_resampled.index) != len(self.date_range):
+            missed_rate = self.check_missing_data(df=df_resampled)
+
+        return missed_rate
+
+        # Add data level
+        # df_resampled = self.add_data_level(org=df, resampled=df_resampled)
 
     def check_missing_data(self, df):
         tot_len = len(self.date_range)
         missed = tot_len - len(df.index)
-        missed_rate = round((missed / tot_len) * 100, 1)
+        exist = tot_len - missed
+        missed_rate = 100 - round((missed / tot_len) * 100, 1)
 
-        return missed_rate
+        return exist, missed_rate
 
     def resample_by_agg(self, df, agg: str):
         resampled = pd.DataFrame()
@@ -268,7 +323,7 @@ class DataPrep(object):
             upper = feature.quantile(1 - self.quantile_range)
 
         # feature = np.where(feature < 0, 0, feature)
-        feature = np.where(feature < lower, lower, feature)    # Todo:
+        # feature = np.where(feature < lower, lower, feature)    # Todo:
         feature = np.where(feature > upper, upper, feature)
 
         df[feat] = feature

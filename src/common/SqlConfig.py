@@ -1,3 +1,4 @@
+
 class SqlConfig(object):
     @staticmethod
     def sql_comm_master():
@@ -472,93 +473,147 @@ class SqlConfig(object):
         """
         return sql
 
+    # SELL-IN Table
+    @staticmethod
+    def sql_sell_in_test(**kwargs):
+        sql = f""" 
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , BIZ_CD
+                 , LINE_CD
+                 , BRAND_CD
+                 , ITEM_CD
+                 , SALES.SKU_CD 
+                 , YYMMDD
+                 , SEQ
+                 , FROM_DC_CD
+                 , UNIT_PRICE
+                 , UNIT_CD
+                 , DISCOUNT
+                 , WEEK
+                 , QTY
+                 , CREATE_DATE
+              FROM (
+                    SELECT PROJECT_CD
+                         , DIVISION_CD
+                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+                         , ITEM_CD AS SKU_CD
+                         , YYMMDD
+                         , SEQ
+                         , FROM_DC_CD
+                         , UNIT_PRICE
+                         , RTRIM(UNIT_CD) AS UNIT_CD
+                         , DISCOUNT
+                         , WEEK
+                         , RST_SALES_QTY AS QTY
+                         , CREATE_DATE
+                      FROM M4S_I002170_TEST
+                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                     AND RST_SALES_QTY > 0 
+                    ) SALES
+              LEFT OUTER JOIN (
+                               SELECT ITEM_CD AS SKU_CD
+                                    , ITEM_ATTR01_CD AS BIZ_CD
+                                    , ITEM_ATTR02_CD AS LINE_CD
+                                    , ITEM_ATTR03_CD AS BRAND_CD
+                                    , ITEM_ATTR04_CD AS ITEM_CD
+                                 FROM VIEW_I002040
+                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                              ) ITEM
+                ON SALES.SKU_CD = ITEM.SKU_CD
+               """
+
+        return sql
+
     @staticmethod
     def sql_sell_in_temp(**kwargs):
         sql = f""" 
-            SELECT DIVISION_CD
-                 , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                 , SKU_CD
-                 , YY
-                 , WEEK
-                 , SUM(RST_SALES_QTY) AS SALES
-              FROM (
-                    SELECT DIVISION_CD
-                         , SOLD_CUST_GRP_CD
-                         , SKU_CD
-                         , YY
-                         , WEEK
-                         , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
-                                WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
-                                WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
-                                ELSE 0
-                            END AS RST_SALES_QTY
-                      FROM (
-                            SELECT DIVISION_CD
-                                 , SOLD_CUST_GRP_CD
-                                 , SALES.SKU_CD
-                                 , YY
-                                 , WEEK
-                                 , UNIT_CD
-                                 , BOX_BOL
-                                 , BOX_EA
-                                 , RST_SALES_QTY
-                              FROM (
-                                    SELECT DIVISION_CD
-                                         , SOLD_CUST_GRP_CD
-                                         , ITEM_CD as SKU_CD
-                                         , YY
-                                         , WEEK
-                                         , UNIT_CD
-                                         , RST_SALES_QTY
-                                     FROM  M4S_I002170_TEST
-                                    WHERE YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
-                                   ) SALES
-                              LEFT OUTER JOIN (
-                                               SELECT BOX.ITEM_CD                                 AS SKU_CD
-                                                    , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
-                                                    , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE)  AS BOX_EA
-                                                 FROM (
-                                                       SELECT PROJECT_CD
-                                                            , ITEM_CD
-                                                            , PRICE_START_YYMMDD
-                                                            , FAC_PRICE
-                                                         FROM M4S_I002041
-                                                        WHERE PRICE_QTY_UNIT_CD = 'BOX'
-                                                          AND FAC_PRICE <> 0
-                                                      ) BOX
-                                                 LEFT OUTER JOIN (
-                                                                  SELECT PROJECT_CD
-                                                                       , ITEM_CD
-                                                                       , PRICE_START_YYMMDD
-                                                                       , FAC_PRICE
-                                                                    FROM M4S_I002041
-                                                                   WHERE PRICE_QTY_UNIT_CD = 'BOL'
-                                                                     AND FAC_PRICE <> 0
-                                                                  ) BOL
-                                                    ON BOX.PROJECT_CD = BOL.PROJECT_CD
-                                                   AND BOX.ITEM_CD = BOL.ITEM_CD
-                                                   AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
-                                                 LEFT OUTER JOIN (
-                                                                  SELECT PROJECT_CD
-                                                                       , ITEM_CD
-                                                                       , PRICE_START_YYMMDD
-                                                                       , FAC_PRICE
-                                                                    FROM M4S_I002041
-                                                                   WHERE PRICE_QTY_UNIT_CD = 'EA'
-                                                                     AND FAC_PRICE <> 0
-                                                                 ) EA
-                                                    ON BOX.PROJECT_CD = EA.PROJECT_CD
-                                                   AND BOX.ITEM_CD = EA.ITEM_CD
-                                                   AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
-                                                ) UNIT
-                                           ON SALES.SKU_CD = UNIT.SKU_CD
-                            ) SALES
-                    ) SALES
-             GROUP BY DIVISION_CD
-                    , SOLD_CUST_GRP_CD
+               SELECT DIVISION_CD
+                    , SOLD_CUST_GRP_CD AS CUST_GRP_CD
                     , SKU_CD
                     , YY
                     , WEEK
+                    , SUM(RST_SALES_QTY) AS SALES
+                 FROM (
+                       SELECT DIVISION_CD
+                            , SOLD_CUST_GRP_CD
+                            , SKU_CD
+                            , YY
+                            , WEEK
+                            , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
+                                   WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
+                                   WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
+                                   ELSE 0
+                                    END AS RST_SALES_QTY
+                         FROM (
+                               SELECT DIVISION_CD
+                                    , SOLD_CUST_GRP_CD
+                                    , SALES.SKU_CD
+                                    , YY
+                                    , WEEK
+                                    , UNIT_CD
+                                    , BOX_BOL
+                                    , BOX_EA
+                                    , RST_SALES_QTY
+                                 FROM (
+                                       SELECT DIVISION_CD
+                                            , SOLD_CUST_GRP_CD
+                                            , ITEM_CD as SKU_CD
+                                            , YY
+                                            , WEEK
+                                            , UNIT_CD
+                                            , RST_SALES_QTY
+                                        FROM  M4S_I002170_TEST
+                                       WHERE 1=1
+                                         AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                                         AND RST_SALES_QTY > 0    -- Remove minus quantity
+                                     ) SALES
+                         LEFT OUTER JOIN (
+                                          SELECT BOX.ITEM_CD                                 AS SKU_CD
+                                               , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
+                                               , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE)  AS BOX_EA
+                                            FROM (
+                                                  SELECT PROJECT_CD
+                                                       , ITEM_CD
+                                                       , PRICE_START_YYMMDD
+                                                       , FAC_PRICE
+                                                    FROM M4S_I002041
+                                                   WHERE PRICE_QTY_UNIT_CD = 'BOX'
+                                                     AND FAC_PRICE <> 0
+                                                 ) BOX
+                                            LEFT OUTER JOIN (
+                                                             SELECT PROJECT_CD
+                                                                  , ITEM_CD
+                                                                  , PRICE_START_YYMMDD
+                                                                  , FAC_PRICE
+                                                               FROM M4S_I002041
+                                                              WHERE PRICE_QTY_UNIT_CD = 'BOL'
+                                                                AND FAC_PRICE <> 0
+                                                            ) BOL
+                                              ON BOX.PROJECT_CD = BOL.PROJECT_CD
+                                             AND BOX.ITEM_CD = BOL.ITEM_CD
+                                             AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
+                                            LEFT OUTER JOIN (
+                                                             SELECT PROJECT_CD
+                                                                  , ITEM_CD
+                                                                  , PRICE_START_YYMMDD
+                                                                  , FAC_PRICE
+                                                               FROM M4S_I002041
+                                                              WHERE PRICE_QTY_UNIT_CD = 'EA'
+                                                                AND FAC_PRICE <> 0
+                                                            ) EA
+                                              ON BOX.PROJECT_CD = EA.PROJECT_CD
+                                             AND BOX.ITEM_CD = EA.ITEM_CD
+                                             AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
+                                         ) UNIT
+                           ON SALES.SKU_CD = UNIT.SKU_CD
+                           ) SALES
+                      ) SALES
+                 GROUP BY DIVISION_CD
+                        , SOLD_CUST_GRP_CD
+                        , SKU_CD
+                        , YY
+                        , WEEK
                 """
         return sql
 

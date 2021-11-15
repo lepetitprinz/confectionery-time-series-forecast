@@ -11,7 +11,6 @@ import os
 
 
 class Pipeline(object):
-
     def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
@@ -95,7 +94,7 @@ class Pipeline(object):
             print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))
             elif self.division == 'SELL_OUT':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
 
@@ -107,7 +106,6 @@ class Pipeline(object):
         # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
-        check = None
         if self.step_cfg['cls_cns']:
             print("Step 2: Check Consistency \n")
             if not self.step_cfg['cls_load']:
@@ -125,11 +123,11 @@ class Pipeline(object):
                                    err_grp_map=err_grp_map, save_yn=False)
 
             # Execute Consistency check
-            check = cns.check(df=sales)
+            sales = cns.check(df=sales)
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=check, file_path=self.path['cns'], data_type='csv')
+                self.io.save_object(data=sales, file_path=self.path['cns'], data_type='csv')
 
             print("Consistency check is finished\n")
 
@@ -137,9 +135,6 @@ class Pipeline(object):
         # 3.0 Load Dataset
         # ================================================================================================= #
         # Load dataset
-        # Customer dataset
-        cust = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
-
         # Exogenous dataset
         exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='N'))
 
@@ -150,7 +145,7 @@ class Pipeline(object):
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
             if not self.step_cfg['cls_cns']:
-                check = self.io.load_object(file_path=self.path['cns'], data_type='csv')
+                sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
             # Initiate data preprocessing class
             preprocess = DataPrep(
@@ -161,7 +156,7 @@ class Pipeline(object):
                 exec_cfg=self.exec_cfg
             )
             # Preprocessing the dataset
-            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=check, exg=exg)
+            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
             self.hrchy['cnt'] = hrchy_cnt
 
             # Save Step result
@@ -301,12 +296,18 @@ class Pipeline(object):
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
             pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
 
-            pred_all.loc[:, 'item_nm'] = ''
-            pred_best.loc[:, 'item_nm'] = ''
+            # pred_all.loc[:, 'item_nm'] = ''
+            # pred_best.loc[:, 'item_nm'] = ''
 
             if self.exec_cfg['save_step_yn']:
-                pred_all.to_csv(os.path.join('..', '..', 'pred_all.csv'), index=False, encoding='CP949')
-                pred_best.to_csv(os.path.join('..', '..', 'pred_best.csv'), index=False, encoding='CP949')
+                pred_all.to_csv(
+                    os.path.join('..', '..', 'pred', 'pred_all.csv'),
+                    index=False, encoding='CP949'
+                )
+                pred_best.to_csv(
+                    os.path.join('..', '..', 'pred', 'pred_best.csv'),
+                    index=False, encoding='CP949'
+                )
                 self.io.save_object(data=pred_best, file_path=self.path['pred_best'], data_type='binary')
 
             # Save the forecast results on the db table
@@ -344,6 +345,7 @@ class Pipeline(object):
 
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
             cust_grp_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
+            cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
 
             report = ResultReport(
                 common=self.common,
@@ -351,6 +353,7 @@ class Pipeline(object):
                 data_vrsn=self.data_vrsn_cd,
                 hrchy=self.hrchy,
                 cust_grp_mst=cust_grp_mst,
-                item_mst=item_mst
+                item_mst=item_mst,
+                cal_mst=cal_mst
             )
             report.compare_result(sales=sales_comp, pred=pred_best)

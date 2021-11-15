@@ -112,7 +112,11 @@ class Train(object):
         result['division_cd'] = self.division
         result['data_vrsn_cd'] = self.data_vrsn_cd
         result['create_user_cd'] = 'SYSTEM'
-        result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
+        if hrchy_key[:-1] == 'C1-P5':
+            result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
+        else:
+            key = self.hrchy['apply'][-1]
+            result['fkey'] = hrchy_key + result[key]
         # result['fkey'] = [hrchy_key + str(i+1).zfill(5) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
 
