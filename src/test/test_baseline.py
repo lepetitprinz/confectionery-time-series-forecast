@@ -5,8 +5,8 @@ division = 'SELL_IN'
 
 # Level Configuration
 lvl_cfg = {
-    'cust_lvl': 1,   # Customer group - Customer
-    'item_lvl': 5    # Biz - Line - Brand - Item - SKU
+    'cust_lvl': 0,   # Customer group - Customer
+    'item_lvl': 3,    # Biz - Line - Brand - Item - SKU
 }
 # Data IO Configuration
 exec_cfg = {
@@ -20,18 +20,18 @@ exec_cfg = {
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
-    'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': False,
-    'cls_pred': False,
+    'cls_load': True,
+    'cls_cns': True,
+    'cls_prep': True,
+    'cls_train': True,
+    'cls_pred': True,
     'cls_rpt': True
 }
 
 # Load result configuration
 exec_rslt_cfg = {
-    'train': True,
-    'predict': True
+    'train': False,
+    'predict': False
 }
 
 

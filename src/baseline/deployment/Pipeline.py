@@ -326,9 +326,6 @@ class Pipeline(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
-            # Close DB session
-            self.io.session.close()
-
             print("Forecast is finished\n")
         # ================================================================================================= #
         # 6. Report result
@@ -357,3 +354,6 @@ class Pipeline(object):
                 cal_mst=cal_mst
             )
             report.compare_result(sales=sales_comp, pred=pred_best)
+
+            # Close DB session
+            self.io.session.close()

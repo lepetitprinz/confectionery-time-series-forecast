@@ -100,8 +100,12 @@ class Predict(object):
         lvl = self.hrchy['lvl']['item'] - 1
         for i, pred in enumerate(df):
             for j, prediction in enumerate(pred[-1]):
-                prediction = np.round(prediction, 3)
-                prediction = np.clip(prediction, a_min=None, a_max=10**10-1)
+                # ToDo: Exception
+                prediction = np.where(prediction < 0, 0, prediction)    # Convert minus values to 0
+                prediction = np.round(prediction, 3)    # Round values
+                prediction = np.clip(prediction, a_min=None, a_max=10**10-1)    # Data clipping
+
+                # Add data level information
                 if hrchy_key[:-1] == 'C1-P5':
                     result_pred.append([hrchy_key + pred[0] + '-' + pred[5]] + pred[:-1] +
                                        [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])

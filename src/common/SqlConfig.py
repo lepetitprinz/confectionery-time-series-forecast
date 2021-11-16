@@ -445,34 +445,6 @@ class SqlConfig(object):
         """
         return sql
 
-    ########
-    # Temp #
-    ########
-    @staticmethod
-    def sql_sell_in_temp_comp(**kwargs):
-        sql = f"""
-            SELECT PROJECT_CD
-                 , DIVISION_CD
-                 , SOLD_CUST_GRP_CD
-                 , ITEM_CD
-                 , YY
-                 , WEEK
-                 , SUM(RST_SALES_QTY) AS QTY
-              FROM (
-                    SELECT *
-                      FROM M4S_I002170_TEST
-                     WHERE 1=1
-                       AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
-                  ) SALES
-             GROUP BY PROJECT_CD
-                    , DIVISION_CD
-                    , SOLD_CUST_GRP_CD
-                    , ITEM_CD
-                    , YY
-                    , WEEK
-        """
-        return sql
-
     # SELL-IN Table
     @staticmethod
     def sql_sell_in_test(**kwargs):
@@ -510,6 +482,7 @@ class SqlConfig(object):
                       FROM M4S_I002170_TEST
                      WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
                      AND RST_SALES_QTY > 0 
+                     and SOLD_CUST_GRP_CD = '1033' -- exception
                     ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM_CD AS SKU_CD
@@ -567,6 +540,7 @@ class SqlConfig(object):
                                        WHERE 1=1
                                          AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
                                          AND RST_SALES_QTY > 0    -- Remove minus quantity
+                                         AND SOLD_CUST_GRP_CD = '1033' -- exception
                                      ) SALES
                          LEFT OUTER JOIN (
                                           SELECT BOX.ITEM_CD                                 AS SKU_CD
