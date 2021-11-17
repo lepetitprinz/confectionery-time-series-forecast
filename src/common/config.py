@@ -91,7 +91,7 @@ EPOCHS = 100
 BATCH_SIZE = 32
 
 # Open API Configuration
-STN_LIST = [108]
+STN_LIST = [108, 159]
 
 # Rename columns
 COL_RENAME1 = {'biz_cd': 'item_attr01_cd', 'line_cd': 'item_attr02_cd', 'brand_cd': 'item_attr03_cd',

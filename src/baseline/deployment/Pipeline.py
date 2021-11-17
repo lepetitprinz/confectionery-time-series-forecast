@@ -90,6 +90,14 @@ class Pipeline(object):
 
     def run(self):
         # ================================================================================================= #
+        # 2. Check the data version
+        # ================================================================================================= #
+        # data_version = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
+        # data_vrsn_db = util.make_data_version(data_version=data_version)
+        # if self.data_vrsn_cd not in list(data_version['data_vrsn_cd']):
+        #     data_vrsn_db = util.make_data_version(data_version=data_version)
+            # self.io.insert_to_db(df=data_vrsn_db, tb_name='M4S_I110420')
+        # ================================================================================================= #
         # 1. Load the dataset
         # ================================================================================================= #
         sales = None
@@ -97,7 +105,7 @@ class Pipeline(object):
             print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
             elif self.division == 'SELL_OUT':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
 

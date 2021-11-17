@@ -1,12 +1,20 @@
 
 class SqlConfig(object):
     @staticmethod
+    def sql_data_version():
+        sql = f"""
+            SELECT DATA_VRSN_CD
+              FROM M4S_I110420
+            """
+        return sql
+
+    @staticmethod
     def sql_comm_master():
         sql = f"""
             SELECT OPTION_CD
                  , OPTION_VAL
-            FROM M4S_I001020
-           WHERE MDL_CD = 'DF'
+              FROM M4S_I001020
+             WHERE MDL_CD = 'DF'
             """
         return sql
 
