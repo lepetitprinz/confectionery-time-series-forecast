@@ -5,23 +5,24 @@ division = 'SELL_IN'
 
 # Level Configuration
 lvl_cfg = {
-    'cust_lvl': 0,   # Customer group - Customer
-    'item_lvl': 3,    # Biz - Line - Brand - Item - SKU
+    'cust_lvl': 1,   # Customer group
+    'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
 }
 # Data IO Configuration
 exec_cfg = {
     'save_step_yn': True,
     'save_db_yn': False,
-    'decompose_yn': False,
-    'scaling_yn': False,
-    'impute_yn': True,
-    'rm_outlier_yn': True
+    'decompose_yn': False,           # Decomposition
+    'scaling_yn': False,             # Data scaling
+    'impute_yn': True,               # Data Imputation
+    'rm_outlier_yn': True,           # Outlier Correction
+    'feature_selection_yn': False    # Feature Selection
 }
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': True,
-    'cls_cns': True,
+    'cls_load': False,
+    'cls_cns': False,
     'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,

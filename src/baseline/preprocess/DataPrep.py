@@ -67,11 +67,12 @@ class DataPrep(object):
         data = self.conv_data_type(df=data)
 
         # Feature engineering
-        fe = FeatureEngineering(
-            common=self.common,
-            exg_list=exg_list
-        )
-        data, exg_list = fe.feature_selection(data=data)
+        if self.exec_cfg['feature_selection_yn']:
+            fe = FeatureEngineering(
+                common=self.common,
+                exg_list=exg_list
+            )
+            data, exg_list = fe.feature_selection(data=data)
 
         # Grouping
         data_group, hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
@@ -99,6 +100,7 @@ class DataPrep(object):
         #     fn=self.check_missiing_value,
         #     df=data_group
         # )
+
         print("Week Count: ", len(self.date_range))
         miss_rate = util.hrchy_recursion(
             hrchy_lvl=self.hrchy_level,
@@ -114,30 +116,6 @@ class DataPrep(object):
         )
 
         return data_resample, exg_list, hrchy_cnt
-
-    # Temp
-    @staticmethod
-    def make_miss_df(data):
-        results = []
-        hist = []
-        for key_lvl1, val_lvl1 in data.items():
-            for key_lvl2, val_lvl2 in val_lvl1.items():
-                for key_lvl3, val_lvl3 in val_lvl2.items():
-                    for key_lvl4, val_lvl4 in val_lvl3.items():
-                        for key_lvl5, val_lvl5 in val_lvl4.items():
-                            for key_lvl6, val_lvl6 in val_lvl5.items():
-                                results.append([key_lvl1, key_lvl2, key_lvl3, key_lvl4, key_lvl5, key_lvl6,
-                                                val_lvl6[0], val_lvl6[1]])
-                                hist.append([key_lvl6, val_lvl6[0]])
-
-        miss_df = pd.DataFrame(results, columns=['sp1', 'biz', 'line', 'brand', 'item', 'sku', 'cnt', 'rate'])
-        miss_df.to_csv('missed_rate.csv', index=False, encoding='CP949')
-
-        # Make histogram
-        hist_df = pd.DataFrame(hist, columns=['sku', 'cnt'])
-        ax = hist_df['cnt'].hist(bins=50)
-        fig = ax.get_figure()
-        fig.savefig('cnt_hist.png')
 
     def merge_exg(self, data: pd.DataFrame, exg: dict):
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -242,9 +220,6 @@ class DataPrep(object):
 
         return missed_rate
 
-        # Add data level
-        # df_resampled = self.add_data_level(org=df, resampled=df_resampled)
-
     def check_missing_data(self, df):
         tot_len = len(self.date_range)
         missed = tot_len - len(df.index)
@@ -335,6 +310,30 @@ class DataPrep(object):
         seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
 
         return seq_to_cust
+
+    # Temp function
+    @staticmethod
+    def make_miss_df(data):
+        results = []
+        hist = []
+        for key_lvl1, val_lvl1 in data.items():
+            for key_lvl2, val_lvl2 in val_lvl1.items():
+                for key_lvl3, val_lvl3 in val_lvl2.items():
+                    for key_lvl4, val_lvl4 in val_lvl3.items():
+                        for key_lvl5, val_lvl5 in val_lvl4.items():
+                            for key_lvl6, val_lvl6 in val_lvl5.items():
+                                results.append([key_lvl1, key_lvl2, key_lvl3, key_lvl4, key_lvl5, key_lvl6,
+                                                val_lvl6[0], val_lvl6[1]])
+                                hist.append([key_lvl6, val_lvl6[0]])
+
+        miss_df = pd.DataFrame(results, columns=['sp1', 'biz', 'line', 'brand', 'item', 'sku', 'cnt', 'rate'])
+        miss_df.to_csv('missed_rate.csv', index=False, encoding='CP949')
+
+        # Make histogram
+        hist_df = pd.DataFrame(hist, columns=['sku', 'cnt'])
+        ax = hist_df['cnt'].hist(bins=50)
+        fig = ax.get_figure()
+        fig.savefig('cnt_hist.png')
 
     # def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
     #     vals = df[self.target_col].values * 0.05

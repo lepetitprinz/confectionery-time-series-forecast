@@ -8,6 +8,8 @@ from baseline.model.Predict import Predict
 from baseline.analysis.ResultReport import ResultReport
 
 import os
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class Pipeline(object):
@@ -24,6 +26,7 @@ class Pipeline(object):
             - scaling_yn: Scale data or not
             - impute_yn: Impute data or not
             - rm_outlier_yn: Remove outlier or not
+            - feature selection_yn : feature selection
         :param step_cfg: Execute Configuration
         """
         # I/O & Execution Configuration
@@ -142,6 +145,7 @@ class Pipeline(object):
         # 3. Data Preprocessing
         # ================================================================================================= #
         data_prep = None
+        exg_list = None
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
             if not self.step_cfg['cls_cns']:
@@ -161,7 +165,11 @@ class Pipeline(object):
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=(data_prep, exg_list, hrchy_cnt), file_path=self.path['prep'], data_type='binary')
+                self.io.save_object(
+                    data=(data_prep, exg_list, hrchy_cnt),
+                    file_path=self.path['prep'],
+                    data_type='binary'
+                )
 
             print("Data preprocessing is finished\n")
         # ================================================================================================= #
@@ -263,6 +271,7 @@ class Pipeline(object):
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
+        pred_best = None
         if self.step_cfg['cls_pred']:
             print("Step 5: Forecast\n")
             if not self.step_cfg['cls_prep']:
@@ -357,3 +366,5 @@ class Pipeline(object):
 
             # Close DB session
             self.io.session.close()
+
+            print("Report results is finished\n")

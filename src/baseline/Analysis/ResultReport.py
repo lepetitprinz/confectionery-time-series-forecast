@@ -5,11 +5,10 @@ import pandas as pd
 
 
 class ResultReport(object):
-    drop_col = ['fkey', 'create_user_cd', 'division_cd', 'data_vrsn_cd',
-                'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd']
+    drop_col1 = ['project_cd', 'data_vrsn_cd', 'fkey', 'create_user_cd']
+    drop_col2 = ['division_cd', 'biz_cd', 'line_cd', 'brand_cd', 'item_cd']
     summary_col = {
-        'C1-P5': ['cust_grp_cd', 'cust_grp_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm',
-                  'sku_cd', 'sku_nm'],
+        'C1-P5': ['cust_grp_nm', 'biz_nm', 'line_nm', 'brand_nm', 'item_nm', 'sku_cd', 'sku_nm'],
         'C0-P4': ['biz_nm', 'line_nm', 'brand_nm', 'item_nm'],
         'C0-P3': ['biz_nm', 'line_nm', 'brand_nm']
     }
@@ -55,9 +54,9 @@ class ResultReport(object):
             sales, hrchy_item = self.resample_sales(data=sales)
 
         # Preprocess the prediction dataset
-        pred = pred.rename(columns={'result_sales': 'pred', 'item_cd': 'sku_cd'})
+        pred = pred.rename(columns={'result_sales': 'pred', 'item_cd': 'sku_cd', 'item_nm': 'sku_nm'})
         pred = pred.rename(columns=self.item_name_map)
-        pred = pred.drop(columns=['project_cd', 'cust_grp_nm'], errors='ignore')
+        pred = pred.drop(columns=self.drop_col1, errors='ignore')
         pred['pred'] = np.round(pred['pred'].to_numpy(), 2)
         pred['yy'] = pred[self.common['date_col']].str.slice(0, 4)
 
@@ -96,19 +95,17 @@ class ResultReport(object):
         merged['diff'] = np.absolute(merged['diff'].to_numpy())
 
         # Add information
-        if self.hrchy['key'][:-1] == 'C1-P5':
-            merged = pd.merge(merged, self.cust_grp_mst, on='cust_grp_cd')
-        if (self.hrchy['key'][:-1] == 'C1-P5') or (self.hrchy['key'][:-1] == 'C0-P5'):
-            item_mst = self.item_mst[['sku_cd', 'sku_nm']]
-            merged = pd.merge(merged, item_mst, on='sku_cd')
+        # if (self.hrchy['key'][:-1] == 'C1-P5') or (self.hrchy['key'][:-1] == 'C0-P5'):
+        #     item_mst = self.item_mst[['sku_cd', 'sku_nm']]
+        #     merged = pd.merge(merged, item_mst, on='sku_cd')
 
         # Drop unnecessary columns
-        merged = merged.drop(columns=self.drop_col, errors='ignore')
+        merged = merged.drop(columns=self.drop_col2, errors='ignore')
 
         # Sort columns
         if self.hrchy['key'][:-1] == 'C1-P5':
-            merged = merged[['cust_grp_cd', 'cust_grp_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm',
-                             'item_attr04_nm', 'sku_cd', 'sku_nm', 'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']]
+            merged = merged[['cust_grp_nm', 'biz_nm', 'line_nm', 'brand_nm', 'item_nm', 'sku_cd', 'sku_nm',
+                             'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']]
         else:
             hrchy_name = [self.hrchy_name_map[code] for code in self.hrchy['apply']]
             merged = merged[hrchy_name + ['yy', 'week', 'sales', 'pred', 'diff']]
