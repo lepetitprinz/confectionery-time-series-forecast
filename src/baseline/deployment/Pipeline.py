@@ -5,7 +5,7 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
-from baseline.analysis.ResultReport import ResultReport
+from baseline.Analysis.ResultReport import ResultReport
 
 import os
 import warnings
@@ -59,7 +59,8 @@ class Pipeline(object):
             'key': "C" + str(lvl_cfg['cust_lvl']) + '-' + "P" + str(lvl_cfg['item_lvl']) + '-',
             'lvl': {
                 'cust': lvl_cfg['cust_lvl'],
-                'item': lvl_cfg['item_lvl']
+                'item': lvl_cfg['item_lvl'],
+                'total': lvl_cfg['cust_lvl'] + lvl_cfg['item_lvl']
             },
             'list': {
                 'cust': self.common['hrchy_cust'].split(','),
@@ -217,6 +218,7 @@ class Pipeline(object):
             if not self.step_cfg['cls_prep']:
                 data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
                 self.hrchy['cnt'] = hrchy_cnt
+
             # Initiate train class
             training = Train(
                 division=self.division,
@@ -237,6 +239,10 @@ class Pipeline(object):
                     self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
             else:
                 scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
+
+            # Save best parameters
+            if self.exec_cfg['grid_search_yn']:
+                training.save_best_params(scores=scores)
 
             # Make score result
             # All scores

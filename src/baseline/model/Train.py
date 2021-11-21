@@ -1,5 +1,7 @@
 import common.util as util
 import common.config as config
+from dao.DataIO import DataIO
+from common.SqlConfig import SqlConfig
 from baseline.model.Algorithm import Algorithm
 # from baseline.model.ModelDL import Models
 
@@ -8,6 +10,8 @@ import warnings
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
+from itertools import product
+from collections import defaultdict
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
@@ -15,14 +19,20 @@ warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    estimators = {'ar': Algorithm.ar,
-                  'arima': Algorithm.arima,
-                  'hw': Algorithm.hw,
-                  'var': Algorithm.var,
-                  'sarima': Algorithm.sarimax}
+    estimators = {
+        'ar': Algorithm.ar,
+        'arima': Algorithm.arima,
+        'hw': Algorithm.hw,
+        'var': Algorithm.var,
+        'sarima': Algorithm.sarimax
+    }
 
     def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
                  hrchy: dict, exg_list: list,  exec_cfg: dict):
+        # Class Configuration
+        self.io = DataIO()
+        self.sql_conf = SqlConfig()
+
         # Data Configuration
         self.cnt = 0
         self.exec_cfg = exec_cfg
@@ -31,7 +41,6 @@ class Train(object):
         self.division = division    # SELL-IN / SELL-OUT
         self.target_col = common['target_col']    # Target column
 
-        # self.exo_col_list = ['discount']     # Exogenous features
         self.exo_col_list = exg_list + ['discount']    # Exogenous features
         self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
@@ -41,18 +50,22 @@ class Train(object):
         self.hrchy = hrchy
 
         # Algorithm Configuration
-        self.param_grid = mst_info['param_grid']
         self.model_info = mst_info['model_mst']
+        self.param_grid = mst_info['param_grid']
+        self.param_grid_list = config.PARAM_GRIDS_FCST    # Todo: Correct later
         self.model_candidates = list(self.model_info.keys())
 
         # Training Configuration
         self.validation_method = config.VALIDATION_METHOD
+        self.grid_search_yn = exec_cfg['grid_search_yn']
+        self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
     def train(self, df) -> dict:
-        hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
-        scores = util.hrchy_recursion(hrchy_lvl=hrchy_tot_lvl,
-                                      fn=self.train_model,
-                                      df=df)
+        scores = util.hrchy_recursion(
+            hrchy_lvl=self.hrchy['lvl']['total'] - 1,
+            fn=self.train_model,
+            df=df
+        )
 
         return scores
 
@@ -67,16 +80,19 @@ class Train(object):
 
         models = []
         for model in self.model_candidates:
-            score = self.evaluation(data=feature_by_variable[self.model_info[model]['variate']], model=model)
+            score, best_params = self.validation(
+                data=feature_by_variable[self.model_info[model]['variate']],
+                model=model)
+
             # Exception
             if score > 10 ** 20:
                 score = float(10 ** 20)
-            models.append([model, np.round(score, 3)])
+            models.append([model, np.round(score, 3), best_params])
         models = sorted(models, key=lambda x: x[1])
 
         return models
 
-    def select_feature_by_variable(self, df: pd.DataFrame):
+    def select_feature_by_variable(self, df: pd.DataFrame) -> dict:
         feature_by_variable = None
         try:
             feature_by_variable = {'univ': df[self.target_col],
@@ -86,10 +102,10 @@ class Train(object):
 
         return feature_by_variable
 
-    def evaluation(self, data, model: str) -> float:
-        # if len(data) > int(self.model_info[model]['input_width']):
+    def validation(self, data, model: str) -> Tuple[float, dict]:
+        best_params = {}
         if self.validation_method == 'train_test':
-            score = self.train_test_validation(data=data, model=model)
+            score, best_params = self.train_test_validation(data=data, model=model)
 
         elif self.validation_method == 'walk_forward':
             score = self.walk_fwd_validation(data=data, model=model)
@@ -97,7 +113,202 @@ class Train(object):
         else:
             raise ValueError
 
-        return score
+        return score, best_params
+
+    def train_test_validation(self, model: str, data) -> np.array:
+        # set test length
+        n_test = ast.literal_eval(self.model_info[model]['label_width'])
+
+        # Split train & test dataset
+        data_train, data_test = self.split_train_test(data=data, model=model, n_test=n_test)
+
+        # Data Scaling
+        if self.exec_cfg['scaling_yn']:
+            data_train, data_test = self.scaling(
+                train=data_train,
+                test=data_test
+            )
+
+        best_params = {}
+        # Grid Search
+        if self.grid_search_yn:
+            err, best_params = self.grid_search(
+                model=model,
+                train=data_train,
+                test=data_test,
+                n_test=n_test
+            )
+
+        else:
+            err = self.evaluation(
+                model=model,
+                params=self.param_grid[model],
+                train=data_train,
+                test=data_test,
+                n_test=n_test
+            )
+
+        return err, best_params
+
+    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int):
+        data_length = len(data)
+
+        data_train, data_test = None, None
+        if self.model_info[model]['variate'] == 'univ':
+            data_train = data.iloc[: data_length - n_test]
+            data_test = data.iloc[data_length - n_test:]
+
+        elif self.model_info[model]['variate'] == 'multi':
+            data_train = data.iloc[: data_length - n_test, :]
+            data_test = data.iloc[data_length - n_test:, :]
+
+            x_train = data_train[self.exo_col_list].values
+            x_test = data_test[self.exo_col_list].values
+
+            data_train = {
+                'endog': data_train[self.target_col].values.ravel(),    # Target variable
+                'exog': x_train
+            }
+            data_test = {
+                'endog': data_test[self.target_col].values,    # Target variable
+                'exog': x_test
+            }
+
+        return data_train, data_test
+
+    def evaluation(self, model, params, train, test, n_test):
+        # evaluation
+        try:
+            yhat = self.estimators[model](
+                history=train,
+                cfg=params,
+                pred_step=n_test
+            )
+
+            # yhat = np.nan_to_num(yhat)
+
+            if yhat is not None:
+                err = 0
+                if self.model_info[model]['variate'] == 'univ':
+                    err = mean_squared_error(test, yhat, squared=False)
+                elif self.model_info[model]['variate'] == 'multi':
+                    err = mean_squared_error(test['endog'], yhat, squared=False)
+            else:
+                err = 10 ** 10 - 1  # Not solvable problem
+
+        except ValueError:
+            err = 10 ** 10 - 1  # Not solvable problem
+
+        return err
+
+    def grid_search(self, model, train, test, n_test) -> Tuple[float, dict]:
+        param_grid_list = self.get_param_list(model=model)
+
+        err_list = []
+        for params in param_grid_list:
+            err = self.evaluation(
+                model=model,
+                params=params,
+                train=train,
+                test=test,
+                n_test=n_test
+            )
+            err_list.append((err, params))
+
+        err_list = sorted(err_list, key=lambda x: x[0])
+        best_result = err_list[0]    # Get best result
+
+        return best_result
+
+    def walk_fwd_validation(self, model: str, data) -> np.array:
+        """
+        :param model: Statistical model
+        :param data: time series data
+        :return:
+        """
+        # split dataset
+        dataset = self.window_generator(df=data, model=model)
+
+        # evaluation
+        n_test = ast.literal_eval(self.model_info[model]['label_width'])
+        predictions = []
+        for train, test in dataset:
+            yhat = self.estimators[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
+            yhat = np.nan_to_num(yhat)
+            err = mean_squared_error(test, yhat, squared=False)
+            predictions.append(err)
+
+        # estimate prediction error
+        rmse = np.mean(predictions)
+
+        return rmse
+
+    def scaling(self, train, test) -> tuple:
+        x_train = train['exog']
+        x_test = test['exog']
+
+        scaler = MinMaxScaler()
+        x_train_scaled = scaler.fit_transform(x_train)
+        x_test_scaled = scaler.transform(x_test)
+
+        train['exog'] = x_train_scaled
+        test['exog'] = x_test_scaled
+
+        return train, test
+
+    def make_best_params_data(self, model: str, params: dict):
+        model = model.upper()
+        data, info = [], []
+        for key, val in params.items():
+            data.append([
+                self.common['project_cd'],
+                model,
+                key.upper(),
+                str(val)
+            ])
+            info.append({
+                'project_cd': self.common['project_cd'],
+                'stat_cd': model,
+                'option_cd': key.upper()
+            })
+        param_df = pd.DataFrame(data, columns=['PROJECT_CD', 'STAT_CD', 'OPTION_CD', 'OPTION_VAL'])
+
+        return param_df, info
+
+    def get_param_list(self, model) -> List[dict]:
+        param_grids = self.param_grid_list[model]
+        params = list(param_grids.keys())
+        values = param_grids.values()
+        values_combine_list = list(product(*values))
+
+        values_combine_map_list = []
+        for values_combine in values_combine_list:
+            values_combine_map_list.append(dict(zip(params, values_combine)))
+
+        return values_combine_map_list
+
+    def save_best_params(self, scores):
+        # Count best params for each data level
+        util.hrchy_recursion(
+            hrchy_lvl=self.hrchy['lvl']['total'] - 1,
+            fn=self.count_best_params,
+            df=scores
+        )
+
+        for model, count in self.best_params_cnt.items():
+            params = [(val, key) for key, val in count.items()]
+            params = sorted(params, key=lambda  x: x[0], reverse=True)
+            best_params = eval(params[0][1])
+            best_params, params_info_list = self.make_best_params_data(model=model, params=best_params)
+
+            for params_info in params_info_list:
+                self.io.delete_from_db(sql=self.sql_conf.del_hyper_params(**params_info))
+            self.io.insert_to_db(df=best_params, tb_name='M4S_I103011')
+
+    def count_best_params(self, data):
+        for algorithm in data:
+            model, score, params = algorithm
+            self.best_params_cnt[model][str(params)] += 1
 
     def make_score_result(self, data: dict, hrchy_key: str, fn):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -105,20 +316,22 @@ class Train(object):
                                                  fn=fn,
                                                  df=data)
 
+        # Convert to dataframe
         result = pd.DataFrame(result)
         cols = self.hrchy['apply'] + ['stat_cd', 'rmse']
         result.columns = cols
 
+        # Add information
         result['project_cd'] = self.common['project_cd']
         result['division_cd'] = self.division
         result['data_vrsn_cd'] = self.data_vrsn_cd
         result['create_user_cd'] = 'SYSTEM'
+
         if hrchy_key[:-1] == 'C1-P5':
             result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
         else:
             key = self.hrchy['apply'][-1]
             result['fkey'] = hrchy_key + result[key]
-        # result['fkey'] = [hrchy_key + str(i+1).zfill(5) for i in range(len(result))]
         result['rmse'] = result['rmse'].fillna(0)
 
         # Merge information
@@ -169,89 +382,6 @@ class Train(object):
 
         return [result[0]]
 
-    def train_test_validation(self, model: str, data) -> np.array:
-        # split dataset
-        n_test = ast.literal_eval(self.model_info[model]['label_width'])
-        data_train, data_test = self.split_data(data=data, model=model, n_test=n_test)
-
-        if self.model_info[model]['variate'] == 'multi':
-            x_train = data_train[self.exo_col_list].values
-            x_test = data_test[self.exo_col_list].values
-
-            if self.exec_cfg['scaling_yn']:
-                x_train, x_test = self.scaling(
-                    train=data_train,
-                    test=data_test
-                )
-
-            data_train = {
-                'endog': data_train[self.target_col].values.ravel(),
-                'exog': x_train
-            }
-            data_test = {
-                'endog': data_test[self.target_col].values,
-                'exog': x_test
-            }
-
-        # evaluation
-        try:
-            yhat = self.estimators[model](history=data_train, cfg=self.param_grid[model], pred_step=n_test)
-            yhat = np.nan_to_num(yhat)
-
-            err = 0
-            if self.model_info[model]['variate'] == 'univ':
-                err = mean_squared_error(data_test, yhat, squared=False)
-            elif self.model_info[model]['variate'] == 'multi':
-                err = mean_squared_error(data_test['endog'], yhat, squared=False)
-
-        except ValueError:
-            err = 10**10 - 1   # Not solvable problem
-
-        return err
-
-    def walk_fwd_validation(self, model: str, data) -> np.array:
-        """
-        :param model: Statistical model
-        :param data: time series data
-        :return:
-        """
-        # split dataset
-        dataset = self.window_generator(df=data, model=model)
-
-        # evaluation
-        n_test = ast.literal_eval(self.model_info[model]['label_width'])
-        predictions = []
-        for train, test in dataset:
-            yhat = self.estimators[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
-            yhat = np.nan_to_num(yhat)
-            err = mean_squared_error(test, yhat, squared=False)
-            predictions.append(err)
-
-        # estimate prediction error
-        rmse = np.mean(predictions)
-
-        return rmse
-
-    def split_data(self, data: pd.DataFrame, model: str, n_test: int):
-        data_length = len(data)
-
-        data_train, data_test = None, None
-        if self.model_info[model]['variate'] == 'univ':
-            data_train = data.iloc[: data_length - n_test]
-            data_test = data.iloc[data_length - n_test:]
-        elif self.model_info[model]['variate'] == 'multi':
-            data_train = data.iloc[: data_length - n_test, :]
-            data_test = data.iloc[data_length - n_test:, :]
-
-        return data_train, data_test
-
-    def scaling(self, train, test) -> tuple:
-        scaler = MinMaxScaler()
-        x_train_scaled = scaler.fit_transform(train)
-        x_test_scaled = scaler.transform(test)
-
-        return x_train_scaled, x_test_scaled
-
     def window_generator(self, df, model: str) -> List[Tuple]:
         data_length = len(df)
         input_width = int(self.model_info[model]['input_width'])
@@ -270,53 +400,3 @@ class Train(object):
             dataset.append((data_input, data_target))
 
         return dataset
-
-    def train_test_split(self, data, model):
-        train_rate = ast.literal_eval(self.common['train_rate'])
-        data_length = len(data)
-        if self.model_info[model]['variate'] == 'univ':
-            return data[: int(data_length * train_rate)], data[int(data_length * train_rate):]
-
-        elif self.model_info[model]['variate'] == 'multi':
-            return data.iloc[:int(data_length * train_rate), :], data.iloc[int(data_length * train_rate):, :]
-
-    # def grid_search(self, model: str, data, n_test: int, cfg_list: list):
-    #     scores = [self.score_model(model=model, data=data, n_test=n_test,
-    #                                cfg=cfg) for cfg in cfg_list]
-    #     # remove empty results
-    #     scores = [score for score in scores if score[1] != None]
-    #     # sort configs by error, asc
-    #     scores.sort(key=lambda tup: tup[2])
-    #
-    #     return scores
-
-    # def lstm_train(self, train: pd.DataFrame, units: int) -> float:
-    #     # scaling
-    #     scaler = MinMaxScaler()
-    #     train_scaled = scaler.fit_transform(train)
-    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
-    #
-    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-    #                                                n_steps_out=self.n_test)
-    #
-    #     n_features = x_train.shape[2]
-    #
-    #     # Build model
-    #     model = Sequential()
-    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
-    #               input_shape=(self.n_test, n_features)))
-    #     # model.add(LSTM(units=units, activation='relu'))
-    #     model.add(Dense(n_features))
-    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
-    #
-    #     history = model.fit(x_train, y_train,
-    #                         epochs=config.EPOCHS,
-    #                         batch_size=config.BATCH_SIZE,
-    #                         validation_split=1-config.TRAIN_RATE,
-    #                         shuffle=False,
-    #                         verbose=0)
-    #     self.epoch_best = history.history['val_loss'].index(min(history.history['val_loss'])) + 1
-    #
-    #     rmse = min(history.history['val_loss'])
-    #
-    #     return rmse

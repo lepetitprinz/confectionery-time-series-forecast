@@ -16,17 +16,18 @@ exec_cfg = {
     'scaling_yn': False,             # Data scaling
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
-    'feature_selection_yn': False    # Feature Selection
+    'feature_selection_yn': False,   # Feature Selection
+    'grid_search_yn': False
 }
 
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
-    'cls_rpt': True
+    'cls_prep': False,
+    'cls_train': False,
+    'cls_pred': False,
+    'cls_rpt': False
 }
 
 # Load result configuration

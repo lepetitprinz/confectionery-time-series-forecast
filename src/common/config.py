@@ -27,6 +27,26 @@ VALIDATION_METHOD = 'train_test'    # train_test / walk-walk_forward
 # Model Hyper-parameters
 
 # 1.Time Series Forecast
+PARAM_GRIDS_FCST = {
+    'ar': {
+        'lags': ['7', '14', '28'],
+        'period': ['1', '7', '14'],
+        'seasonal': [True, False],
+        'trend': ['t', 'ct']
+    },
+    'hw': {
+        'damped_trend': [True, False],
+        'remove_bias': [True, False],
+        'seasonal_period': ['1', '7', '14'],
+        'seasonal': ['add'],
+        'trend': ['add']
+    },
+    'var': {
+        'trend': ['c', 't', 'ct'],
+        'ic': [None, 'bic']
+    }
+}
+
 
 # 2.What-If Simulation
 PARAM_GRIDS_SIM = {

@@ -346,43 +346,6 @@ class SqlConfig(object):
         """
         return sql
 
-    # Delete Query
-    @staticmethod
-    def del_openapi(**kwargs):
-        sql = f"""
-            DELETE 
-              FROM M4S_O110710
-             WHERE PROJECT_CD = 'ENT001'
-               AND IDX_CD = '{kwargs['idx_cd']}'
-               AND IDX_DTL_CD = '{kwargs['idx_dtl_cd']}'
-               AND YYMM BETWEEN '{kwargs['api_start_day']}' AND '{kwargs['api_end_day']}'
-        """
-        return sql
-
-    @staticmethod
-    def del_score(**kwargs):
-        sql = f"""
-            DELETE 
-              FROM {kwargs['table_nm']}
-             WHERE PROJECT_CD = '{kwargs['project_cd']}'
-               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
-               AND DIVISION_CD = '{kwargs['division_cd']}'
-               AND FKEY LIKE '%{kwargs['fkey']}%'
-        """
-        return sql
-
-    @staticmethod
-    def del_prediction(**kwargs):
-        sql = f"""
-            DELETE
-              FROM M4S_I110400
-             WHERE PROJECT_CD = '{kwargs['project_cd']}'
-               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
-               AND DIVISION_CD = '{kwargs['division_cd']}'
-               AND FKEY LIKE '%{kwargs['fkey']}%'
-        """
-        return sql
-
     @staticmethod
     def sql_pred_item(**kwargs):
         sql = f"""
@@ -435,6 +398,59 @@ class SqlConfig(object):
                 """
         return sql
 
+    ###################
+    # Delete Query
+    ###################
+    @staticmethod
+    def del_openapi(**kwargs):
+        sql = f"""
+            DELETE 
+              FROM M4S_O110710
+             WHERE PROJECT_CD = 'ENT001'
+               AND IDX_CD = '{kwargs['idx_cd']}'
+               AND IDX_DTL_CD = '{kwargs['idx_dtl_cd']}'
+               AND YYMM BETWEEN '{kwargs['api_start_day']}' AND '{kwargs['api_end_day']}'
+        """
+        return sql
+
+    @staticmethod
+    def del_score(**kwargs):
+        sql = f"""
+            DELETE 
+              FROM {kwargs['table_nm']}
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND FKEY LIKE '%{kwargs['fkey']}%'
+        """
+        return sql
+
+    @staticmethod
+    def del_prediction(**kwargs):
+        sql = f"""
+            DELETE
+              FROM M4S_I110400
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND FKEY LIKE '%{kwargs['fkey']}%'
+        """
+        return sql
+
+    @staticmethod
+    def del_hyper_params(**kwargs):
+        sql = f"""
+        DELETE
+          FROM M4S_I103011
+         WHERE PROJECT_CD = '{kwargs['project_cd']}'
+           AND STAT_CD = '{kwargs['stat_cd']}'
+           AND OPTION_CD = '{kwargs['option_cd']}'
+        """
+        return sql
+
+    ###################
+    # Temp Query
+    ###################
     # SELL-OUT Table
     @staticmethod
     def sql_sell_out_temp(**kwargs):

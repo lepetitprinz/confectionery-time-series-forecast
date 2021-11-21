@@ -65,12 +65,16 @@ class Algorithm(object):
         model = AutoReg(endog=history, lags=ast.literal_eval(cfg['lags']), trend=cfg['trend'],
                         seasonal=bool(cfg['seasonal']), period=ast.literal_eval(cfg['period']))
 
-        model_fit = model.fit()
-        # print('Coefficients: {}'.format(model_fit.params))
-        # print(model_fit.summary())
+        try:
+            model_fit = model.fit()
+            # print('Coefficients: {}'.format(model_fit.params))
+            # print(model_fit.summary())
 
-        # Make multi-step prediction
-        yhat = model_fit.forecast(steps=pred_step)
+            # Make multi-step prediction
+            yhat = model_fit.forecast(steps=pred_step)
+
+        except:
+            yhat = None
 
         return yhat
 
