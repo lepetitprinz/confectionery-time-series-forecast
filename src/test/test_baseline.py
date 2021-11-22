@@ -25,8 +25,8 @@ step_cfg = {
     'cls_load': False,
     'cls_cns': False,
     'cls_prep': False,
-    'cls_train': False,
-    'cls_pred': False,
+    'cls_train': True,
+    'cls_pred': True,
     'cls_rpt': False
 }
 

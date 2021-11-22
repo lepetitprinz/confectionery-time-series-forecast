@@ -15,7 +15,9 @@ class Predict(object):
         'arima': Algorithm.arima,
         'hw': Algorithm.hw,
         'var': Algorithm.var,
-        'sarima': Algorithm.sarimax
+        'varmax': Algorithm.varmax,
+        'sarima': Algorithm.sarimax,
+        'prophet': Algorithm.prophet
     }
 
     def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
@@ -71,7 +73,7 @@ class Predict(object):
                     pred_step=n_test
                 )
             except ValueError:
-                prediction = [0] * n_test
+                prediction = [10**10-1] * n_test
             models.append(hrchy + [model.upper(), prediction])
 
         return models

@@ -5,7 +5,7 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
-from baseline.Analysis.ResultReport import ResultReport
+from baseline.analysis.ResultReport import ResultReport
 
 import os
 import warnings
@@ -86,18 +86,25 @@ class Pipeline(object):
             'pred': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
                                             hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
             'pred_best': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
-                                                 hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle')
+                                                 hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
+            'score_all_csv': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
+                                                 hrchy_lvl=self.hrchy['key'], step='score_all', extension='csv'),
+            'score_best_csv': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
+                                                  hrchy_lvl=self.hrchy['key'], step='score_best', extension='csv'),
+            'pred_all_csv': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
+                                                hrchy_lvl=self.hrchy['key'], step='pred_all', extension='csv'),
+            'pred_best_csv': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
+                                                  hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv')
         }
 
     def run(self):
         # ================================================================================================= #
         # 2. Check the data version
         # ================================================================================================= #
-        # data_version = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
-        # data_vrsn_db = util.make_data_version(data_version=data_version)
-        # if self.data_vrsn_cd not in list(data_version['data_vrsn_cd']):
-        #     data_vrsn_db = util.make_data_version(data_version=data_version)
-            # self.io.insert_to_db(df=data_vrsn_db, tb_name='M4S_I110420')
+        data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
+        if self.data_vrsn_cd not in list(data_vrsn_list['data_vrsn_cd']):
+            data_vrsn_db = util.make_data_version(data_version=self.data_vrsn_cd)
+            self.io.insert_to_db(df=data_vrsn_db, tb_name='M4S_I110420')
         # ================================================================================================= #
         # 1. Load the dataset
         # ================================================================================================= #
@@ -258,6 +265,9 @@ class Pipeline(object):
                 fn=training.best_score_to_df
             )
 
+            scores_db.to_csv(self.path['score_all_csv'], index=False)
+            scores_best.to_csv(self.path['score_best_csv'], index=False)
+
             # Exception (Insert Error)
             scores_db.loc[:, 'item_nm'] = ''
             scores_best.loc[:, 'item_nm'] = ''
@@ -318,6 +328,9 @@ class Pipeline(object):
             # Make database format
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
             pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
+
+            pred_all.to_csv(self.path['pred_all_csv'], index=False)
+            pred_best.to_csv(self.path['pred_best_csv'], index=False)
 
             # pred_all.loc[:, 'item_nm'] = ''
             # pred_best.loc[:, 'item_nm'] = ''

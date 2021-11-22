@@ -24,7 +24,9 @@ class Train(object):
         'arima': Algorithm.arima,
         'hw': Algorithm.hw,
         'var': Algorithm.var,
-        'sarima': Algorithm.sarimax
+        'varmax': Algorithm.varmax,
+        'sarima': Algorithm.sarimax,
+        'prophet': Algorithm.prophet
     }
 
     def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
@@ -199,7 +201,7 @@ class Train(object):
         except ValueError:
             err = 10 ** 10 - 1  # Not solvable problem
 
-        return err
+        return round(err, 2)
 
     def grid_search(self, model, train, test, n_test) -> Tuple[float, dict]:
         param_grid_list = self.get_param_list(model=model)
@@ -367,7 +369,7 @@ class Train(object):
     @staticmethod
     def score_to_df(hrchy: list, data) -> List[list]:
         result = []
-        for algorithm, score in data:
+        for algorithm, score, _ in data:
             result.append(hrchy + [algorithm.upper(), score])
 
         return result
@@ -375,7 +377,7 @@ class Train(object):
     @staticmethod
     def best_score_to_df(hrchy: list, data) -> list:
         result = []
-        for algorithm, score in data:
+        for algorithm, score, _ in data:
             result.append(hrchy + [algorithm.upper(), score])
 
         result = sorted(result, key=lambda x: x[2])
