@@ -20,13 +20,14 @@ class ResultReport(object):
         'item_attr03_nm': 'brand_nm', 'item_attr04_nm': 'item_nm'
     }
 
-    def __init__(self, common, division, data_vrsn, hrchy, cust_grp_mst, item_mst, cal_mst):
-        self.division = division
+    def __init__(self, common: dict, division: str, data_vrsn: str, test_vrsn: str,
+                 hrchy: dict, item_mst: pd.DataFrame):
         self.common = common
+        self.division = division
+        self.data_vrsn = data_vrsn
+        self.test_vrsn = test_vrsn
         self.hrchy = hrchy
-        self.cal_mst = cal_mst
         self.item_mst = item_mst
-        self.cust_grp_mst = cust_grp_mst
         self.pred_date_range = pd.date_range(
             start=common['pred_start_day'],
             end=common['pred_end_day'],
@@ -43,10 +44,32 @@ class ResultReport(object):
 
     def compare_result(self, sales, pred):
         raw_all = self.make_raw_result(sales=sales, pred=pred)
-        summary = self.make_summary(df=raw_all)
+        self.make_summary(df=raw_all)
 
-    def group_by_week(self, data: pd.DataFrame):
-        pass
+        return raw_all
+
+    def make_db_format(self, data):
+        data['seq'] = [self.test_vrsn + '_' + str(i+1).zfill(7) for i in range(len(data))]
+        data['project_cd'] = self.common['project_cd']
+        data['data_vrsn_cd'] = self.data_vrsn
+        data['division_cd'] = self.division
+        data['test_vrsn_cd'] = self.test_vrsn
+        data['create_user_cd'] = 'SYSTEM'
+
+        data = data.rename(columns={
+            'biz_nm': 'item_attr01_nm', 'line_nm': 'item_attr02_nm', 'brand_nm': 'item_attr03_nm',
+            'item_nm': 'item_attr04_nm'
+        })
+        data = data.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
+
+        info = {
+            'project_cd': self.common['project_cd'],
+            'data_vrsn_cd': self.data_vrsn,
+            'division_cd': self.division,
+            'test_vrsn_cd': self.test_vrsn
+        }
+
+        return data, info
 
     def make_raw_result(self, sales, pred):
         hrchy_item = None
@@ -191,5 +214,3 @@ class ResultReport(object):
         summary_score = np.round(summary_score, 2)
         print(f"Accuracy Sum: {summary_score[0]}")
         print(f"Accuracy Mean: {summary_score[1]}")
-
-        return summary

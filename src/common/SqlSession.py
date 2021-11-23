@@ -56,7 +56,7 @@ class SqlSession(object):
         """
         try:
             self._connection.close()
-            print("DB Session is closed")
+            print("DB Session is closed\n")
 
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
@@ -84,7 +84,7 @@ class SqlSession(object):
 
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
-            print(f"Saving {tb_name} table is finished.")
+            print(f"Saving {tb_name} table is finished.\n")
 
     def delete(self, sql: str):
         statement = text(sql)

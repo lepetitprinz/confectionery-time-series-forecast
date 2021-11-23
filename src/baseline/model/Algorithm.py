@@ -96,11 +96,15 @@ class Algorithm(object):
         order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['d']), ast.literal_eval(cfg['q']))
         model = ARIMA(history, order=order, trend=cfg['trend'], freq=ast.literal_eval(cfg['freq']))
 
-        # fit model
-        model_fit = model.fit()
+        try:
+            # fit model
+            model_fit = model.fit()
 
-        # Make multi-step forecast
-        yhat = model_fit.forecast(steps=pred_step)
+            # Make multi-step forecast
+            yhat = model_fit.forecast(steps=pred_step)
+
+        except ValueError:
+            yhat = None
 
         return yhat
 

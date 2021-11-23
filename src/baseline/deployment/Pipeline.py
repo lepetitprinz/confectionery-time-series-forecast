@@ -13,7 +13,8 @@ warnings.filterwarnings("ignore")
 
 
 class Pipeline(object):
-    def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict):
+    def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict,
+                 test_vrsn_cd=''):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param lvl_cfg: Data Level Configuration
@@ -29,6 +30,9 @@ class Pipeline(object):
             - feature selection_yn : feature selection
         :param step_cfg: Execute Configuration
         """
+        # Test version code
+        self.test_vrsn_cd = test_vrsn_cd
+
         # I/O & Execution Configuration
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -377,19 +381,21 @@ class Pipeline(object):
                   'date_to': self.common['pred_end_day']}))
 
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
-            cust_grp_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
-            cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
 
             report = ResultReport(
                 common=self.common,
                 division=self.division,
                 data_vrsn=self.data_vrsn_cd,
+                test_vrsn=self.test_vrsn_cd,
                 hrchy=self.hrchy,
-                cust_grp_mst=cust_grp_mst,
-                item_mst=item_mst,
-                cal_mst=cal_mst
+                item_mst=item_mst
             )
-            report.compare_result(sales=sales_comp, pred=pred_best)
+            result = report.compare_result(sales=sales_comp, pred=pred_best)
+            result, result_info = report.make_db_format(data=result)
+
+            if self.exec_cfg['save_db_yn']:
+                self.io.delete_from_db(sql=self.sql_conf.del_compare_result(**result_info))
+                self.io.insert_to_db(df=result, tb_name='M4S_O110620')
 
             # Close DB session
             self.io.session.close()

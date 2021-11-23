@@ -2,6 +2,7 @@ from baseline.deployment.Pipeline import Pipeline
 
 # Sales Data configuration
 division = 'SELL_IN'
+test_vrsn_cd = 'TEST006_ARIMA'
 
 # Level Configuration
 lvl_cfg = {
@@ -36,13 +37,13 @@ exec_rslt_cfg = {
     'predict': False
 }
 
-
 pipeline = Pipeline(
     division=division,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
-    exec_rslt_cfg=exec_rslt_cfg
+    exec_rslt_cfg=exec_rslt_cfg,
+    test_vrsn_cd=test_vrsn_cd
 )
 
 # Execute Baseline Forecast

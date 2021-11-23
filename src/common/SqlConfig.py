@@ -448,6 +448,18 @@ class SqlConfig(object):
         """
         return sql
 
+    @staticmethod
+    def del_compare_result(**kwargs):
+        sql = f"""
+        DELETE
+          FROM M4S_O110620
+         WHERE PROJECT_CD = '{kwargs['project_cd']}'
+           AND DATA_VRSN_CD = '{kwargs['project_cd']}'
+           AND DIVISION_CD = '{kwargs['division_cd']}'
+           AND TEST_VRSN_CD = '{kwargs['test_vrsn_cd']}'
+        """
+        return sql
+
     ###################
     # Temp Query
     ###################

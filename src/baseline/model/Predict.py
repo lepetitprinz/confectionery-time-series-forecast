@@ -164,35 +164,3 @@ class Predict(object):
         best = best.drop(columns=['rmse'])
 
         return best
-
-
-    # def lstm_predict(self, train: pd.DataFrame, units: int) -> np.array:
-    #     # scaling
-    #     scaler = MinMaxScaler()
-    #     train_scaled = scaler.fit_transform(train)
-    #     train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
-    #
-    #     x_train, y_train = DataPrep.split_sequence(df=train_scaled.values, n_steps_in=config.TIME_STEP,
-    #                                                n_steps_out=self.n_test)
-    #     n_features = x_train.shape[2]
-    #
-    #     # Build model
-    #     model = Sequential()
-    #     model.add(LSTM(units=units, activation='relu', return_sequences=True,
-    #               input_shape=(self.n_test, n_features)))
-    #     # model.add(LSTM(units=units, activation='relu'))
-    #     model.add(Dense(n_features))
-    #     model.compile(optimizer='adam', loss=self.root_mean_squared_error)
-    #
-    #     model.fit(x_train, y_train,
-    #               epochs=self.epoch_best,
-    #               batch_size=config.BATCH_SIZE,
-    #               shuffle=False,
-    #               verbose=0)
-    #     test = x_train[-1]
-    #     test = test.reshape(1, test.shape[0], test.shape[1])
-    #
-    #     predictions = model.predict(test, verbose=0)
-    #     predictions = scaler.inverse_transform(predictions[0])
-    #
-    #     return predictions[:, 0]
