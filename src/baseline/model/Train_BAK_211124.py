@@ -86,8 +86,8 @@ class Train(object):
                 data=feature_by_variable[self.model_info[model]['variate']],
                 model=model)
 
-            models.append([model, score, best_params])
-        models = sorted(models, key=lambda x: x[1][0])
+            models.append([model, np.round(score, 3), best_params])
+        models = sorted(models, key=lambda x: x[1])
 
         return models
 
@@ -175,7 +175,7 @@ class Train(object):
 
         return data_train, data_test
 
-    def evaluation(self, model, params, train, test, n_test) -> tuple:
+    def evaluation(self, model, params, train, test, n_test):
         # evaluation
         try:
             yhat = self.estimators[model](
@@ -188,26 +188,13 @@ class Train(object):
 
             if yhat is not None:
                 err = 0
-                acc = 0
                 if self.model_info[model]['variate'] == 'univ':
                     err = mean_squared_error(test, yhat, squared=True)
-                    arr_acc = np.array([test, yhat]).T
-                    arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
-                    if len(arr_acc_marked) != 0:
-                        acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
-                    else:
-                        acc = np.nan
                 elif self.model_info[model]['variate'] == 'multi':
                     err = mean_squared_error(test['endog'], yhat, squared=True)
-                    arr_acc = np.array([test['endog'], yhat])
-                    arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
-                    if len(arr_acc_marked) != 0:
-                        acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
-                    else:
-                        acc = np.nan
 
                 # Exception 처리
-                if err > 10 ** 10:
+                if err > 10 ** 20:
                     err = float(10 ** 10 - 1)
             else:
                 err = 10 ** 10 - 1  # Not solvable problem
@@ -215,7 +202,7 @@ class Train(object):
         except ValueError:
             err = 10 ** 10 - 1  # Not solvable problem
 
-        return round(err, 2), round(acc, 2)
+        return round(err, 2)
 
     def grid_search(self, model, train, test, n_test) -> Tuple[float, dict]:
         param_grid_list = self.get_param_list(model=model)
@@ -313,7 +300,7 @@ class Train(object):
 
         for model, count in self.best_params_cnt.items():
             params = [(val, key) for key, val in count.items()]
-            params = sorted(params, key=lambda x: x[0], reverse=True)
+            params = sorted(params, key=lambda  x: x[0], reverse=True)
             best_params = eval(params[0][1])
             best_params, params_info_list = self.make_best_params_data(model=model, params=best_params)
 
@@ -384,8 +371,7 @@ class Train(object):
     def score_to_df(hrchy: list, data) -> List[list]:
         result = []
         for algorithm, score, _ in data:
-            # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), score[0]])    # ToDo: Corect score (err, accuracy)
+            result.append(hrchy + [algorithm.upper(), score])
 
         return result
 
@@ -393,8 +379,7 @@ class Train(object):
     def best_score_to_df(hrchy: list, data) -> list:
         result = []
         for algorithm, score, _ in data:
-            # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), score[0]])  # ToDo: Corect score (err, accuracy)
+            result.append(hrchy + [algorithm.upper(), score])
 
         result = sorted(result, key=lambda x: x[2])
 

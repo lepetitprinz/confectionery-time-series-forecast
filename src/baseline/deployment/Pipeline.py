@@ -103,7 +103,7 @@ class Pipeline(object):
 
     def run(self):
         # ================================================================================================= #
-        # 2. Check the data version
+        # 0. Check the data version
         # ================================================================================================= #
         data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
         if self.data_vrsn_cd not in list(data_vrsn_list['data_vrsn_cd']):

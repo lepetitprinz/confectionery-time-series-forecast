@@ -2,7 +2,7 @@ from baseline.deployment.Pipeline import Pipeline
 
 # Sales Data configuration
 division = 'SELL_IN'
-test_vrsn_cd = 'TEST006_ARIMA'
+test_vrsn_cd = 'TEST006_SPEED_TEST'
 
 # Level Configuration
 lvl_cfg = {
@@ -27,7 +27,7 @@ step_cfg = {
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': True,
-    'cls_pred': True,
+    'cls_pred': False,
     'cls_rpt': False
 }
 
