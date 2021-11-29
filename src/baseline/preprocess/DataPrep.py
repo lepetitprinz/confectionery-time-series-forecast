@@ -29,10 +29,13 @@ class DataPrep(object):
             end=date['date_to'],
             freq=common['resample_rule']
         )
+        self.sales_recent = None
         # Exogenous variable map
         self.exg_map = {
+            '1202': '108',
             '1005': '108',
             '1033': '159',
+            '1212': '279',
             '1067': '999'
         }
         # Hierarchy configuration
@@ -41,10 +44,18 @@ class DataPrep(object):
 
         # Execute option
         self.imputer = 'knn'
+        self.sigma = 2.5
         self.outlier_method = 'std'
         self.quantile_range = 0.02
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> tuple:
+        # ------------------------------- #
+        # 0. Remove sales
+        # ------------------------------- #
+        if self.exec_cfg['rm_not_exist_lvl_yn']:
+            pass
+
+
         # ------------------------------- #
         # 1. Preprocess sales dataset
         # ------------------------------- #
@@ -116,6 +127,9 @@ class DataPrep(object):
         )
 
         return data_resample, exg_list, hrchy_cnt
+
+    def rm_not_exist_sales(self, sales_hist, sales_recent):
+        pass
 
     def merge_exg(self, data: pd.DataFrame, exg: dict):
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -200,6 +214,9 @@ class DataPrep(object):
         if len(df_resampled.index) != len(self.date_range):
             # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
+
+        if self.exec_cfg['rm_outlier_yn']:
+            df_resampled = self.remove_outlier(df=df_resampled, feat=self.common['target_col'])
 
         # Add data level
         df_resampled = self.add_data_level(org=df, resampled=df_resampled)
@@ -289,7 +306,7 @@ class DataPrep(object):
             feature = feature.values
             mean = np.mean(feature)
             std = np.std(feature)
-            cut_off = std * 2.5    # 99.7%
+            cut_off = std * self.sigma   # 99.7%
             lower = mean - cut_off
             upper = mean + cut_off
 
@@ -298,7 +315,7 @@ class DataPrep(object):
             upper = feature.quantile(1 - self.quantile_range)
 
         # feature = np.where(feature < 0, 0, feature)
-        # feature = np.where(feature < lower, lower, feature)    # Todo:
+        feature = np.where(feature < lower, lower, feature)    # Todo:
         feature = np.where(feature > upper, upper, feature)
 
         df[feat] = feature

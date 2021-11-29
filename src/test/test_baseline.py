@@ -13,12 +13,13 @@ lvl_cfg = {
 exec_cfg = {
     'save_step_yn': True,
     'save_db_yn': False,
+    'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
-    'grid_search_yn': False
+    'grid_search_yn': False          # Grid Search
 }
 
 # Execute Configuration
@@ -37,12 +38,20 @@ exec_rslt_cfg = {
     'predict': False
 }
 
+# Unit Test Option
+unit_cfg = {
+    'unit_test_yn': False,
+    'cust_grp_cd': '1202',
+    'item_cd': '5100000'
+}
+
 pipeline = Pipeline(
     division=division,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
+    unit_cfg=unit_cfg,
     test_vrsn_cd=test_vrsn_cd
 )
 

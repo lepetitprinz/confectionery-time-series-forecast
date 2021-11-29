@@ -230,19 +230,27 @@ class Algorithm(object):
         :return: forecast result
         """
         order = (ast.literal_eval(cfg['p']), ast.literal_eval(cfg['q']))
-        # data = np.hstack((history['endog'].reshape(-1, 1), history['exog']))
+        endog = np.hstack([history['endog'].reshape(-1, 1), history['exog']])
 
         # define model
-        # model = VARMAX(endog=data, order=order, trend=cfg['trend'])
-        model = VARMAX(endog=history['endog'].reshape(-1, 1), exog=history['exog'], order=order, trend=cfg['trend'])
+        model = VARMAX(
+            endog=endog,
+            order=order,
+            trend=cfg['trend']
+        )
 
-        # fit model
-        model_fit = model.fit()
+        try:
+            # fit model
+            model_fit = model.fit()
 
-        # Make multi-step forecast
-        yhat = model_fit.forecast(steps=pred_step)
+            # Make multi-step forecast
+            yhat = model_fit.forecast(steps=pred_step)
+            yhat = yhat[:, 0]
 
-        return yhat[:, 0]
+        except ValueError:
+            yhat = None
+
+        return yhat
 
     @staticmethod
     def sarimax(history: dict, cfg: dict, pred_step=1):

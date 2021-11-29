@@ -106,7 +106,7 @@ class SqlConfig(object):
                    , LINK_SALES_MGMT_NM AS CUST_GRP_NM
                 FROM M4S_I204020
                WHERE PROJECT_CD = 'ENT001'
-                 AND SALES_MGMT_VRSN_ID = '202109_V0'
+                 AND SALES_MGMT_VRSN_ID = '202111_V0'
                  AND USE_YN = 'Y'
         """
         return sql
@@ -531,6 +531,60 @@ class SqlConfig(object):
                               ) ITEM
                 ON SALES.SKU_CD = ITEM.SKU_CD
                """
+
+        return sql
+
+    @staticmethod
+    def sql_sell_in_unit(**kwargs):
+        sql = f""" 
+              SELECT DIVISION_CD
+                   , CUST_GRP_CD
+                   , BIZ_CD
+                   , LINE_CD
+                   , BRAND_CD
+                   , ITEM_CD
+                   , SALES.SKU_CD 
+                   , YYMMDD
+                   , SEQ
+                   , FROM_DC_CD
+                   , UNIT_PRICE
+                   , UNIT_CD
+                   , DISCOUNT
+                   , WEEK
+                   , QTY
+                   , CREATE_DATE
+                FROM (
+                      SELECT PROJECT_CD
+                           , DIVISION_CD
+                           , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+                           , ITEM_CD AS SKU_CD
+                           , YYMMDD
+                           , SEQ
+                           , FROM_DC_CD
+                           , UNIT_PRICE
+                           , RTRIM(UNIT_CD) AS UNIT_CD
+                           , DISCOUNT
+                           , WEEK
+                           , RST_SALES_QTY AS QTY
+                           , CREATE_DATE
+                        FROM M4S_I002170_TEST
+                       WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                       AND RST_SALES_QTY > 0 
+                       AND SOLD_CUST_GRP_CD = '{kwargs['cust_grp_cd']}',
+                       AND ITEM_CD = '{kwargs['item_cd']}'
+                       --and SOLD_CUST_GRP_CD = '1033' -- exception
+                      ) SALES
+                LEFT OUTER JOIN (
+                                 SELECT ITEM_CD AS SKU_CD
+                                      , ITEM_ATTR01_CD AS BIZ_CD
+                                      , ITEM_ATTR02_CD AS LINE_CD
+                                      , ITEM_ATTR03_CD AS BRAND_CD
+                                      , ITEM_ATTR04_CD AS ITEM_CD
+                                   FROM VIEW_I002040
+                                  WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                                ) ITEM
+                  ON SALES.SKU_CD = ITEM.SKU_CD
+                 """
 
         return sql
 

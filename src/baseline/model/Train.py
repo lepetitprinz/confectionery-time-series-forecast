@@ -82,12 +82,12 @@ class Train(object):
 
         models = []
         for model in self.model_candidates:
-            score, best_params = self.validation(
+            score = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
                 model=model)
 
-            models.append([model, score, best_params])
-        models = sorted(models, key=lambda x: x[1][0])
+            models.append([model, score[0], score[1], score[2]])
+        models = sorted(models, key=lambda x: x[1])
 
         return models
 
@@ -102,9 +102,8 @@ class Train(object):
         return feature_by_variable
 
     def validation(self, data, model: str) -> Tuple[float, dict]:
-        best_params = {}
         if self.validation_method == 'train_test':
-            score, best_params = self.train_test_validation(data=data, model=model)
+            score = self.train_test_validation(data=data, model=model)
 
         elif self.validation_method == 'walk_forward':
             score = self.walk_fwd_validation(data=data, model=model)
@@ -112,9 +111,9 @@ class Train(object):
         else:
             raise ValueError
 
-        return score, best_params
+        return score
 
-    def train_test_validation(self, model: str, data) -> np.array:
+    def train_test_validation(self, model: str, data) -> tuple:
         # set test length
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
@@ -129,6 +128,7 @@ class Train(object):
             )
 
         best_params = {}
+        acc = 0
         # Grid Search
         if self.grid_search_yn:
             err, best_params = self.grid_search(
@@ -139,7 +139,7 @@ class Train(object):
             )
 
         else:
-            err = self.evaluation(
+            err, acc = self.evaluation(
                 model=model,
                 params=self.param_grid[model],
                 train=data_train,
@@ -147,7 +147,7 @@ class Train(object):
                 n_test=n_test
             )
 
-        return err, best_params
+        return err, acc, best_params
 
     def split_train_test(self, data: pd.DataFrame, model: str, n_test: int):
         data_length = len(data)
@@ -175,36 +175,37 @@ class Train(object):
 
         return data_train, data_test
 
+    def calc_accuracy(self, test, pred):
+        arr_acc = np.array([test, pred]).T
+        arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
+
+        if len(arr_acc_marked) != 0:
+            acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
+            acc = round(acc, 2)
+        else:
+            acc = np.nan
+
+        return acc
+
     def evaluation(self, model, params, train, test, n_test) -> tuple:
         # evaluation
+        acc = 0
         try:
             yhat = self.estimators[model](
                 history=train,
                 cfg=params,
                 pred_step=n_test
             )
-
             # yhat = np.nan_to_num(yhat)
-
             if yhat is not None:
                 err = 0
-                acc = 0
                 if self.model_info[model]['variate'] == 'univ':
-                    err = mean_squared_error(test, yhat, squared=True)
-                    arr_acc = np.array([test, yhat]).T
-                    arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
-                    if len(arr_acc_marked) != 0:
-                        acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
-                    else:
-                        acc = np.nan
+                    err = round(mean_squared_error(test, yhat, squared=False), 2)
+                    acc = self.calc_accuracy(test=test, pred=yhat)
+
                 elif self.model_info[model]['variate'] == 'multi':
-                    err = mean_squared_error(test['endog'], yhat, squared=True)
-                    arr_acc = np.array([test['endog'], yhat])
-                    arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
-                    if len(arr_acc_marked) != 0:
-                        acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
-                    else:
-                        acc = np.nan
+                    err = round(mean_squared_error(test['endog'], yhat, squared=False), 2)
+                    acc = self.calc_accuracy(test=test['endog'], pred=yhat)
 
                 # Exception 처리
                 if err > 10 ** 10:
@@ -215,7 +216,7 @@ class Train(object):
         except ValueError:
             err = 10 ** 10 - 1  # Not solvable problem
 
-        return round(err, 2), round(acc, 2)
+        return err, acc
 
     def grid_search(self, model, train, test, n_test) -> Tuple[float, dict]:
         param_grid_list = self.get_param_list(model=model)
@@ -323,18 +324,16 @@ class Train(object):
 
     def count_best_params(self, data):
         for algorithm in data:
-            model, score, params = algorithm
+            model, score, accuracy, params = algorithm
             self.best_params_cnt[model][str(params)] += 1
 
     def make_score_result(self, data: dict, hrchy_key: str, fn):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
-        result = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl,
-                                                 fn=fn,
-                                                 df=data)
+        result = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl, fn=fn, df=data)
 
         # Convert to dataframe
         result = pd.DataFrame(result)
-        cols = self.hrchy['apply'] + ['stat_cd', 'rmse']
+        cols = self.hrchy['apply'] + ['stat_cd', 'rmse', 'accuracy']
         result.columns = cols
 
         # Add information
@@ -383,18 +382,18 @@ class Train(object):
     @staticmethod
     def score_to_df(hrchy: list, data) -> List[list]:
         result = []
-        for algorithm, score, _ in data:
+        for algorithm, err, accuracy, _ in data:
             # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), score[0]])    # ToDo: Corect score (err, accuracy)
+            result.append(hrchy + [algorithm.upper(), err, accuracy])    # ToDo: Correct score (err, accuracy)
 
         return result
 
     @staticmethod
     def best_score_to_df(hrchy: list, data) -> list:
         result = []
-        for algorithm, score, _ in data:
+        for algorithm, err, accuracy, _ in data:
             # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), score[0]])  # ToDo: Corect score (err, accuracy)
+            result.append(hrchy + [algorithm.upper(), err, accuracy])  # ToDo: Correct score (err, accuracy)
 
         result = sorted(result, key=lambda x: x[2])
 

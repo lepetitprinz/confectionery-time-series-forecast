@@ -19,6 +19,12 @@ class ResultReport(object):
         'item_attr04_cd': 'item_cd', 'item_attr01_nm': 'biz_nm', 'item_attr02_nm': 'line_nm',
         'item_attr03_nm': 'brand_nm', 'item_attr04_nm': 'item_nm'
     }
+    item_name_rev_map = {val: key for key, val in item_name_map.items()}
+
+    result_cols = ['cust_grp_cd', 'cust_grp_nm', 'biz_cd', 'biz_nm', 'line_cd', 'line_nm', 'brand_cd', 'brand_nm',
+                   'item_nm', 'item_cd', 'sku_cd', 'sku_nm', 'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']
+    # result_format = ['cust_grp_nm', 'biz_nm', 'line_nm', 'brand_nm', 'item_nm', 'sku_cd', 'sku_nm',
+    #                  'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']
 
     def __init__(self, common: dict, division: str, data_vrsn: str, test_vrsn: str,
                  hrchy: dict, item_mst: pd.DataFrame):
@@ -56,10 +62,7 @@ class ResultReport(object):
         data['test_vrsn_cd'] = self.test_vrsn
         data['create_user_cd'] = 'SYSTEM'
 
-        data = data.rename(columns={
-            'biz_nm': 'item_attr01_nm', 'line_nm': 'item_attr02_nm', 'brand_nm': 'item_attr03_nm',
-            'item_nm': 'item_attr04_nm'
-        })
+        data = data.rename(columns=self.item_name_rev_map)
         data = data.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
 
         info = {
@@ -123,12 +126,11 @@ class ResultReport(object):
         #     merged = pd.merge(merged, item_mst, on='sku_cd')
 
         # Drop unnecessary columns
-        merged = merged.drop(columns=self.drop_col2, errors='ignore')
+        # merged = merged.drop(columns=self.drop_col2, errors='ignore')
 
         # Sort columns
         if self.hrchy['key'][:-1] == 'C1-P5':
-            merged = merged[['cust_grp_nm', 'biz_nm', 'line_nm', 'brand_nm', 'item_nm', 'sku_cd', 'sku_nm',
-                             'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']]
+            merged = merged[self.result_cols]
         else:
             hrchy_name = [self.hrchy_name_map[code] for code in self.hrchy['apply']]
             merged = merged[hrchy_name + ['yy', 'week', 'sales', 'pred', 'diff']]

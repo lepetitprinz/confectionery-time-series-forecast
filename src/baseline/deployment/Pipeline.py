@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 
 class Pipeline(object):
     def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict,
-                 test_vrsn_cd=''):
+                 unit_cfg: dict, test_vrsn_cd=''):
         """
         :param division: Sales (SELL-IN / SELL-OUT)
         :param lvl_cfg: Data Level Configuration
@@ -37,6 +37,7 @@ class Pipeline(object):
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
         self.exec_rslt_cfg = exec_rslt_cfg
+        self.unit_cfg = unit_cfg
 
         self.decompose_yn = exec_cfg['decompose_yn']
 
@@ -115,15 +116,24 @@ class Pipeline(object):
         sales = None
         if self.step_cfg['cls_load']:
             print("Step 1: Load the dataset\n")
-            if self.division == 'SELL_IN':
-                # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
-            elif self.division == 'SELL_OUT':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+            if self.unit_cfg['unit_test_yn']:
+                kwargs = {
+                    'date_from': self.date['date_from'],
+                    'date_to': self.date['date_to'],
+                    'cust_grp_cd': self.unit_cfg['cust_grp_cd'],
+                    'item_cd': self.unit_cfg['item_cd']
+                }
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
+            else:
+                if self.division == 'SELL_IN':
+                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
+                elif self.division == 'SELL_OUT':
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
 
-            # Save Step result
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
+                # Save Step result
+                if self.exec_cfg['save_step_yn']:
+                    self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
 
             print("Data load is finished\n")
         # ================================================================================================= #
@@ -171,6 +181,8 @@ class Pipeline(object):
             if not self.step_cfg['cls_cns']:
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
+
+
             # Initiate data preprocessing class
             preprocess = DataPrep(
                 date=self.date,
@@ -179,6 +191,14 @@ class Pipeline(object):
                 hrchy=self.hrchy,
                 exec_cfg=self.exec_cfg
             )
+
+            if self.exec_cfg['rm_not_exist_lvl_yn']:
+                sales_recent = self.io.get_df_from_db(
+                    sql=self.sql_conf.sql_sell_in_temp(
+                        **{'date_from': self.common['pred_start_day'],
+                           'date_to': self.common['pred_end_day']}))
+                preprocess.sales_recent = sales_recent
+
             # Preprocessing the dataset
             data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
             self.hrchy['cnt'] = hrchy_cnt
