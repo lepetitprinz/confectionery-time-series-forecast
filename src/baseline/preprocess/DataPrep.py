@@ -1,6 +1,7 @@
 from baseline.analysis.Decomposition import Decomposition
 from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
 import common.util as util
+import common.config as config
 
 import numpy as np
 import pandas as pd
@@ -12,8 +13,7 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 
-    def __init__(self, date: dict, division: str, common: dict,
-                 hrchy: dict, exec_cfg: dict):
+    def __init__(self, date: dict, division: str, common: dict, hrchy: dict, exec_cfg: dict):
         # Dataset configuration
         self.exec_cfg = exec_cfg
         self.division = division
@@ -29,15 +29,9 @@ class DataPrep(object):
             end=date['date_to'],
             freq=common['resample_rule']
         )
-        self.sales_recent = None
-        # Exogenous variable map
-        self.exg_map = {
-            '1202': '108',
-            '1005': '108',
-            '1033': '159',
-            '1212': '279',
-            '1067': '999'
-        }
+        self.exg_map = config.EXG_MAP    # Exogenous variable map
+        self.key_col = ['cust_grp_cd', 'sku_cd']
+
         # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
@@ -50,13 +44,6 @@ class DataPrep(object):
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> tuple:
         # ------------------------------- #
-        # 0. Remove sales
-        # ------------------------------- #
-        if self.exec_cfg['rm_not_exist_lvl_yn']:
-            pass
-
-
-        # ------------------------------- #
         # 1. Preprocess sales dataset
         # ------------------------------- #
         exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
@@ -64,6 +51,12 @@ class DataPrep(object):
         # convert data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(int).astype(str)
+
+        # ------------------------------- #
+        # 2. Remove sales
+        # ------------------------------- #
+        if self.exec_cfg['rm_not_exist_lvl_yn']:
+            data = self.rm_not_exist_sales(data=data)
 
         # convert datetime column
         data[self.date_col] = data[self.date_col].astype(np.int64)
@@ -128,8 +121,17 @@ class DataPrep(object):
 
         return data_resample, exg_list, hrchy_cnt
 
-    def rm_not_exist_sales(self, sales_hist, sales_recent):
-        pass
+    def rm_not_exist_sales(self, data) -> pd.DataFrame:
+        # Filter recent sales
+        data_recent = data[(data[self.date_col] >= int(self.common['middle_out_start_day'])) &
+                           (data[self.date_col] <= int(self.common['middle_out_end_day']))]
+        key_col_df = data_recent[self.key_col].drop_duplicates().reset_index()
+        key_col_df['key'] = key_col_df[self.key_col[0]] + '-' + key_col_df[self.key_col[1]]
+        data['key'] = data[self.key_col[0]] + '-' + data[self.key_col[1]]
+        masked = data[data['key'].isin(key_col_df['key'])]
+        masked = masked.drop(columns=['key'])
+
+        return masked
 
     def merge_exg(self, data: pd.DataFrame, exg: dict):
         cust_grp_list = list(data['cust_grp_cd'].unique())

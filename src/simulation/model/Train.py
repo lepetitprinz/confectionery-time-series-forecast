@@ -1,3 +1,5 @@
+import pandas as pd
+
 import common.util as util
 import common.config as config
 
@@ -15,28 +17,28 @@ from sklearn.model_selection import GridSearchCV
 
 
 class Train(object):
-    estimators = {'rf': RandomForestRegressor,
-                  'gb': GradientBoostingRegressor,
-                  'et': ExtraTreesRegressor}
+    estimators = {
+        'rf': RandomForestRegressor,
+        'gb': GradientBoostingRegressor,
+        'et': ExtraTreesRegressor
+    }
 
-    def __init__(self, data_version: str, division: str, hrchy_lvl: int, common, algorithms: list, parameters: dict,
-                 scaling_yn: bool, grid_search_yn: bool, save_obj_yn: bool):
+    def __init__(self, data_version: str, division: str, hrchy_lvl: int, common, exec_cfg: dict,
+                 algorithms: pd.DataFrame, parameters: pd.DataFrame):
         # Data Configuration
         self.data_version = data_version
         self.division = division
         self.hrchy_lvl = hrchy_lvl
         self.target_col = common['target_col']
+        self.exec_cfg = exec_cfg
 
         # Train Option configuration
         self.scoring = 'neg_root_mean_squared_error'
         self.cv = 5
-        self.scaling_yn = scaling_yn
-        self.grid_search_yn = grid_search_yn
-        self.save_obj_yn = save_obj_yn
         self.verbose = False
 
         # Algorithm Configuration
-        self.algorithms = algorithms
+        self.algorithms = algorithms['model'].to_list()
         self.parameters = parameters
         self.param_grids = config.PARAM_GRIDS_SIM
 
@@ -46,6 +48,7 @@ class Train(object):
             fn=self.train_best,
             df=data
         )
+
         print("Training is finished.")
 
     def train_best(self, hrchy_code, data):
@@ -53,7 +56,7 @@ class Train(object):
         data_split = self.split_data(data=data)
 
         # Scaling
-        if self.scaling_yn:
+        if self.exec_cfg['scaling_yn']:
             scaler, x_scaled = self.scaling(data=data_split['x_train'])
             data_split['x_train'] = x_scaled
             self.save_scaler(scaler=scaler, hrchy_code=hrchy_code)
@@ -61,12 +64,12 @@ class Train(object):
         best_model = self.evaluation(
             data=data_split,
             estimators=self.algorithms,
-            grid_search_yn=self.grid_search_yn,
+            grid_search_yn=self.exec_cfg['grid_search_yn'],
             scoring=self.scoring,
             cv=self.cv,
             verbose=self.verbose
         )
-        if self.save_obj_yn:
+        if self.exec_cfg['save_step_yn']:
             self.save_best_model(estimator=best_model, hrchy_code=hrchy_code)
 
     def evaluation(self, data, estimators: list, grid_search_yn: bool, verbose: bool,

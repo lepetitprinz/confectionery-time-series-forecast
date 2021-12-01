@@ -2,17 +2,17 @@ from baseline.deployment.Pipeline import Pipeline
 
 # Sales Data configuration
 division = 'SELL_IN'
-test_vrsn_cd = 'TEST006_SPEED_TEST'
+test_vrsn_cd = 'TEST006_ITEM_LVL'
 
 # Level Configuration
 lvl_cfg = {
-    'cust_lvl': 1,   # Customer group
+    'cust_lvl': 1,   # SP1
     'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
 }
-# Data IO Configuration
+# Configuration
 exec_cfg = {
-    'save_step_yn': True,
-    'save_db_yn': False,
+    'save_step_yn': True,            # Save each step result to object or csv
+    'save_db_yn': False,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling
@@ -26,16 +26,18 @@ exec_cfg = {
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': True,
+    'cls_prep': True,
+    'cls_train': False,
     'cls_pred': False,
+    'clss_mdout': False,
     'cls_rpt': False
 }
 
 # Load result configuration
 exec_rslt_cfg = {
     'train': False,
-    'predict': False
+    'predict': False,
+    'middle_out': False
 }
 
 # Unit Test Option
@@ -57,4 +59,3 @@ pipeline = Pipeline(
 
 # Execute Baseline Forecast
 pipeline.run()
-

@@ -1,7 +1,7 @@
 # Common class
 import common.util as util
-import common.config as config
 from dao.DataIO import DataIO
+from common.SqlConfig import SqlConfig
 
 # Simulation Class
 from simulation.preprocess.DataLoad import DataLoad
@@ -10,70 +10,80 @@ from simulation.model.Train import Train
 
 
 class Pipeline(object):
-    def __init__(self, division: str, hrchy_lvl: int, lag: str, scaling_yn=False,
-                 grid_search_yn=False, save_obj_yn=False, save_db_yn=False):
+    def __init__(self, division: str, hrchy_lvl: int, lag: str,
+                 step_cfg: dict, exec_cfg: dict, exec_rslt_cfg: dict):
+        # I/O & Execution Configuration
+        self.step_cfg = step_cfg
+        self.exec_cfg = exec_cfg
+        self.exec_rslt_cfg = exec_rslt_cfg
+
         # Class Configuration
         self.io = DataIO()
-
+        self.sql_conf = SqlConfig()
+        self.common = self.io.get_dict_from_db(
+            sql=SqlConfig.sql_comm_master(),
+            key='OPTION_CD',
+            val='OPTION_VAL'
+        )
         # Data Configuration
         self.division = division
+        self.date = {
+            'date_from': self.common['rst_start_day'],
+            'date_to': self.common['rst_end_day']
+        }
+        self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
+        # Data Level Configuration
         self.hrchy_lvl = hrchy_lvl
         self.lag = lag
 
-        # Execution Configuration
-        self.scaling_yn = scaling_yn
-        self.grid_search_yn = grid_search_yn
+        # Path Configuration
+        self.path = {
+            'load': util.make_path_sim(module='load', division=division, step='load', extension='csv'),
 
-        # Save & Load Configuration
-        self.save_obj_yn = save_obj_yn
-        self.save_db_yn = save_db_yn
+        }
 
     def run(self):
-        # ====================== #
+        # ================================================================================================= #
         # 1. Load the dataset
-        # ====================== #
-        data_load = None
-        if config.CLS_SIM_LOAD:
-            data_load = DataLoad(division=self.division, hrchy_lvl=self.hrchy_lvl, lag=self.lag,
-                                 save_obj_yn=self.save_obj_yn, load_obj_yn=self.load_obj_yn)
-            data_load.init(io=self.io)
-            data_load.load(io=self.io)
+        # ================================================================================================= #
+        sales = None
+        if self.step_cfg['cls_sim_load']:
+            if self.division == 'SELL_IN':
+                # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
+            elif self.division == 'SELL_OUT':
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
 
-        #     # Save step result
-        #     if self.save_obj_yn:
-        #         file_path = util.make_path_sim(
-        #             module='simulation', division=self.division, step='load', extension='pickle')
-        #         self.io.save_object(data=data_load, file_path=file_path, data_type='binary')
-        #
-        else:
-            file_path = util.make_path_sim(
-                module='simulation', division=self.division, step='load', extension='pickle')
-            data_load = self.io.load_object(file_path=file_path, data_type='binary')
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
 
-        # ====================== #
+        # ================================================================================================= #
         # 2. Data Preprocessing
-        # ====================== #
+        # ================================================================================================= #
         data_prep = None
-        if config.CLS_SIM_PREP:
+        if self.step_cfg['cls_sim_prep']:
             print("Step 2: Data Preprocessing\n")
+            if not self.step_cfg['cls_sim_load']:
+                sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
+
+            # Load Exogenous dataset
+            exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='N'))
 
             # Initiate data preprocessing class
             preprocess = DataPrep(
+                date=self.date,
+                common=self.common,
                 division=self.division,
                 hrchy_lvl=self.hrchy_lvl,
                 lag=self.lag,
-                common=data_load.common,
-                date=data_load.date
             )
 
             # Preprocessing the dataset
-            data_prep = preprocess.preprocess(
-                sales=data_load.sales,
-                exg=data_load.exg
-            )
+            data_prep = preprocess.preprocess(sales=sales, exg=exg)
 
             # Save step result
-            if self.save_obj_yn:
+            if self.exec_cfg['save_step_yn']:
                 file_path = util.make_path_sim(module='simulation', division=self.division, step='prep',
                                                extension='pickle')
                 self.io.save_object(data=data_prep, file_path=file_path, data_type='binary')
@@ -82,22 +92,24 @@ class Pipeline(object):
             file_path = util.make_path_sim(module='simulation', division=self.division, step='prep', extension='pickle')
             data_prep = self.io.load_object(file_path=file_path, data_type='binary')
 
-        # ====================== #
+        # ================================================================================================= #
         # 3. Training
-        # ====================== #
-        if config.CLS_SIM_TRAIN:
+        # ================================================================================================= #
+        if self.step_cfg['cls_sim_train']:
             print("Step3: Training")
+            # Load necessary dataset
+            # Algorithm
+            algorithms = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'SIM'}))
+            parameters = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
 
             # Initiate data preprocessing class
             train = Train(
-                data_version=data_load.data_version,
+                data_version=self.data_vrsn_cd,
                 division=self.division,
-                hrchy_lvl=data_load.hrchy_lvl,
-                common=data_load.common,
-                algorithms=data_load.algorithms,
-                parameters=data_load.parameters,
-                scaling_yn=self.scaling_yn,
-                grid_search_yn=self.grid_search_yn,
-                save_obj_yn=self.save_obj_yn
+                hrchy_lvl=self.hrchy_lvl,
+                common=self.common,
+                algorithms=algorithms,
+                parameters=parameters,
+                exec_cfg=self.exec_cfg
             )
             train.train(data=data_prep)

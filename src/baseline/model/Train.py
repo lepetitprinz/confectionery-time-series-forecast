@@ -26,7 +26,7 @@ class Train(object):
         'var': Algorithm.var,
         'varmax': Algorithm.varmax,
         'sarima': Algorithm.sarimax,
-        'prophet': Algorithm.prophet
+        # 'prophet': Algorithm.prophet
     }
 
     def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
@@ -58,7 +58,7 @@ class Train(object):
         self.model_candidates = list(self.model_info.keys())
 
         # Training Configuration
-        self.validation_method = config.VALIDATION_METHOD
+        self.validation_method = 'train_test'
         self.grid_search_yn = exec_cfg['grid_search_yn']
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
@@ -175,7 +175,9 @@ class Train(object):
 
         return data_train, data_test
 
-    def calc_accuracy(self, test, pred):
+    @staticmethod
+    def calc_accuracy(test, pred):
+        pred = np.where(pred < 0, 0, pred)
         arr_acc = np.array([test, pred]).T
         arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
 
@@ -183,7 +185,8 @@ class Train(object):
             acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
             acc = round(acc, 2)
         else:
-            acc = np.nan
+            # acc = np.nan
+            acc = 10**5 - 1
 
         return acc
 
@@ -342,12 +345,18 @@ class Train(object):
         result['data_vrsn_cd'] = self.data_vrsn_cd
         result['create_user_cd'] = 'SYSTEM'
 
-        if hrchy_key[:-1] == 'C1-P5':
-            result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
+        if hrchy_key[:2] == 'C1':
+            if hrchy_key[3:5] == 'P5':
+                result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
+            else:
+                key = self.hrchy['apply'][-1]
+                result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result[key]
         else:
             key = self.hrchy['apply'][-1]
             result['fkey'] = hrchy_key + result[key]
+
         result['rmse'] = result['rmse'].fillna(0)
+        # result['accuracy'] = result['accuracy'].where(pd.notnull(result['accuracy']), None)
 
         # Merge information
         # Item Names
@@ -363,10 +372,10 @@ class Train(object):
                               self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
                               on=self.hrchy['list']['cust'][:self.hrchy['lvl']['cust']],
                               how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
-            result = result.fillna('-')
+            # result = result.fillna('-')
 
         # Customer Names
-        result = result.rename(columns=config.COL_RENAME1)
+        result = result.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         result = result.rename(columns=config.COL_RENAME2)
 
         # set score_info

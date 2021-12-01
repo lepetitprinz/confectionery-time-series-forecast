@@ -5,9 +5,10 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
-from baseline.analysis.ResultReport import ResultReport
+from baseline.analysis.ResultSummary import ResultSummary
+from baseline.middle_out.MiddleOut import MiddleOut
 
-import os
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -92,14 +93,27 @@ class Pipeline(object):
                                             hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
             'pred_best': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
                                                  hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
-            'score_all_csv': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
-                                                 hrchy_lvl=self.hrchy['key'], step='score_all', extension='csv'),
-            'score_best_csv': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
-                                                  hrchy_lvl=self.hrchy['key'], step='score_best', extension='csv'),
-            'pred_all_csv': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
-                                                hrchy_lvl=self.hrchy['key'], step='pred_all', extension='csv'),
-            'pred_best_csv': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
-                                                  hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv')
+            'score_all_csv': util.make_path_baseline(
+                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='score_all', extension='csv'),
+            'score_best_csv': util.make_path_baseline(
+                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='score_best', extension='csv'),
+            'pred_all_csv': util.make_path_baseline(
+                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='pred_all', extension='csv'),
+            'pred_best_csv': util.make_path_baseline(
+                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='pred_best', extension='csv'),
+            'middle_out': util.make_path_baseline(
+                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='pred_middle_out', extension='csv'),
+            'middle_out_db': util.make_path_baseline(
+                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='pred_middle_out_db', extension='csv'),
+            'report': util.make_path_baseline(
+                module='report', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
+                step='report', extension='csv')
         }
 
     def run(self):
@@ -180,8 +194,6 @@ class Pipeline(object):
             print("Step 3: Data Preprocessing\n")
             if not self.step_cfg['cls_cns']:
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
-
-
 
             # Initiate data preprocessing class
             preprocess = DataPrep(
@@ -289,12 +301,15 @@ class Pipeline(object):
                 fn=training.best_score_to_df
             )
 
-            scores_db.to_csv(self.path['score_all_csv'], index=False)
-            scores_best.to_csv(self.path['score_best_csv'], index=False)
+            scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
+            scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
 
-            # Exception (Insert Error)
-            scores_db.loc[:, 'item_nm'] = ''
-            scores_best.loc[:, 'item_nm'] = ''
+            # Remove Special Character
+            if 'item_nm' in list(scores_db.columns):
+                scores_db = util.remove_special_character(data=scores_db, feature='item_nm')
+                scores_best = util.remove_special_character(data=scores_best, feature='item_nm')
+            # scores_db.loc[:, 'item_nm'] = ''
+            # scores_best.loc[:, 'item_nm'] = ''
 
             # Save best scores
             if self.exec_cfg['save_step_yn']:
@@ -353,21 +368,17 @@ class Pipeline(object):
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
             pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
 
-            pred_all.to_csv(self.path['pred_all_csv'], index=False)
-            pred_best.to_csv(self.path['pred_best_csv'], index=False)
+            pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
+            pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
 
+            # Remove Special Character
+            if 'item_nm' in list(pred_all.columns):
+                pred_all = util.remove_special_character(data=pred_all, feature='item_nm')
+                pred_best = util.remove_special_character(data=pred_best, feature='item_nm')
             # pred_all.loc[:, 'item_nm'] = ''
             # pred_best.loc[:, 'item_nm'] = ''
 
             if self.exec_cfg['save_step_yn']:
-                pred_all.to_csv(
-                    os.path.join('..', '..', 'pred', 'pred_all.csv'),
-                    index=False, encoding='CP949'
-                )
-                pred_best.to_csv(
-                    os.path.join('..', '..', 'pred', 'pred_best.csv'),
-                    index=False, encoding='CP949'
-                )
                 self.io.save_object(data=pred_best, file_path=self.path['pred_best'], data_type='binary')
 
             # Save the forecast results on the db table
@@ -387,13 +398,67 @@ class Pipeline(object):
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
             print("Forecast is finished\n")
+
         # ================================================================================================= #
-        # 6. Report result
+        # 6. Middle Out
+        # ================================================================================================= #
+        if self.step_cfg['clss_mdout']:
+            # Load item master
+            item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
+
+            md_out = MiddleOut(
+                common=self.common,
+                division=self.division,
+                data_vrsn=self.data_vrsn_cd,
+                test_vrsn=self.test_vrsn_cd,
+                hrchy=self.hrchy,
+                ratio_lvl=5,
+                item_mst=item_mst
+            )
+            # Load compare dataset
+            sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(
+                **{'date_from': self.common['middle_out_start_day'],
+                   'date_to': self.common['middle_out_end_day']})
+            )
+
+            if not self.step_cfg['cls_pred']:
+                pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
+
+            # Run middle-out
+            if not self.exec_rslt_cfg['predict']:
+                data_ratio = md_out.prep_ratio(data=sales_recent)
+                data_split = md_out.prep_split(data=pred_best)
+                middle_out = md_out.middle_out(data_split=data_split, data_ratio=data_ratio)
+                middle_out_db = md_out.after_processing(data=middle_out)
+
+                if self.exec_cfg['save_step_yn']:
+                    self.io.save_object(
+                        data=middle_out, file_path=self.path['middle_out'], data_type='csv')
+                    self.io.save_object(
+                        data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
+            else:
+                middle_out_db = self.io.load_object(file_path=self.path['middle_out_db'], data_type='csv')
+                middle_info = md_out.add_del_information()
+
+                if self.exec_cfg['save_db_yn']:
+                    print("Save middle-out results on DB")
+                    self.io.delete_from_db(sql=self.sql_conf.del_prediction(**middle_info))
+                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
+
+            print("Middle-out is finished\n")
+        # ================================================================================================= #
+        # 7. Report result
         # ================================================================================================= #
         if self.step_cfg['cls_rpt']:
             print("Step 6: Report result\n")
-            if not self.step_cfg['cls_pred']:
-                pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
+            test_vrsn_cd = self.test_vrsn_cd
+            # if self.step_cfg['clss_mdout']:
+            if self.hrchy['lvl']['item'] < 5:
+                pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
+                test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
+            else:
+                if not self.step_cfg['cls_pred']:
+                    pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Load compare dataset
             sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(
@@ -402,18 +467,26 @@ class Pipeline(object):
 
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
-            report = ResultReport(
+            report = ResultSummary(
                 common=self.common,
                 division=self.division,
                 data_vrsn=self.data_vrsn_cd,
-                test_vrsn=self.test_vrsn_cd,
+                test_vrsn=test_vrsn_cd,
                 hrchy=self.hrchy,
                 item_mst=item_mst
             )
             result = report.compare_result(sales=sales_comp, pred=pred_best)
             result, result_info = report.make_db_format(data=result)
 
+            # Remove Special Character
+            if 'item_nm' in list(result.columns):
+                result = util.remove_special_character(data=result, feature='item_nm')
+
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=result, file_path=self.path['report'], data_type='csv')
+
             if self.exec_cfg['save_db_yn']:
+                print("Save prediction results on DB")
                 self.io.delete_from_db(sql=self.sql_conf.del_compare_result(**result_info))
                 self.io.insert_to_db(df=result, tb_name='M4S_O110620')
 

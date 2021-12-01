@@ -29,9 +29,6 @@ class DataIO(object):
     def delete_from_db(self, sql: str):
         self.session.delete(sql=sql)
 
-    def update_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
-        self.session.upsert(df=df, tb_name=tb_name)
-
     @staticmethod
     def save_object(data, data_type: str, file_path: str) -> None:
         """

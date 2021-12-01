@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 from datetime import datetime
 from collections import defaultdict
 
@@ -124,7 +125,7 @@ def make_path_baseline(module: str, division: str, data_vrsn: str, hrchy_lvl: st
 
 
 def make_path_sim(module: str, division: str, step: str, extension: str):
-    path = os.path.join('..', '..', module, division + '_' + step + '.' + extension)
+    path = os.path.join('..', '..', 'simulation', module, division + '_' + step + '.' + extension)
 
     return path
 
@@ -206,3 +207,19 @@ def make_data_version(data_version: str) -> pd.DataFrame:
     df = pd.DataFrame(data)
 
     return df
+
+
+def remove_special_character(data: pd.DataFrame, feature: str):
+    feat = deepcopy(data[feature])
+    feat = feat.str.replace('ℓ', 'l')
+    feat = feat.str.replace('㎖', 'ml')
+    feat = feat.str.replace('入', '인')
+    feat = feat.str.replace('月', '월')
+    feat = feat.str.replace('%', 'PCT')
+    feat = feat.str.replace('&', ' ')
+    feat = feat.str.replace('*', ' ')
+    feat = feat.str.replace('+', ' ')
+
+    data[feature] = feat
+
+    return data

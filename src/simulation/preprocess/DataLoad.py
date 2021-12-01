@@ -4,10 +4,11 @@ from common.SqlConfig import SqlConfig
 
 
 class DataLoad(object):
-    def __init__(self, division: str, hrchy_lvl: int, lag: str,
-                 save_obj_yn: bool, load_obj_yn: bool):
+    def __init__(self, division: str, hrchy_lvl: int, lag: str, exec_cfg: dict):
         # initiate class
         self.sql_conf = SqlConfig()
+
+        self.exec_cfg = exec_cfg
 
         # data option
         self.common = {}
@@ -25,8 +26,6 @@ class DataLoad(object):
 
         # model configuration
         self.target_col = ''
-        self.save_obj_yn = save_obj_yn
-        self.load_obj_yn = load_obj_yn
 
     def init(self, io):
         self.common = io.get_dict_from_db(sql=SqlConfig.sql_comm_master(), key='OPTION_CD', val='OPTION_VAL')
@@ -38,12 +37,13 @@ class DataLoad(object):
     def load(self, io):
         if not self.load_obj_yn:
             # Sales Dataset
-            if self.division == 'sell_in':
-                self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-            elif self.division == 'sell_out':
+            if self.division == 'SELL_IN':
+                # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))
+            elif self.division == 'SELL_OUT':
                 self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
 
-            if self.save_obj_yn:
+            if self.exec_cfg['save_step_yn']:
                 file_path = util.make_path_sim(module='simulation', division=self.division, step='load',
                                                extension='csv')
                 io.save_object(data=self.sales, file_path=file_path, data_type='csv')

@@ -9,8 +9,8 @@ class ResultReport(object):
     drop_col2 = ['division_cd', 'biz_cd', 'line_cd', 'brand_cd', 'item_cd']
     summary_col = {
         'C1-P5': ['cust_grp_nm', 'biz_nm', 'line_nm', 'brand_nm', 'item_nm', 'sku_cd', 'sku_nm'],
-        'C0-P4': ['biz_nm', 'line_nm', 'brand_nm', 'item_nm'],
-        'C0-P3': ['biz_nm', 'line_nm', 'brand_nm']
+        'C1-P4': ['biz_nm', 'line_nm', 'brand_nm', 'item_nm'],
+        'C1-P3': ['biz_nm', 'line_nm', 'brand_nm']
     }
     hrchy_name_map = {'biz_cd': 'biz_nm', 'line_cd': 'line_nm', 'brand_cd': 'brand_nm', 'item_cd': 'item_nm'}
 
@@ -23,17 +23,21 @@ class ResultReport(object):
 
     result_cols = ['cust_grp_cd', 'cust_grp_nm', 'biz_cd', 'biz_nm', 'line_cd', 'line_nm', 'brand_cd', 'brand_nm',
                    'item_nm', 'item_cd', 'sku_cd', 'sku_nm', 'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']
-    # result_format = ['cust_grp_nm', 'biz_nm', 'line_nm', 'brand_nm', 'item_nm', 'sku_cd', 'sku_nm',
-    #                  'yy', 'week', 'stat_cd', 'sales', 'pred', 'diff']
 
     def __init__(self, common: dict, division: str, data_vrsn: str, test_vrsn: str,
                  hrchy: dict, item_mst: pd.DataFrame):
+        # Data Information Configuration
         self.common = common
+        self.item_mst = item_mst
         self.division = division
         self.data_vrsn = data_vrsn
         self.test_vrsn = test_vrsn
+
+        # Data Level Configuration
         self.hrchy = hrchy
-        self.item_mst = item_mst
+        self.hrchy_item_cd_list = common['db_hrchy_item_cd'].split(',')
+        self.hrchy_item_nm_list = common['db_hrchy_item_nm'].split(',')
+
         self.pred_date_range = pd.date_range(
             start=common['pred_start_day'],
             end=common['pred_end_day'],
@@ -50,20 +54,21 @@ class ResultReport(object):
 
     def compare_result(self, sales, pred):
         raw_all = self.make_raw_result(sales=sales, pred=pred)
-        self.make_summary(df=raw_all)
+        # self.make_summary(df=raw_all)
 
         return raw_all
 
     def make_db_format(self, data):
-        data['seq'] = [self.test_vrsn + '_' + str(i+1).zfill(7) for i in range(len(data))]
+        data['seq'] = [self.test_vrsn + '_' + str(i + 1).zfill(7) for i in range(len(data))]
         data['project_cd'] = self.common['project_cd']
         data['data_vrsn_cd'] = self.data_vrsn
         data['division_cd'] = self.division
         data['test_vrsn_cd'] = self.test_vrsn
+        data['fkey'] = 'C1-P5'
         data['create_user_cd'] = 'SYSTEM'
 
-        data = data.rename(columns=self.item_name_rev_map)
-        data = data.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
+        # data = data.rename(columns=self.item_name_rev_map)
+        # data = data.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
 
         info = {
             'project_cd': self.common['project_cd'],
@@ -76,11 +81,22 @@ class ResultReport(object):
 
     def make_raw_result(self, sales, pred):
         hrchy_item = None
-        if self.hrchy['key'][:-1] != 'C1-P5':
-            sales, hrchy_item = self.resample_sales(data=sales)
+        # if self.hrchy['key'][:-1] != 'C1-P5':
+        #     sales, hrchy_item = self.resample_sales(data=sales)
+
+        if self.hrchy['lvl']['item'] < 5:
+            pred['sku_cd'] = pred['sku_cd'].astype(str)
+            pred['cust_grp_cd'] = pred['cust_grp_cd'].astype(str)
+            pred[self.common['date_col']] = pred[self.common['date_col']].astype(str)
+            pred['division_cd'] = self.division
+            item_mst = self.item_mst.rename(columns=self.item_name_rev_map)
+            pred = pd.merge(
+                pred, item_mst, how='left', on=self.hrchy_item_cd_list[:-1] + ['sku_cd'],
+                suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
         # Preprocess the prediction dataset
-        pred = pred.rename(columns={'result_sales': 'pred', 'item_cd': 'sku_cd', 'item_nm': 'sku_nm'})
+        pred = pred.rename(columns={
+            'sales': 'pred', 'result_sales': 'pred', 'item_cd': 'sku_cd', 'item_nm': 'sku_nm'})
         pred = pred.rename(columns=self.item_name_map)
         pred = pred.drop(columns=self.drop_col1, errors='ignore')
         pred['pred'] = np.round(pred['pred'].to_numpy(), 2)
@@ -92,23 +108,23 @@ class ResultReport(object):
 
         pred['pred'] = np.where(pred['pred'] < 0, 0, pred['pred'])  # Todo Exception
 
-        if self.hrchy['key'][:-1] == 'C1-P5':
-            merged = pd.merge(
-                pred,
-                sales,
-                on=['division_cd', 'yy', 'week', 'cust_grp_cd', 'sku_cd'],
-                how='left',
-                suffixes=('', '_DROP')
-            ).filter(regex='^(?!.*_DROP)')
+        # if self.hrchy['key'][:-1] == 'C1-P5':
+        merged = pd.merge(
+            pred,
+            sales,
+            on=['division_cd', 'yy', 'week', 'cust_grp_cd', 'sku_cd'],
+            how='left',
+            suffixes=('', '_DROP')
+        ).filter(regex='^(?!.*_DROP)')
 
-        else:
-            merged = pd.merge(
-                pred,
-                sales,
-                on=['division_cd', 'yy', 'week'] + hrchy_item,
-                how='left',
-                suffixes=('', '_DROP')
-            ).filter(regex='^(?!.*_DROP)')
+        # else:
+        #     merged = pd.merge(
+        #         pred,
+        #         sales,
+        #         on=['division_cd', 'yy', 'week'] + hrchy_item,
+        #         how='left',
+        #         suffixes=('', '_DROP')
+        #     ).filter(regex='^(?!.*_DROP)')
 
         # Fill NA weeks with 0 qty
         merged = self.fill_na_week(data=merged)
@@ -120,24 +136,32 @@ class ResultReport(object):
         merged['diff'] = merged['sales'] - merged['pred']
         merged['diff'] = np.absolute(merged['diff'].to_numpy())
 
-        # Add information
-        # if (self.hrchy['key'][:-1] == 'C1-P5') or (self.hrchy['key'][:-1] == 'C0-P5'):
-        #     item_mst = self.item_mst[['sku_cd', 'sku_nm']]
-        #     merged = pd.merge(merged, item_mst, on='sku_cd')
-
-        # Drop unnecessary columns
-        # merged = merged.drop(columns=self.drop_col2, errors='ignore')
+        merged = merged.rename(columns=self.item_name_rev_map)
+        merged = merged.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
 
         # Sort columns
-        if self.hrchy['key'][:-1] == 'C1-P5':
-            merged = merged[self.result_cols]
-        else:
-            hrchy_name = [self.hrchy_name_map[code] for code in self.hrchy['apply']]
-            merged = merged[hrchy_name + ['yy', 'week', 'sales', 'pred', 'diff']]
+        hrchy_col = []
+        fixed_col = ['stat_cd', 'yy', 'week', 'sales', 'pred', 'diff']
+        if self.hrchy['key'][:2] == 'C1':
+            hrchy_col.extend(['cust_grp_cd', 'cust_grp_nm'])
+
+        hrchy_item_cd = self.hrchy_item_cd_list
+        hrchy_item_nm = self.hrchy_item_nm_list
+        hrchy_item = [[code, name] for code, name in zip(hrchy_item_cd, hrchy_item_nm)]
+        for code, name in hrchy_item:
+            hrchy_col.append(code)
+            hrchy_col.append(name)
+        # hrchy_item_cd = self.hrchy_item_cd[:self.hrchy['lvl']['item']]
+        # hrchy_item_nm = self.hrchy_item_nm[:self.hrchy['lvl']['item']]
+        # hrchy_item = [[code, name] for code, name in zip(hrchy_item_cd, hrchy_item_nm)]
+        # for code, name in hrchy_item:
+        #     hrchy_col.append(code)
+        #     hrchy_col.append(name)
+
+        merged = merged[hrchy_col + fixed_col]
 
         # Save the result
-        merged.to_csv(self.save_path['all'], index=False, encoding='CP949')
-        # merged['diff_abs'] = np.absolute(merged['diff'].to_numpy())
+        # merged.to_csv(self.save_path['all'], index=False, encoding='CP949')
 
         return merged
 
@@ -161,24 +185,25 @@ class ResultReport(object):
     def fill_na_week(self, data):
         result = pd.DataFrame()
         date_len = len(self.pred_date_range)
-        if self.hrchy['key'][:-1] == 'C1-P5':
-            cust_sku = data[['cust_grp_cd', 'sku_cd']].drop_duplicates()
 
-            for cust, sku in zip(cust_sku['cust_grp_cd'], cust_sku['sku_cd']):
-                temp = data[data['cust_grp_cd'] == cust]
-                temp = temp[temp['sku_cd'] == sku]
-                if sum(temp['sales'].isna()) != date_len:
-                    result = pd.concat([result, temp])
-        else:
-            hrchy_key = self.hrchy['apply'][-1]
-            hrchy_list = list(data[hrchy_key].unique())
-            for hrchy_code in hrchy_list:
-                temp = data[data[hrchy_key] == hrchy_code]
-                if sum(temp['sales'].isna()) != date_len:
-                    result = pd.concat([result, temp])
-            # Exception
-            # if sum(temp['sales'].isna()) == 0:
-            #     result = pd.concat([result, temp])
+        # if self.hrchy['key'][:-1] == 'C1-P5':
+        cust_sku = data[['cust_grp_cd', 'sku_cd']].drop_duplicates()
+
+        for cust, sku in zip(cust_sku['cust_grp_cd'], cust_sku['sku_cd']):
+            temp = data[data['cust_grp_cd'] == cust]
+            temp = temp[temp['sku_cd'] == sku]
+            if sum(temp['sales'].isna()) != date_len:
+                result = pd.concat([result, temp])
+        # else:
+        #     hrchy_key = self.hrchy['apply'][-1]
+        #     hrchy_list = list(data[hrchy_key].unique())
+        #     for hrchy_code in hrchy_list:
+        #         temp = data[data[hrchy_key] == hrchy_code]
+        #         if sum(temp['sales'].isna()) != date_len:
+        #             result = pd.concat([result, temp])
+        # Exception
+        # if sum(temp['sales'].isna()) == 0:
+        #     result = pd.concat([result, temp])
 
         return result
 
@@ -214,5 +239,6 @@ class ResultReport(object):
 
         summary_score = summary[['accuracy_sum', 'accuracy_mean']].mean()
         summary_score = np.round(summary_score, 2)
+
         print(f"Accuracy Sum: {summary_score[0]}")
         print(f"Accuracy Mean: {summary_score[1]}")

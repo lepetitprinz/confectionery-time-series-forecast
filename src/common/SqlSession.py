@@ -31,6 +31,7 @@ class SqlSession(object):
 
     def create_engine(self):
         return create_engine(self.url)
+        # return create_engine(self.url, fast_executemany=True)
 
     def get_connection(self):
         """

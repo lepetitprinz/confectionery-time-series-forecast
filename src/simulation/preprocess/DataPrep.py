@@ -5,9 +5,8 @@ from copy import deepcopy
 
 
 class DataPrep(object):
-    drop_col = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week', 'cust_cd']
-    str_type_col = ['sku_cd']
-    lag_option = {'w1': 1, 'w2': 2}
+    str_type_col = ['cust_grp_cd', 'sku_cd']
+    drop_col = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week']
 
     def __init__(self, division: str, hrchy_lvl: int, lag: str, common: dict, date: dict):
         self.division = division
@@ -31,7 +30,7 @@ class DataPrep(object):
         #
         self.exg_list = []
 
-    def preprocess(self, sales: pd.DataFrame, exg: dict):
+    def preprocess(self, sales: pd.DataFrame, exg: pd.DataFrame):
         # ------------------------------- #
         # 1. Preprocess sales dataset
         # ------------------------------- #
@@ -47,25 +46,23 @@ class DataPrep(object):
         # ------------------------------- #
         # 2. Preprocess Exogenous dataset
         # ------------------------------- #
-        self.exg_list = [exg.lower() for exg in list(exg['all']['idx_cd'].unique())]
-
-        exg_all = util.prep_exg_all(data=exg['all'])
-        exg_partial = util.prep_exg_partial(data=exg['partial'])
+        self.exg_list = [exg.lower() for exg in list(exg['idx_cd'].unique())]
+        exg = util.prep_exg_all(data=exg)
 
         # ------------------------------- #
         # 3. Preprocess merged dataset
         # ------------------------------- #
         # Convert data type
         sales[self.date_col] = pd.to_datetime(sales[self.date_col], format='%Y%m%d')
-        exg_all[self.date_col] = pd.to_datetime(exg_all[self.date_col], format='%Y%m%d')
+        # exg['yymm'] = pd.to_datetime(exg['yymm'], format='%Y%m%d')
 
         # Merge sales data & exogenous data
-        # data = pd.merge(sales, exg_all, on=self.date_col, how='left')    # ToDo: Exception
+        # data = pd.merge(sales, exg, on=self.date_col, how='left')    # ToDo: Exception
         data = sales
 
         data = data.set_index(keys=self.date_col)
 
-        data_group = util.group(data=data, hrchy=self.hrchy_list, hrchy_lvl=self.hrchy_lvl-1)
+        data_group, hrchy_cnt = util.group(data=data, hrchy=self.hrchy_list, hrchy_lvl=self.hrchy_lvl-1)
 
         # Resampling
         data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
@@ -77,6 +74,7 @@ class DataPrep(object):
                                          fn=self.drop_column,
                                          df=data_resample)
 
+        # lag sales data
         data_rag = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
                                         fn=self.lagging,
                                         df=data_drop)
@@ -117,7 +115,7 @@ class DataPrep(object):
         cols = self.hrchy_list[:self.hrchy_lvl + 1]
         data_level = df[cols].iloc[0].to_dict()
         data_lvl = pd.DataFrame(data_level, index=df_resampled.index)
-        df_resampled = pd.concat([df_resampled, data_lvl], axis=1)
+        df_resampled = pd.concat([data_lvl, df_resampled], axis=1)
 
         return df_resampled
 
@@ -126,8 +124,14 @@ class DataPrep(object):
         params: option: w1 / w2 / w1-w2
         """
         lagged = deepcopy(data[self.target_col])
-        lagged = lagged.shift(periods=self.lag_option[self.lag])
-        lagged = pd.DataFrame(lagged.values, columns=[self.target_col + '_lag'], index=lagged.index)
+        if self.lag == 'w1':
+            lagged = lagged.shift(periods=1)
+            lagged = pd.DataFrame(lagged.values, columns=[self.target_col + '_lag'], index=lagged.index)
+        elif self.lag == 'w2':
+            lag1 = lagged.shift(periods=1)
+            lag2 = lagged.shift(periods=1)
+            lagged = (lag1 + lag2) / 2
+
         result = pd.concat([data, lagged], axis=1)
         result = result.fillna(0)
 

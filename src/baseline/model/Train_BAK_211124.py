@@ -58,7 +58,7 @@ class Train(object):
         self.model_candidates = list(self.model_info.keys())
 
         # Training Configuration
-        self.validation_method = config.VALIDATION_METHOD
+        self.validation_method = 'train_test'
         self.grid_search_yn = exec_cfg['grid_search_yn']
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
@@ -354,7 +354,7 @@ class Train(object):
             result = result.fillna('-')
 
         # Customer Names
-        result = result.rename(columns=config.COL_RENAME1)
+        result = result.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         result = result.rename(columns=config.COL_RENAME2)
 
         # set score_info

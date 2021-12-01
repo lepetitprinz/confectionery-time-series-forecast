@@ -1,7 +1,8 @@
+from common.SuppressStdout import suppress_stdout_stderr
+
 import ast
 import warnings
 import numpy as np
-import pandas as pd
 
 # Uni-variate Statistical Models
 from statsmodels.tsa.ar_model import AutoReg    # Auto Regression
@@ -14,6 +15,8 @@ from statsmodels.tsa.vector_ar.var_model import VAR    # Vector Auto regression
 # Vector Autoregressive Moving Average with exogenous regressors model
 from statsmodels.tsa.statespace.varmax import VARMAX
 from statsmodels.tsa.statespace.sarimax import SARIMAX    # Seasonal Auto regressive integrated moving average
+# from prophet import Prophet
+
 warnings.filterwarnings("ignore")
 
 
@@ -153,6 +156,9 @@ class Algorithm(object):
             remove_bias : bool
                 - Remove bias from forecast values and fitted values by enforcing that the average residual is
                   equal to zero
+            smoothing_level : float
+            smoothing_trend : float
+            smoothing_seasonal : float
         :param pred_step: prediction steps
         :return: forecast result
         """
@@ -163,7 +169,13 @@ class Algorithm(object):
                                      seasonal_periods=ast.literal_eval(cfg['seasonal_period']))
 
         # fit model
-        model_fit = model.fit(optimized=True, remove_bias=bool(cfg['remove_bias']))  # fit model
+        model_fit = model.fit(
+            smoothing_level=float(cfg['alpha']),
+            smoothing_trend=float(cfg['beta']),
+            smoothing_seasonal=float(cfg['gamma']),
+            optimized=True,
+            remove_bias=bool(cfg['remove_bias'])
+        )
 
         # Make multi-step forecast
         yhat = model_fit.forecast(steps=pred_step)
@@ -295,36 +307,46 @@ class Algorithm(object):
 
         return yhat
 
-    # Facebook Prophet
-    @staticmethod
-    def prophet(history: dict, cfg: dict, pred_step=1):
-        """
-        :param history:
-            endog: The observed time-series process
-        :param cfg:
-            changepoint_prior_scale: Adjusting trend flexibility (0 ~ 1)
-            seasonality_mode: (multiplicative)
-            weekly_seasonality: Weekly seasonality (True/False)
-            interval_width: width of the uncertainty interval (0 ~ 1)
-            mcmc_samples: uncertainty in seasonality
-        """
-        train = pd.DataFrame({'ds': history.index, 'y': history.values})
-        _ = cfg
-
-        model = Prophet(
-            changepoint_prior_scale=cfg['changepoint_prior_scale'],
-            seasonality_mode=cfg['seasonality_mode'],
-            weekly_seasonality=cfg['weekly_seasonality'],
-            interval_width=cfg['interval_width'],
-            mcmc_samples=cfg['mcmc_samples']
-        )
-
-        # fit model
-        model.fit(train)
-
-        # forecast
-        future = model.make_future_dataframe(periods=pred_step)
-        forecast = model.predict(future)
-        yhat = forecast['yhat'][-pred_step:]
-
-        return yhat
+    # # Facebook Prophet
+    # @staticmethod
+    # def prophet(history: dict, cfg: dict, pred_step=1):
+    #     """
+    #     :param history:
+    #         endog: The observed time-series process
+    #     :param cfg:
+    #         changepoint_prior_scale: Adjusting trend flexibility (0 ~ 1)
+    #         seasonality_mode: (multiplicative)
+    #         weekly_seasonality: Weekly seasonality (True/False)
+    #         interval_width: width of the uncertainty interval (0 ~ 1)
+    #         mcmc_samples: uncertainty in seasonality
+    #     """
+    #     train = pd.DataFrame({'ds': history.index, 'y': history.values})
+    #     _ = cfg
+    #
+    #     with suppress_stdout_stderr():
+    #         model = Prophet(
+    #             weekly_seasonality=True,
+    #             daily_seasonality=False,
+    #         )
+    #
+    #         # model = Prophet(
+    #         #     changepoint_prior_scale=cfg['changepoint_prior_scale'],
+    #         #     seasonality_mode=cfg['seasonality_mode'],
+    #         #     weekly_seasonality=cfg['weekly_seasonality'],
+    #         #     interval_width=cfg['interval_width'],
+    #         #     mcmc_samples=cfg['mcmc_samples']
+    #         # )
+    #
+    #         # fit model
+    #         try:
+    #             model.fit(train)
+    #
+    #             # forecast
+    #             future = model.make_future_dataframe(periods=pred_step)
+    #             forecast = model.predict(future)
+    #             yhat = forecast['yhat'][-pred_step:]
+    #
+    #         except ValueError:
+    #             yhat = None
+    #
+    #     return yhat

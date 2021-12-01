@@ -17,7 +17,7 @@ class Predict(object):
         'var': Algorithm.var,
         'varmax': Algorithm.varmax,
         'sarima': Algorithm.sarimax,
-        'prophet': Algorithm.prophet
+        # 'prophet': Algorithm.prophet
     }
 
     def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
@@ -108,11 +108,17 @@ class Predict(object):
                 prediction = np.clip(prediction, a_min=None, a_max=10**10-1)    # Data clipping
 
                 # Add data level information
-                if hrchy_key[:-1] == 'C1-P5':
-                    result_pred.append([hrchy_key + pred[0] + '-' + pred[5]] + pred[:-1] +
-                                       [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
+                if hrchy_key[:2] == 'C1':
+                    if hrchy_key[3:5] == 'P5':
+                        result_pred.append(
+                            [hrchy_key + pred[0] + '-' + pred[5]] + pred[:-1] +
+                            [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
+                    else:
+                        result_pred.append(
+                            [hrchy_key + pred[0] + '-' + pred[lvl+1]] + pred[:-1] +
+                            [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
                 else:
-                    result_pred.append([hrchy_key + pred[lvl]] + pred[:-1] +
+                    result_pred.append([hrchy_key + pred[lvl+1]] + pred[:-1] +
                                        [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
 
         result_pred = pd.DataFrame(result_pred)
@@ -140,7 +146,7 @@ class Predict(object):
         result_pred = pd.merge(result_pred, self.cal_mst, on='yymmdd', how='left')
 
         # Rename columns
-        result_pred = result_pred.rename(columns=config.COL_RENAME1)
+        result_pred = result_pred.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         result_pred = result_pred.rename(columns=config.COL_RENAME2)
 
         # Prediction information
@@ -161,6 +167,6 @@ class Predict(object):
             suffixes=('', '_DROP')
         ).filter(regex='^(?!.*_DROP)')
         best = best.rename(columns={'create_user': 'create_user_cd'})
-        best = best.drop(columns=['rmse'])
+        best = best.drop(columns=['rmse', 'accuracy'])
 
         return best
