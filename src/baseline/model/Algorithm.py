@@ -1,4 +1,4 @@
-from common.SuppressStdout import suppress_stdout_stderr
+from common.SuppressStdout import SuppressStdout
 
 import ast
 import warnings

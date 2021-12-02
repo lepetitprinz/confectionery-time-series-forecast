@@ -376,7 +376,7 @@ class Train(object):
 
         # Customer Names
         result = result.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
-        result = result.rename(columns=config.COL_RENAME2)
+        result = result.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
 
         # set score_info
         score_info = {

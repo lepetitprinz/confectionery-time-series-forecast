@@ -83,7 +83,7 @@ class MiddleOut(object):
         data['project_cd'] = self.common['project_cd']
         data['data_vrsn_cd'] = self.data_vrsn_cd
         data['division_cd'] = self.division_cd
-        data['fkey'] = 'C1-P5' + '-MIDDLE-OUT' + data['cust_grp_cd'] + '-' + data['item_cd']
+        data['fkey'] = self.hrchy['key'] + 'MIDDLE-OUT-' + data['cust_grp_cd'] + '-' + data['item_cd']
 
         return data
 

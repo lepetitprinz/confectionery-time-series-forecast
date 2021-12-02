@@ -16,7 +16,9 @@ class OpenAPIWeather(object):
 
         # API configuration
         self.info = None
-        self.stn_list = [108, 159]
+        self.stn_list = [98, 99, 101, 105, 108, 112, 114, 119, 127, 131, 133, 136, 138, 140, 143, 146,
+                         152, 155, 156, 159, 162, 165, 174, 177, 184, 192, 232, 236, 253, 257, 279]
+        self.stn_avg_list = [108, 112, 133, 143, 152, 156, 159]    # 서울 / 인천 / 대전 / 대구 / 울산 / 광주 / 부산
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum', 'rain_sum']
 
     def get_api_info(self) -> None:
@@ -43,7 +45,21 @@ class OpenAPIWeather(object):
 
         return data_list
 
-    def save_result(self, data):
+    def save_avg_weather(self) -> None:
+        avg_info = {'api_start_day': self.info['api_start_day'], 'api_end_day': self.info['api_end_day']}
+        weather_avg = self.io.get_df_from_db(sql=self.sql_conf.sql_weather_avg(**avg_info))
+        stn_info = {
+            'idx_dtl_cd': 999,
+            'api_start_day': self.info['api_start_day'],
+            'api_end_day': self.info['api_end_day']
+        }
+        for exg in self.exg_list:
+            stn_info['idx_cd'] = exg
+            temp = weather_avg[weather_avg['idx_cd'] == exg]
+            self.io.delete_from_db(self.sql_conf.del_openapi(**stn_info))
+            self.io.insert_to_db(df=temp, tb_name=self.table_nm)
+
+    def save_result_on_db(self, data) -> None:
         for stn_data, stn_info in data:
             for exg_data, exg_id in stn_data:
                 stn_info['idx_cd'] = exg_id

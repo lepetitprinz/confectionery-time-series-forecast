@@ -701,3 +701,30 @@ class SqlConfig(object):
               WHERE DUP = 1  
             """
         return sql
+
+    @staticmethod
+    def sql_weather_avg(**kwargs):
+        sql = f"""
+            SELECT PROJECT_CD
+                 , IDX_CD
+                 , '999' AS IDX_DTL_CD
+                 , '전국' AS IDX_DTL_NM
+                 , YYMM
+                 , ROUND(AVG(REF_VAL), 2) AS REF_VAL
+                 , 'SYSTEM' AS CREATE_USER_CD
+              FROM (
+                    SELECT PROJECT_CD
+                         , IDX_CD
+                         , YYMM
+                         , REF_VAL
+                      FROM M4S_O110710
+                     WHERE 1 = 1
+                       AND IDX_DTL_CD IN (108, 112, 133, 143, 152, 156, 159)
+                       AND IDX_CD IN ('TEMP_MIN', 'TEMP_AVG', 'TEMP_MAX', 'RAIN_SUM', 'GSR_SUM', 'RHM_SUM')
+                       AND YYMM BETWEEN '{kwargs['api_start_day']}' AND '{kwargs['api_end_day']}'
+                   ) WEATHER
+             GROUP BY PROJECT_CD
+                    , IDX_CD
+                    , YYMM
+        """
+        return sql

@@ -1,7 +1,7 @@
 import os
 
 
-class suppress_stdout_stderr(object):
+class SuppressStdout(object):
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in
     Python, i.e. will suppress all print, even if the print originates in a
@@ -9,7 +9,6 @@ class suppress_stdout_stderr(object):
        This will not suppress raised exceptions, since exceptions are printed
     to stderr just before a script exits, and after the context manager has
     exited (at least, I think that is why it lets exceptions through).
-
     '''
     def __init__(self):
         # Open a pair of null files
@@ -26,6 +25,7 @@ class suppress_stdout_stderr(object):
         # Re-assign the real stdout/stderr back to (1) and (2)
         os.dup2(self.save_fds[0], 1)
         os.dup2(self.save_fds[1], 2)
+
         # Close the null files
         os.close(self.null_fds[0])
         os.close(self.null_fds[1])

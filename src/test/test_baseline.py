@@ -2,7 +2,7 @@ from baseline.deployment.Pipeline import Pipeline
 
 # Sales Data configuration
 division = 'SELL_IN'
-test_vrsn_cd = 'TEST006_ITEM_LVL'
+test_vrsn_cd = 'TEST007_SKU_LVL'
 
 # Level Configuration
 lvl_cfg = {
@@ -26,9 +26,9 @@ exec_cfg = {
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
+    'cls_prep': False,
     'cls_train': False,
-    'cls_pred': False,
+    'cls_pred': True,
     'clss_mdout': False,
     'cls_rpt': False
 }
@@ -36,7 +36,7 @@ step_cfg = {
 # Load result configuration
 exec_rslt_cfg = {
     'train': False,
-    'predict': False,
+    'predict': True,
     'middle_out': False
 }
 

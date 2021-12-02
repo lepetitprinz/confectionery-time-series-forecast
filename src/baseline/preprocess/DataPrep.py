@@ -3,6 +3,7 @@ from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
 import common.util as util
 import common.config as config
 
+from math import ceil
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -19,6 +20,7 @@ class DataPrep(object):
         self.division = division
         self.common = common
         self.date_col = common['date_col']
+        self.target_col = common['target_col']
         self.resample_rule = common['resample_rule']
         self.col_agg_map = {
             'sum': common['agg_sum'].split(','),
@@ -29,6 +31,7 @@ class DataPrep(object):
             end=date['date_to'],
             freq=common['resample_rule']
         )
+        self.date_length = len(self.date_range)
         self.exg_map = config.EXG_MAP    # Exogenous variable map
         self.key_col = ['cust_grp_cd', 'sku_cd']
 
@@ -38,9 +41,10 @@ class DataPrep(object):
 
         # Execute option
         self.imputer = 'knn'
-        self.sigma = 2.5
+        self.sigma = float(common['outlier_sigma'])
         self.outlier_method = 'std'
         self.quantile_range = 0.02
+        self.noise_rate = 0.1
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> tuple:
         # ------------------------------- #
@@ -123,6 +127,8 @@ class DataPrep(object):
 
     def rm_not_exist_sales(self, data) -> pd.DataFrame:
         # Filter recent sales
+        # Todo: middle_out_start_day -> self.date['eval_from']
+        # Todo: middle_out_end_day -> self.date['eval_to']
         data_recent = data[(data[self.date_col] >= int(self.common['middle_out_start_day'])) &
                            (data[self.date_col] <= int(self.common['middle_out_end_day']))]
         key_col_df = data_recent[self.key_col].drop_duplicates().reset_index()
@@ -139,7 +145,7 @@ class DataPrep(object):
         merged = pd.DataFrame()
         for cust_grp in cust_grp_list:
             temp = data[data['cust_grp_cd'] == cust_grp]
-            temp = pd.merge(temp, exg[self.exg_map[cust_grp]], on=self.date_col, how='left')
+            temp = pd.merge(temp, exg[self.exg_map.get(cust_grp, '999')], on=self.date_col, how='left')
             merged = pd.concat([merged, temp])
 
         return merged
@@ -330,36 +336,28 @@ class DataPrep(object):
 
         return seq_to_cust
 
-    # Temp function
-    @staticmethod
-    def make_miss_df(data):
-        results = []
-        hist = []
-        for key_lvl1, val_lvl1 in data.items():
-            for key_lvl2, val_lvl2 in val_lvl1.items():
-                for key_lvl3, val_lvl3 in val_lvl2.items():
-                    for key_lvl4, val_lvl4 in val_lvl3.items():
-                        for key_lvl5, val_lvl5 in val_lvl4.items():
-                            for key_lvl6, val_lvl6 in val_lvl5.items():
-                                results.append([key_lvl1, key_lvl2, key_lvl3, key_lvl4, key_lvl5, key_lvl6,
-                                                val_lvl6[0], val_lvl6[1]])
-                                hist.append([key_lvl6, val_lvl6[0]])
+    def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
+        feature = deepcopy(df[self.target_col])
 
-        miss_df = pd.DataFrame(results, columns=['sp1', 'biz', 'line', 'brand', 'item', 'sku', 'cnt', 'rate'])
-        miss_df.to_csv('missed_rate.csv', index=False, encoding='CP949')
+        # Calculate mean, max, min
+        feat_mean = feature.mean()
+        feat_max = feature.max()
+        feat_min = feature.min()
 
-        # Make histogram
-        hist_df = pd.DataFrame(hist, columns=['sku', 'cnt'])
-        ax = hist_df['cnt'].hist(bins=50)
-        fig = ax.get_figure()
-        fig.savefig('cnt_hist.png')
+        # Set noise range
+        rand_max = ceil(feat_max * self.noise_rate)
+        rand_min = round(feat_min * self.noise_rate)
+        rand_norm = np.random.rand(self.date_length)
 
-    # def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
-    #     vals = df[self.target_col].values * 0.05
-    #     vals = vals.astype(int)
-    #     vals = np.where(vals == 0, 1, vals)
-    #     vals = np.where(vals < 0, vals * -1, vals)
-    #     noise = np.random.randint(-vals, vals)
-    #     df['exo'] = df[self.target_col].values + noise
-    #
-    #     return df
+        rand_list = np.random.randint(0, rand_max, self.date_length) + rand_norm
+        feat_add_noise = feature + rand_list
+        feat_del_noise = feature - rand_list
+
+        if feat_max > 2:
+            values = np.where(feature >= feat_mean, feat_add_noise, feat_del_noise)
+        else:
+            values = feature + rand_norm
+
+        df[self.target_col] = values
+
+        return df

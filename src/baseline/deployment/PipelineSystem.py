@@ -1,6 +1,7 @@
 import common.util as util
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
+from baseline.deployment.Cycle import Cycle
 from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
@@ -40,8 +41,6 @@ class Pipeline(object):
         self.exec_rslt_cfg = exec_rslt_cfg
         self.unit_cfg = unit_cfg
 
-        self.decompose_yn = exec_cfg['decompose_yn']
-
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
@@ -53,11 +52,8 @@ class Pipeline(object):
 
         # Data Configuration
         self.division = division
-        self.date = {
-            'date_from': self.common['rst_start_day'],
-            'date_to': self.common['rst_end_day']
-        }
-        self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
+        self.date = {}
+        self.data_vrsn_cd = self.date['hist_from'] + '-' + self.date['hist_to']
 
         # Data Level Configuration
         self.hrchy = {
@@ -118,6 +114,22 @@ class Pipeline(object):
 
     def run(self):
         # ================================================================================================= #
+        # 0. Set system date period
+        # ================================================================================================= #
+        cycle = Cycle(common=self.common, rule='w')
+        cycle.calc_period()
+        self.date = {
+            'date_from': cycle.hist_period[0],
+            'date_to': cycle.hist_period[1],
+            'hist_from': cycle.hist_period[0],
+            'hist_to': cycle.hist_period[1],
+            'eval_from': cycle.eval_period[0],
+            'eval_to': cycle.eval_period[1],
+            'pred_from': cycle.pred_period[0],
+            'pred_to': cycle.pred_period[1],
+        }
+
+        # ================================================================================================= #
         # 0. Check the data version
         # ================================================================================================= #
         data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
@@ -132,8 +144,8 @@ class Pipeline(object):
             print("Step 1: Load the dataset\n")
             if self.unit_cfg['unit_test_yn']:
                 kwargs = {
-                    'date_from': self.date['date_from'],
-                    'date_to': self.date['date_to'],
+                    'date_from': self.date['hist_from'],
+                    'date_to': self.date['hist_to'],
                     'cust_grp_cd': self.unit_cfg['cust_grp_cd'],
                     'item_cd': self.unit_cfg['item_cd']
                 }
@@ -207,8 +219,8 @@ class Pipeline(object):
             if self.exec_cfg['rm_not_exist_lvl_yn']:
                 sales_recent = self.io.get_df_from_db(
                     sql=self.sql_conf.sql_sell_in_temp(
-                        **{'date_from': self.common['pred_start_day'],
-                           'date_to': self.common['pred_end_day']}))
+                        **{'date_from': self.date['pred_from'],
+                           'date_to':  self.date['pred_to']}))
                 preprocess.sales_recent = sales_recent
 
             # Preprocessing the dataset
@@ -413,8 +425,8 @@ class Pipeline(object):
             )
             # Load compare dataset
             sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(
-                **{'date_from': self.common['middle_out_start_day'],
-                   'date_to': self.common['middle_out_end_day']})
+                **{'date_from': self.date['eval_from'],
+                   'date_to': self.date['eval_to']})
             )
 
             if not self.step_cfg['cls_pred']:
@@ -458,8 +470,8 @@ class Pipeline(object):
 
             # Load compare dataset
             sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(
-               **{'date_from': self.common['pred_start_day'],
-                  'date_to': self.common['pred_end_day']}))
+               **{'date_from': self.date['pred_from'],
+                  'date_to': self.date['pred_to']}))
 
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 

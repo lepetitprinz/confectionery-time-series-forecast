@@ -147,7 +147,7 @@ class Predict(object):
 
         # Rename columns
         result_pred = result_pred.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
-        result_pred = result_pred.rename(columns=config.COL_RENAME2)
+        result_pred = result_pred.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
 
         # Prediction information
         pred_info = {'project_cd': 'ENT001',
