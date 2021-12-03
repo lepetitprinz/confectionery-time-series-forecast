@@ -39,6 +39,7 @@ class Pipeline(object):
         # Path Configuration
         self.path = {
             'load': util.make_path_sim(module='load', division=division, step='load', extension='csv'),
+            'prep': util.make_path_sim(module='prep', division=division, step='prep', extension='pickle'),
 
         }
 
@@ -84,23 +85,21 @@ class Pipeline(object):
 
             # Save step result
             if self.exec_cfg['save_step_yn']:
-                file_path = util.make_path_sim(module='simulation', division=self.division, step='prep',
-                                               extension='pickle')
-                self.io.save_object(data=data_prep, file_path=file_path, data_type='binary')
+                self.io.save_object(data=data_prep, file_path=self.path['prep'], data_type='binary')
 
-        else:
-            file_path = util.make_path_sim(module='simulation', division=self.division, step='prep', extension='pickle')
-            data_prep = self.io.load_object(file_path=file_path, data_type='binary')
-
+            print("Data preprocessing is finished.")
         # ================================================================================================= #
         # 3. Training
         # ================================================================================================= #
         if self.step_cfg['cls_sim_train']:
             print("Step3: Training")
+            if not self.step_cfg['cls_sim_prep']:
+                data_prep = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+
             # Load necessary dataset
             # Algorithm
             algorithms = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'SIM'}))
-            parameters = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
+            best_params = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
 
             # Initiate data preprocessing class
             train = Train(
@@ -109,7 +108,7 @@ class Pipeline(object):
                 hrchy_lvl=self.hrchy_lvl,
                 common=self.common,
                 algorithms=algorithms,
-                parameters=parameters,
+                best_params=best_params,
                 exec_cfg=self.exec_cfg
             )
             train.train(data=data_prep)

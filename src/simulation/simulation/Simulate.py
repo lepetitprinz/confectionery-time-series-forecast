@@ -21,25 +21,26 @@ class Simulate(object):
                   'gb': GradientBoostingRegressor,
                   'et': ExtraTreesRegressor}
 
-    def __init__(self, data_version: str, division_cd: str, hrchy_lvl: int, lag: str,
-                 scaling_yn: bool, save_obj_yn: bool):
+    def __init__(self, common: dict, data_version: str, division_cd: str, hrchy_lvl: int, lag: str,
+                 exe_cfg: dict):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
+        # Execute Configuration
+        self.exe_cfg = exe_cfg
+
         # Data Configuration
+        self.common = common
         self.data_version = data_version
         self.division_cd = division_cd
-        # self.hrchy_lvl = hrchy_lvl
-        self.hrchy_lvl = 5
-        self.date_col = 'yymmdd'
+        self.hrchy_lvl = hrchy_lvl
+        self.date_col = common['date_col']
+        self.target_col = common['target_col']
         self.input_col = 'discount'
-        self.target_col = 'qty'
         self.lag = lag
 
-        # Prediction Option configuration
-        self.scaling_yn = scaling_yn
-        self.save_obj_yn = save_obj_yn
+        # Path Configuration
 
     def simulate(self, discount, hrchy_code):
         pred, sales = self.preprocessing(discount=discount, hrchy_code=hrchy_code)

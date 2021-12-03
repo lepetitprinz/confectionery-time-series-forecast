@@ -24,7 +24,7 @@ class Train(object):
     }
 
     def __init__(self, data_version: str, division: str, hrchy_lvl: int, common, exec_cfg: dict,
-                 algorithms: pd.DataFrame, parameters: pd.DataFrame):
+                 algorithms: pd.DataFrame, best_params: pd.DataFrame):
         # Data Configuration
         self.data_version = data_version
         self.division = division
@@ -39,8 +39,27 @@ class Train(object):
 
         # Algorithm Configuration
         self.algorithms = algorithms['model'].to_list()
-        self.parameters = parameters
+        self.best_params = best_params
         self.param_grids = config.PARAM_GRIDS_SIM
+
+    def init(self):
+        self.prep_params()
+
+    def prep_params(self):
+        best_params = self.best_params
+
+        # convert string type int to int type
+        option_val = [eval(val) if val.isnumeric() else val for val in best_params['option_val']]
+        best_params['option_val'] = option_val
+
+        # convert upper case to lower case
+        best_params['stat_cd'] = best_params['stat_cd'].apply(lambda x: x.lower())
+        best_params['option_cd'] = best_params['option_cd'].apply(lambda x: x.lower())
+
+        # map key-value pair
+        best_params = util.make_lvl_key_val_map(df=best_params, lvl='stat_cd', key='option_cd', val='option_val')
+
+        self.best_params = best_params
 
     def train(self, data):
         util.hrchy_recursion_with_key(
@@ -81,7 +100,7 @@ class Train(object):
                 score, params = self.grid_search_cv(
                     data=data,
                     estimator=self.estimators[estimator],
-                    param_grid=self.parameters['param_grids'][estimator],
+                    param_grid=self.best_params['param_grids'][estimator],
                     scoring=scoring,
                     cv=cv,
                     verbose=verbose
@@ -90,7 +109,7 @@ class Train(object):
                 score, params = self.cross_validation(
                     data=data,
                     estimator=self.estimators[estimator],
-                    param_grid=self.parameters['param_best'][estimator],
+                    param_grid=self.best_params['param_best'][estimator],
                     scoring=scoring,
                     cv=cv,
                     verbose=verbose

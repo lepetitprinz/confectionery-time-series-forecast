@@ -54,7 +54,7 @@ class DataPrep(object):
 
         # convert data type
         for col in self.STR_TYPE_COLS:
-            data[col] = data[col].astype(int).astype(str)
+            data[col] = data[col].astype(str)
 
         # ------------------------------- #
         # 2. Remove sales
@@ -153,7 +153,7 @@ class DataPrep(object):
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         # drop unnecessary columns
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
-        df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
+        # df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
         # Convert unit code
         if self.division == 'SELL_IN':
             conditions = [df['unit_cd'] == 'EA',

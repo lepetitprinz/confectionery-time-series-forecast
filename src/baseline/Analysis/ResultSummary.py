@@ -74,7 +74,6 @@ class ResultSummary(object):
         return info
 
     def make_raw_result(self, sales, pred):
-        hrchy_item = None
         # if self.hrchy['key'][:-1] != 'C1-P5':
         #     sales, hrchy_item = self.resample_sales(data=sales)
 

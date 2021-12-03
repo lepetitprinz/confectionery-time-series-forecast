@@ -14,6 +14,17 @@ warnings.filterwarnings("ignore")
 
 
 class Pipeline(object):
+    day_map = {
+        'SELL_IN': {
+            'rst_from': 'rst_start_day',
+            'rst_to': 'rst_end_day'
+        },
+        'SELL_OUT': {
+            'rst_from': 'rst_start_day_sell_out',
+            'rst_to': 'rst_end_day_sell_out'
+        }
+    }
+
     def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict,
                  unit_cfg: dict, test_vrsn_cd=''):
         """
@@ -54,8 +65,8 @@ class Pipeline(object):
         # Data Configuration
         self.division = division
         self.date = {
-            'date_from': self.common['rst_start_day'],
-            'date_to': self.common['rst_end_day']
+            'date_from': self.common[self.day_map[division]['rst_from']],
+            'date_to': self.common[self.day_map[division]['rst_to']]
         }
         self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
 
@@ -143,7 +154,8 @@ class Pipeline(object):
                     # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
                     sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
                 elif self.division == 'SELL_OUT':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_test(**self.date))
 
                 # Save Step result
                 if self.exec_cfg['save_step_yn']:
@@ -412,10 +424,15 @@ class Pipeline(object):
                 item_mst=item_mst
             )
             # Load compare dataset
-            sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(
-                **{'date_from': self.common['middle_out_start_day'],
-                   'date_to': self.common['middle_out_end_day']})
-            )
+            date_recent = {
+                'date_from': self.common['middle_out_start_day'],
+                'date_to': self.common['middle_out_end_day']
+            }
+            sales_recent = None
+            if self.division == 'SELL_IN':
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(**date_recent))
+            elif self.division == 'SELL_OUT':
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_temp(**date_recent))
 
             if not self.step_cfg['cls_pred']:
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
@@ -457,9 +474,15 @@ class Pipeline(object):
                     pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Load compare dataset
-            sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(
-               **{'date_from': self.common['pred_start_day'],
-                  'date_to': self.common['pred_end_day']}))
+            date_compare = {
+                'date_from': self.common['pred_start_day'],
+                  'date_to': self.common['pred_end_day']
+            }
+            sales_comp = None
+            if self.division == 'SELL_IN':
+                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(**date_compare))
+            elif self.division == 'SELL_OUT':
+                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_temp(**date_compare))
 
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 

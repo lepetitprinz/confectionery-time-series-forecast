@@ -464,23 +464,6 @@ class SqlConfig(object):
     # Temp Query
     ###################
     # SELL-OUT Table
-    @staticmethod
-    def sql_sell_out_temp(**kwargs):
-        sql = f"""
-            SELECT DIVISION_CD
-                 , SOLD_CUST_GRP_CD AS CUST_CD
-                 , ITEM_CD AS SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , DISCOUNT
-                 , WEEK
-                 , RST_SALES_QTY AS QTY
-                 , CREATE_DATE
-              FROM M4S_I002173
-             WHERE YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
-        """
-        return sql
-
     # SELL-IN Table
     @staticmethod
     def sql_sell_in_test(**kwargs):
@@ -502,8 +485,7 @@ class SqlConfig(object):
                  , QTY
                  , CREATE_DATE
               FROM (
-                    SELECT PROJECT_CD
-                         , DIVISION_CD
+                    SELECT DIVISION_CD
                          , SOLD_CUST_GRP_CD AS CUST_GRP_CD
                          , ITEM_CD AS SKU_CD
                          , YYMMDD
@@ -726,5 +708,77 @@ class SqlConfig(object):
              GROUP BY PROJECT_CD
                     , IDX_CD
                     , YYMM
+        """
+        return sql
+
+    @staticmethod
+    def sql_sell_out_test(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , ITEM_ATTR01_CD AS BIZ_CD
+                 , ITEM_ATTR02_CD AS LINE_CD
+                 , ITEM_ATTR03_CD AS BRAND_CD
+                 , ITEM_ATTR04_CD AS ITEM_CD
+                 , MAP.ITEM_CD AS SKU_CD
+                 , YYMMDD
+                 , SEQ
+                 , DISCOUNT
+                 , WEEK
+                 , QTY
+                 , SELL.CREATE_DATE
+              FROM (
+                    SELECT DIVISION_CD
+                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+                         , ITEM_CD AS SKU_CD
+                         , YYMMDD
+                         , SEQ
+                         , DISCOUNT
+                         , WEEK
+                         , RST_SALES_QTY AS QTY
+                         , CREATE_DATE
+                      FROM M4S_I002173_SELL_OUT
+                     WHERE 1=1
+                       AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                  ) SELL
+             INNER JOIN M4S_I002173_CODE_MAP MAP
+                ON SELL.SKU_CD = MAP.BAR_CD
+        """
+        return sql
+
+    @staticmethod
+    def sql_sell_out_temp(**kwargs):
+        sql = f"""
+        SELECT DIVISION_CD
+             , CUST_GRP_CD
+             , SKU_CD
+             , YY
+             , WEEK
+             , SUM(RST_SALES_QTY) AS SALES
+          FROM (
+                SELECT DIVISION_CD
+                     , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+                     , MAP.ITEM_CD          as SKU_CD
+                     , YY
+                     , WEEK
+                     , RST_SALES_QTY
+                  FROM (
+                        SELECT *
+                         FROM M4S_I002173_SELL_OUT
+                        WHERE 1 = 1
+                          AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                       ) SALES
+                 INNER JOIN (
+                             SELECT BAR_CD
+                                  , ITEM_CD
+                               FROM M4S_I002173_CODE_MAP
+                            ) MAP
+                    ON SALES.ITEM_CD = MAP.BAR_CD
+               ) SALES
+        GROUP BY DIVISION_CD
+               , CUST_GRP_CD
+               , SKU_CD
+               , YY
+               , WEEK
         """
         return sql
