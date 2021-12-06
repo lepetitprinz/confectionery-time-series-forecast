@@ -33,7 +33,10 @@ class Pipeline(object):
         }
         self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
         # Data Level Configuration
-        self.hrchy_lvl = hrchy_lvl
+        self.hrchy = {
+            'cnt': 0,
+            'lvl': hrchy_lvl
+        }
         self.lag = lag
 
         # Path Configuration
@@ -53,7 +56,7 @@ class Pipeline(object):
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
             elif self.division == 'SELL_OUT':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
@@ -76,25 +79,27 @@ class Pipeline(object):
                 date=self.date,
                 common=self.common,
                 division=self.division,
-                hrchy_lvl=self.hrchy_lvl,
+                hrchy=self.hrchy,
                 lag=self.lag,
             )
 
             # Preprocessing the dataset
-            data_prep = preprocess.preprocess(sales=sales, exg=exg)
+            data_prep, hrchy_cnt = preprocess.preprocess(sales=sales, exg=exg)
+            self.hrchy['cnt'] = hrchy_cnt
 
             # Save step result
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=data_prep, file_path=self.path['prep'], data_type='binary')
+                self.io.save_object(data=(data_prep, hrchy_cnt), file_path=self.path['prep'], data_type='binary')
 
-            print("Data preprocessing is finished.")
+            print("Data preprocessing is finished.\n")
         # ================================================================================================= #
         # 3. Training
         # ================================================================================================= #
         if self.step_cfg['cls_sim_train']:
             print("Step3: Training")
             if not self.step_cfg['cls_sim_prep']:
-                data_prep = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                data_prep, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                self.hrchy['cnt'] = hrchy_cnt
 
             # Load necessary dataset
             # Algorithm
@@ -105,10 +110,10 @@ class Pipeline(object):
             train = Train(
                 data_version=self.data_vrsn_cd,
                 division=self.division,
-                hrchy_lvl=self.hrchy_lvl,
+                hrchy=self.hrchy,
                 common=self.common,
                 algorithms=algorithms,
-                best_params=best_params,
                 exec_cfg=self.exec_cfg
             )
+            train.prep_params(best_params)
             train.train(data=data_prep)

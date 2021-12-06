@@ -8,7 +8,7 @@ class DataPrep(object):
     str_type_col = ['cust_grp_cd', 'sku_cd']
     drop_col = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week']
 
-    def __init__(self, division: str, hrchy_lvl: int, lag: str, common: dict, date: dict):
+    def __init__(self, division: str, hrchy: dict, lag: str, common: dict, date: dict):
         self.division = division
         self.date_col = common['date_col']
         self.input_col = ['discount']
@@ -24,8 +24,8 @@ class DataPrep(object):
         self.lag = lag
 
         # Data Configuration
-        self.hrchy_lvl = hrchy_lvl
-        self.hrchy_list = common['hrchy_item'].split(',')[:hrchy_lvl]
+        self.hrchy = hrchy
+        self.hrchy_list = common['hrchy_item'].split(',')[:hrchy['lvl']]
 
         #
         self.exg_list = []
@@ -62,24 +62,24 @@ class DataPrep(object):
 
         data = data.set_index(keys=self.date_col)
 
-        data_group, hrchy_cnt = util.group(data=data, hrchy=self.hrchy_list, hrchy_lvl=self.hrchy_lvl-1)
+        data_group, hrchy_cnt = util.group(data=data, hrchy=self.hrchy_list, hrchy_lvl=self.hrchy['lvl']-1)
 
         # Resampling
-        data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
+        data_resample = util.hrchy_recursion(hrchy_lvl=self.hrchy['lvl']-1,
                                              fn=self.resample,
                                              df=data_group)
 
         # Drop columns
-        data_drop = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
+        data_drop = util.hrchy_recursion(hrchy_lvl=self.hrchy['lvl']-1,
                                          fn=self.drop_column,
                                          df=data_resample)
 
         # lag sales data
-        data_rag = util.hrchy_recursion(hrchy_lvl=self.hrchy_lvl-1,
+        data_rag = util.hrchy_recursion(hrchy_lvl=self.hrchy['lvl']-1,
                                         fn=self.lagging,
                                         df=data_drop)
 
-        return data_rag
+        return data_rag, hrchy_cnt
 
     def resample(self, df: pd.DataFrame):
         # Split by aggregation method
@@ -112,7 +112,7 @@ class DataPrep(object):
         #     df_resampled = df_resampled.append(df_add)
         #     df_resampled = df_resampled.sort_index()
 
-        cols = self.hrchy_list[:self.hrchy_lvl + 1]
+        cols = self.hrchy_list[:self.hrchy['lvl'] + 1]
         data_level = df[cols].iloc[0].to_dict()
         data_lvl = pd.DataFrame(data_level, index=df_resampled.index)
         df_resampled = pd.concat([data_lvl, df_resampled], axis=1)

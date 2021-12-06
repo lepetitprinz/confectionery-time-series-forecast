@@ -1,15 +1,21 @@
-from baseline.deployment.Pipeline import Pipeline
+from baseline.deployment.PipelineBak import PipelineBak
 
 # Sales Data configuration
-# division : SELL_IN / SELL_OUT / 7-11
-division = 'SELL_IN'
-# division = 'SELL_OUT'
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT / 7-11
+cycle = 'w'    # w(week) / m(month)
 test_vrsn_cd = 'TEST006_SKU_LVL'
+
+# Data Configuration
+data_cfg = {
+    'division': division,
+    'cycle': cycle,
+    'test_vrsn_cd': test_vrsn_cd
+}
 
 # Level Configuration
 lvl_cfg = {
     'cust_lvl': 1,   # SP1
-    'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
+    'item_lvl': 3,    # Biz - Line - Brand - Item - SKU
 }
 # Configuration
 exec_cfg = {
@@ -28,11 +34,11 @@ exec_cfg = {
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': False,
+    'cls_prep': True,
+    'cls_train': True,
     'cls_pred': False,
     'clss_mdout': False,
-    'cls_rpt': True
+    'cls_rpt': False
 }
 
 # Load result configuration
@@ -49,8 +55,8 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = Pipeline(
-    division=division,
+pipeline = PipelineBak(
+    data_cfg=data_cfg,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,

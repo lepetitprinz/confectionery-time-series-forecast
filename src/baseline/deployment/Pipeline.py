@@ -155,7 +155,7 @@ class Pipeline(object):
                     sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
                 elif self.division == 'SELL_OUT':
                     # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_test(**self.date))
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_test(**self.date))
 
                 # Save Step result
                 if self.exec_cfg['save_step_yn']:
@@ -218,7 +218,7 @@ class Pipeline(object):
 
             if self.exec_cfg['rm_not_exist_lvl_yn']:
                 sales_recent = self.io.get_df_from_db(
-                    sql=self.sql_conf.sql_sell_in_temp(
+                    sql=self.sql_conf.sql_sell_in_week_grp_test(
                         **{'date_from': self.common['pred_start_day'],
                            'date_to': self.common['pred_end_day']}))
                 preprocess.sales_recent = sales_recent
@@ -430,15 +430,33 @@ class Pipeline(object):
             }
             sales_recent = None
             if self.division == 'SELL_IN':
-                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(**date_recent))
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent))
             elif self.division == 'SELL_OUT':
-                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_temp(**date_recent))
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
 
             if not self.step_cfg['cls_pred']:
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Run middle-out
             if not self.exec_rslt_cfg['predict']:
+                day_map = {
+                    'SELL_IN': {
+                        'week': {
+                            'rst_from': 'rst_start_day',
+                            'rst_to': 'rst_end_day'
+                        },
+                    },
+                    'SELL_OUT': {
+                        'week': {
+                            'rst_from': 'rst_start_day_sell_out',
+                            'rst_to': 'rst_end_day_sell_out'
+                        },
+                        'month': {
+                            'rst_from': 'rst_start_day_sell_out_month',
+                            'rst_to': 'rst_end_day_sell_out_out_month'
+                        }
+                    }
+                }
                 data_ratio = md_out.prep_ratio(data=sales_recent)
                 data_split = md_out.prep_split(data=pred_best)
                 middle_out = md_out.middle_out(data_split=data_split, data_ratio=data_ratio)
@@ -478,12 +496,18 @@ class Pipeline(object):
                 'date_from': self.common['pred_start_day'],
                   'date_to': self.common['pred_end_day']
             }
+            date_recent = {
+                'date_from': self.common['middle_out_start_day'],
+                'date_to': self.common['middle_out_end_day']
+            }
             sales_comp = None
+            sales_recent = None
             if self.division == 'SELL_IN':
-                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_temp(**date_compare))
+                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(**date_compare))
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent))
             elif self.division == 'SELL_OUT':
-                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_temp(**date_compare))
-
+                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_compare))
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
             report = ResultSummary(
@@ -494,7 +518,7 @@ class Pipeline(object):
                 hrchy=self.hrchy,
                 item_mst=item_mst
             )
-            result = report.compare_result(sales=sales_comp, pred=pred_best)
+            result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
             result, result_info = report.make_db_format(data=result)
 
             # Remove Special Character

@@ -23,12 +23,13 @@ class Train(object):
         'et': ExtraTreesRegressor
     }
 
-    def __init__(self, data_version: str, division: str, hrchy_lvl: int, common, exec_cfg: dict,
-                 algorithms: pd.DataFrame, best_params: pd.DataFrame):
+    def __init__(self, data_version: str, division: str, hrchy: dict, common, exec_cfg: dict,
+                 algorithms: pd.DataFrame):
         # Data Configuration
         self.data_version = data_version
         self.division = division
-        self.hrchy_lvl = hrchy_lvl
+        self.cnt = 0
+        self.hrchy = hrchy
         self.target_col = common['target_col']
         self.exec_cfg = exec_cfg
 
@@ -39,15 +40,13 @@ class Train(object):
 
         # Algorithm Configuration
         self.algorithms = algorithms['model'].to_list()
-        self.best_params = best_params
+        self.best_params = {}
         self.param_grids = config.PARAM_GRIDS_SIM
 
     def init(self):
         self.prep_params()
 
-    def prep_params(self):
-        best_params = self.best_params
-
+    def prep_params(self, best_params):
         # convert string type int to int type
         option_val = [eval(val) if val.isnumeric() else val for val in best_params['option_val']]
         best_params['option_val'] = option_val
@@ -63,33 +62,39 @@ class Train(object):
 
     def train(self, data):
         util.hrchy_recursion_with_key(
-            hrchy_lvl=self.hrchy_lvl-1,
-            fn=self.train_best,
+            hrchy_lvl=self.hrchy['lvl'] - 1,
+            fn=self.train_model,
             df=data
         )
 
         print("Training is finished.")
 
-    def train_best(self, hrchy_code, data):
+    def train_model(self, hrchy_code, data):
+        # Show training progress
+        self.cnt += 1
+        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+
         # Split dataset
         data_split = self.split_data(data=data)
+        best_model = None
+        if len(data_split['y_train']) >= self.cv:
+            # Scaling
+            if self.exec_cfg['scaling_yn']:
+                scaler, x_scaled = self.scaling(data=data_split['x_train'])
+                data_split['x_train'] = x_scaled
+                self.save_scaler(scaler=scaler, hrchy_code=hrchy_code)
 
-        # Scaling
-        if self.exec_cfg['scaling_yn']:
-            scaler, x_scaled = self.scaling(data=data_split['x_train'])
-            data_split['x_train'] = x_scaled
-            self.save_scaler(scaler=scaler, hrchy_code=hrchy_code)
-
-        best_model = self.evaluation(
-            data=data_split,
-            estimators=self.algorithms,
-            grid_search_yn=self.exec_cfg['grid_search_yn'],
-            scoring=self.scoring,
-            cv=self.cv,
-            verbose=self.verbose
-        )
-        if self.exec_cfg['save_step_yn']:
-            self.save_best_model(estimator=best_model, hrchy_code=hrchy_code)
+            best_model = self.evaluation(
+                data=data_split,
+                estimators=self.algorithms,
+                grid_search_yn=self.exec_cfg['grid_search_yn'],
+                scoring=self.scoring,
+                cv=self.cv,
+                verbose=self.verbose
+            )
+            if self.exec_cfg['save_step_yn']:
+                self.save_best_model(estimator=best_model, hrchy_code=hrchy_code)
 
     def evaluation(self, data, estimators: list, grid_search_yn: bool, verbose: bool,
                    scoring='neg_root_mean_squared_error', cv=5):
@@ -100,7 +105,7 @@ class Train(object):
                 score, params = self.grid_search_cv(
                     data=data,
                     estimator=self.estimators[estimator],
-                    param_grid=self.best_params['param_grids'][estimator],
+                    param_grid=self.param_grids[estimator],
                     scoring=scoring,
                     cv=cv,
                     verbose=verbose
@@ -109,7 +114,7 @@ class Train(object):
                 score, params = self.cross_validation(
                     data=data,
                     estimator=self.estimators[estimator],
-                    param_grid=self.best_params['param_best'][estimator],
+                    param_grid=self.best_params[estimator],
                     scoring=scoring,
                     cv=cv,
                     verbose=verbose
@@ -161,8 +166,11 @@ class Train(object):
     def cross_validation(data: dict, estimator, param_grid: dict, scoring: str, cv: int, verbose: bool):
         regr = estimator()
         regr.set_params(**param_grid)
-        scores = cross_val_score(regr, data['x_train'], data['y_train'], scoring=scoring, cv=cv)
-        score = sum(scores) / len(scores)
+        if len(data['y_train']) >= cv:
+            scores = cross_val_score(regr, data['x_train'], data['y_train'], scoring=scoring, cv=cv)
+            score = sum(scores) / len(scores)
+        else:
+            regr.fit(data['x_train'], data['y_train'])
 
         if verbose:
             print(f'Estimator: {type(regr).__name__}, Score: {score}')
@@ -171,14 +179,14 @@ class Train(object):
 
     def save_best_model(self, estimator, hrchy_code: str):
         f = open(os.path.join('..', '..', 'simulation', 'best_models',
-                 self.data_version + '_' + self.division + '_' + str(self.hrchy_lvl) +
+                 self.data_version + '_' + self.division + '_' + str(self.hrchy['lvl']) +
                               '_' + hrchy_code + '.pickle'), 'wb')
         pickle.dump(estimator, f)
         f.close()
 
     def save_scaler(self, scaler, hrchy_code: str):
         f = open(os.path.join('..', '..', 'simulation', 'scaler',
-                 self.data_version + '_' + self.division + '_' + str(self.hrchy_lvl) +
+                 self.data_version + '_' + self.division + '_' + str(self.hrchy['lvl']) +
                               '_' + hrchy_code + '.pickle'), 'wb')
         pickle.dump(scaler, f)
         f.close()

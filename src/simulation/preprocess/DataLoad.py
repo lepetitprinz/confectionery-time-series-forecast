@@ -41,7 +41,7 @@ class DataLoad(object):
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
                 self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))
             elif self.division == 'SELL_OUT':
-                self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
 
             if self.exec_cfg['save_step_yn']:
                 file_path = util.make_path_sim(module='simulation', division=self.division, step='load',

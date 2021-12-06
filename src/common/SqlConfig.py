@@ -173,7 +173,7 @@ class SqlConfig(object):
 
     # SELL-OUT Table
     @staticmethod
-    def sql_sell_out(**kwargs):
+    def sql_sell_out_week(**kwargs):
         sql = f""" 
            SELECT DIVISION_CD
                 , CUST_CD
@@ -355,6 +355,7 @@ class SqlConfig(object):
                  , ITEM_ATTR02_CD
                  , ITEM_ATTR03_CD
                  , ITEM_ATTR04_CD
+                 , ITEM_CD
                  , WEEK
                  , YYMMDD
                  , SUM(RESULT_SALES) AS QTY
@@ -374,28 +375,49 @@ class SqlConfig(object):
                      AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                      AND DIVISION_CD = '{kwargs['division_cd']}'
                      AND FKEY LIKE '%{kwargs['fkey']}%'
-                     AND ITEM_ATTR04_CD ='{kwargs['item_cd']}'
+                     AND ITEM_CD ='{kwargs['item_cd']}'
                   ) PRED
              GROUP BY DATA_VRSN_CD
                     , DIVISION_CD
+                    , YYMMDD
+                    , WEEK
                     , ITEM_ATTR01_CD
                     , ITEM_ATTR02_CD
                     , ITEM_ATTR03_CD
                     , ITEM_ATTR04_CD
-                    , YYMMDD
-                    , WEEK
+                    , ITEM_CD
                 """
         return sql
 
     @staticmethod
     def sql_sales_item(**kwargs):
         sql = f"""
-            SELECT YYMMDD
-                 , RST_SALES_QTY AS QTY_LAG
-              FROM M4S_I002175
-             WHERE ITEM_ATTR04_CD = '{kwargs['item_cd']}'
-               AND YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
+        SELECT * 
+          FROM (
+                SELECT CAL.YYMMDD
+                     , RST_SALES_QTY AS QTY_LAG
+                  FROM (
+                        SELECT *
+                          FROM M4S_I002175
+                         WHERE DIVISION_CD = '{kwargs['division_cd']}'
+                           AND ITEM_CD = '{kwargs['item_cd']}'
+                       ) SALES
+                  LEFT OUTER JOIN (
+                                   SELECT START_WEEK_DAY AS YYMMDD
+                                        , YY
+                                        , WEEK
+                                     FROM M4S_I002030
+                                   GROUP BY START_WEEK_DAY
+                                          , YY
+                                          , WEEK
+                                  ) CAL
+                    ON SALES.YYMMDD = CAL.YY
+                   AND SALES.WEEK = CAL.WEEK
+            ) RSLT
+          WHERE 1=1
+            AND YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
                 """
+
         return sql
 
     ###################
@@ -454,14 +476,26 @@ class SqlConfig(object):
         DELETE
           FROM M4S_O110620
          WHERE PROJECT_CD = '{kwargs['project_cd']}'
-           AND DATA_VRSN_CD = '{kwargs['project_cd']}'
+           AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
            AND DIVISION_CD = '{kwargs['division_cd']}'
            AND TEST_VRSN_CD = '{kwargs['test_vrsn_cd']}'
         """
         return sql
 
+    @staticmethod
+    def del_sim_result(**kwargs):
+        sql = f"""
+        DELETE
+          FROM M4S_I110500
+         WHERE PROJECT_CD = '{kwargs['project_cd']}'
+           AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+           AND DIVISION_CD = '{kwargs['division_cd']}'
+           AND ITEM_CD = '{kwargs['item_cd']}'
+        """
+        return sql
+
     ###################
-    # Temp Query
+    # Temp & Test Query
     ###################
     # SELL-OUT Table
     # SELL-IN Table
@@ -571,7 +605,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_sell_in_temp(**kwargs):
+    def sql_sell_in_week_grp_test(**kwargs):
         sql = f""" 
                SELECT DIVISION_CD
                     , SOLD_CUST_GRP_CD AS CUST_GRP_CD
@@ -701,7 +735,7 @@ class SqlConfig(object):
                          , REF_VAL
                       FROM M4S_O110710
                      WHERE 1 = 1
-                       AND IDX_DTL_CD IN (108, 112, 133, 143, 152, 156, 159)
+                       AND IDX_DTL_CD IN (108, 112, 133, 143, 152, 156, 159)    -- region
                        AND IDX_CD IN ('TEMP_MIN', 'TEMP_AVG', 'TEMP_MAX', 'RAIN_SUM', 'GSR_SUM', 'RHM_SUM')
                        AND YYMM BETWEEN '{kwargs['api_start_day']}' AND '{kwargs['api_end_day']}'
                    ) WEATHER
@@ -712,7 +746,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_sell_out_test(**kwargs):
+    def sql_sell_out_week_test(**kwargs):
         sql = f"""
             SELECT DIVISION_CD
                  , CUST_GRP_CD
@@ -741,13 +775,33 @@ class SqlConfig(object):
                      WHERE 1=1
                        AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
                   ) SELL
-             INNER JOIN M4S_I002173_CODE_MAP MAP
+             INNER JOIN M4S_I002179 MAP
                 ON SELL.SKU_CD = MAP.BAR_CD
         """
         return sql
 
     @staticmethod
-    def sql_sell_out_temp(**kwargs):
+    def sql_sell_out_month_test(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+                 , ITEM.SAP_CD AS SKU_CD
+                 , YYMMDD
+                 , SEQ
+                 , DISCOUNT
+                 , WEEK
+                 , RST_SALES_QTY AS QTY
+                 , CREATE_DATE
+              FROM M4S_I002173_SELL_OUT SALES
+             INNER JOIN TEST_NEW.dbo.SELLOUT_PAST_K7_MASTER ITEM
+                ON SALES.ITEM_CD = ITEM.K7_CD
+             WHERE SALES.SOLD_CUST_GRP_CD = '1173'
+               AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+        """
+        return sql
+
+    @staticmethod
+    def sql_sell_out_week_grp_test(**kwargs):
         sql = f"""
         SELECT DIVISION_CD
              , CUST_GRP_CD
@@ -771,7 +825,7 @@ class SqlConfig(object):
                  INNER JOIN (
                              SELECT BAR_CD
                                   , ITEM_CD
-                               FROM M4S_I002173_CODE_MAP
+                               FROM M4S_I002179
                             ) MAP
                     ON SALES.ITEM_CD = MAP.BAR_CD
                ) SALES
@@ -782,3 +836,7 @@ class SqlConfig(object):
                , WEEK
         """
         return sql
+
+    @staticmethod
+    def sql_sell_out_month_grp_test(**kwargs):
+        pass

@@ -14,14 +14,12 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 
-    def __init__(self, date: dict, division: str, common: dict, hrchy: dict, exec_cfg: dict):
+    def __init__(self, date: dict, common: dict, hrchy: dict, data_cfg: dict, exec_cfg: dict):
         # Dataset configuration
-        self.exec_cfg = exec_cfg
-        self.division = division
         self.common = common
-        self.date_col = common['date_col']
-        self.target_col = common['target_col']
-        self.resample_rule = common['resample_rule']
+        self.data_cfg = data_cfg
+        self.exec_cfg = exec_cfg
+        self.resample_rule = data_cfg['cycle']
         self.col_agg_map = {
             'sum': common['agg_sum'].split(','),
             'avg': common['agg_avg'].split(',')
@@ -63,7 +61,7 @@ class DataPrep(object):
             data = self.rm_not_exist_sales(data=data)
 
         # convert datetime column
-        data[self.date_col] = data[self.date_col].astype(np.int64)
+        data[self.common['date_col']] = data[self.common['date_col']].astype(np.int64)
 
         # 2. Preprocess Exogenous dataset
         exg = util.prep_exg_all(data=exg)
@@ -89,7 +87,7 @@ class DataPrep(object):
         if self.exec_cfg['decompose_yn']:
             decompose = Decomposition(
                 common=self.common,
-                division=self.division,
+                division=self.data_cfg['division'],
                 hrchy=self.hrchy,
                 date_range=self.date_range
             )
@@ -129,8 +127,8 @@ class DataPrep(object):
         # Filter recent sales
         # Todo: middle_out_start_day -> self.date['eval_from']
         # Todo: middle_out_end_day -> self.date['eval_to']
-        data_recent = data[(data[self.date_col] >= int(self.common['middle_out_start_day'])) &
-                           (data[self.date_col] <= int(self.common['middle_out_end_day']))]
+        data_recent = data[(data[self.common['date_col']] >= int(self.common['middle_out_start_day'])) &
+                           (data[self.common['date_col']] <= int(self.common['middle_out_end_day']))]
         key_col_df = data_recent[self.key_col].drop_duplicates().reset_index()
         key_col_df['key'] = key_col_df[self.key_col[0]] + '-' + key_col_df[self.key_col[1]]
         data['key'] = data[self.key_col[0]] + '-' + data[self.key_col[1]]
@@ -145,7 +143,7 @@ class DataPrep(object):
         merged = pd.DataFrame()
         for cust_grp in cust_grp_list:
             temp = data[data['cust_grp_cd'] == cust_grp]
-            temp = pd.merge(temp, exg[self.exg_map.get(cust_grp, '999')], on=self.date_col, how='left')
+            temp = pd.merge(temp, exg[self.exg_map.get(cust_grp, '999')], on=self.common['date_col'], how='left')
             merged = pd.concat([merged, temp])
 
         return merged
@@ -155,7 +153,7 @@ class DataPrep(object):
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
         # df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
         # Convert unit code
-        if self.division == 'SELL_IN':
+        if self.data_cfg['division'] == 'SELL_IN':
             conditions = [df['unit_cd'] == 'EA',
                           df['unit_cd'] == 'BOL',
                           df['unit_cd'] == 'BOX']
@@ -167,8 +165,8 @@ class DataPrep(object):
             df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
 
         # convert to datetime
-        df[self.date_col] = pd.to_datetime(df[self.date_col], format='%Y%m%d')
-        df = df.set_index(keys=[self.date_col])
+        df[self.common['date_col']] = pd.to_datetime(df[self.common['date_col']], format='%Y%m%d')
+        df = df.set_index(keys=[self.common['date_col']])
 
         # add noise feature
         # df = self.add_noise_feat(df=df)
@@ -337,7 +335,7 @@ class DataPrep(object):
         return seq_to_cust
 
     def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
-        feature = deepcopy(df[self.target_col])
+        feature = deepcopy(df[self.common['target_col']])
 
         # Calculate mean, max, min
         feat_mean = feature.mean()
@@ -358,6 +356,6 @@ class DataPrep(object):
         else:
             values = feature + rand_norm
 
-        df[self.target_col] = values
+        df[self.common['target_col']] = values
 
         return df

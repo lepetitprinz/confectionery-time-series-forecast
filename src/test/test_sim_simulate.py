@@ -1,31 +1,42 @@
 from simulation.simulation.Simulate import Simulate
 
-import pandas as pd
-
 # simulation configuration
-data_version = '20210101-20210530'
-division_cd = 'sell_in'
-hrchy_lvl = 4
-hrchy_code = 'P11100101'
+data_version = '20180102-20210103'
+division_cd = 'SELL_IN'
+item_cd = '5140889'
+
+lag = 'w1'
+
+exec_cfg = {
+    'save_step_yn': True,
+    'save_db_yn': False,
+    'scaling_yn': False,     # Data scaling
+    'grid_search_yn': False    # Grid Search
+}
 
 save_obj_yn = True
 scaling_yn = True
 save_db_yn = False
 
 # simulation data
-data = {'yymmdd': ['20210606', '20210613', '20210620', '20210627'],
-        'discount': [0, 10, 5, 20]}
-lag = 'w1'
-discount = pd.DataFrame(data)
+
+discount = 0.2
+date_from = '20210105'
+date_to = '20210212'
+
+date = {'date_from': date_from, 'date_to': date_to}
 
 sim = Simulate(
     data_version=data_version,
     division_cd=division_cd,
-    hrchy_lvl=hrchy_lvl,
+    date=date,
     lag=lag,
-    scaling_yn=scaling_yn,
-    save_obj_yn=save_obj_yn
+    exec_cfg=exec_cfg,
+    item_cd=item_cd,
+    discount=discount
 )
 
-result = sim.simulate(discount=discount, hrchy_code=hrchy_code)
+result = sim.simulate()
+sim.save_result(result=result)
 print(result)
+

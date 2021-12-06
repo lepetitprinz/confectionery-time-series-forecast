@@ -8,6 +8,27 @@ PORT = '1433'
 USER = 'matrix'    # User name
 PASSWORD = 'Diam0nd123!'     # User password
 
+#
+day_map = {
+    'SELL_IN': {
+        'week': {
+            'rst_from': 'rst_start_day',
+            'rst_to': 'rst_end_day'
+        },
+    },
+    'SELL_OUT': {
+        'week': {
+            'rst_from': 'rst_start_day_sell_out',
+            'rst_to': 'rst_end_day_sell_out'
+        },
+        'month': {
+            'rst_from': 'rst_start_day_sell_out_month',
+            'rst_to': 'rst_end_day_sell_out_out_month'
+        }
+    }
+}
+
+
 # Model Hyper-parameters
 # 1.Time Series Forecast
 PARAM_GRIDS_FCST = {
@@ -70,7 +91,6 @@ HRCHY_CD_TO_DB_CD_MAP = {
 }
 
 HRCHY_SKU_TO_DB_SKU_MAP = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
-
 #
 COL_CUST = ['cust_grp_cd', 'cust_grp_nm']
 COL_ITEM = ['biz_cd', 'biz_nm', 'line_cd', 'line_nm', 'brand_cd', 'brand_nm',

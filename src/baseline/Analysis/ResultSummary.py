@@ -1,4 +1,5 @@
 import common.util as util
+import common.config as config
 
 import numpy as np
 import pandas as pd
@@ -30,6 +31,7 @@ class ResultSummary(object):
         self.hrchy_item_nm_list = common['db_hrchy_item_nm'].split(',')
 
         self.str_type_cols = ['cust_grp_cd', 'sku_cd', self.common['date_col']]
+        self.key_col = ['cust_grp_cd', 'sku_cd']
         self.pred_date_range = pd.date_range(
             start=common['pred_start_day'],
             end=common['pred_end_day'],
@@ -44,8 +46,11 @@ class ResultSummary(object):
                 step='summary', extension='csv')
         }
 
-    def compare_result(self, sales, pred):
-        raw_all = self.make_raw_result(sales=sales, pred=pred)
+    def compare_result(self, sales_comp, sales_recent, pred):
+        raw_all = self.make_raw_result(
+            sales_comp=sales_comp,
+            sales_recent=sales_recent,
+            pred=pred)
         # self.make_summary(df=raw_all)
 
         return raw_all
@@ -73,9 +78,19 @@ class ResultSummary(object):
 
         return info
 
-    def make_raw_result(self, sales, pred):
+    def filter_recent_exist_sales(self, sales_recent: pd.DataFrame, pred: pd.DataFrame):
+        key_col_df = sales_recent[self.key_col].drop_duplicates().reset_index()
+        key_col_df['key'] = key_col_df[self.key_col[0]] + '-' + key_col_df[self.key_col[1]]
+        pred['key'] = pred[self.key_col[0]] + '-' + pred[config.HRCHY_SKU_TO_DB_SKU_MAP[self.key_col[1]]]
+        masked = pred[pred['key'].isin(key_col_df['key'])]
+        masked = masked.drop(columns=['key'])
+
+        return masked
+
+    def make_raw_result(self, sales_comp, sales_recent, pred):
         # if self.hrchy['key'][:-1] != 'C1-P5':
         #     sales, hrchy_item = self.resample_sales(data=sales)
+        pred = self.filter_recent_exist_sales(sales_recent=sales_recent, pred=pred)
 
         # If execute middle out
         if self.hrchy['lvl']['item'] < 5:
@@ -90,7 +105,7 @@ class ResultSummary(object):
 
         merged = pd.merge(
             pred,
-            sales,
+            sales_comp,
             on=['division_cd', 'yy', 'week', 'cust_grp_cd', 'sku_cd'],
             how='left',
             suffixes=('', '_DROP')

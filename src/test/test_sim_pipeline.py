@@ -15,7 +15,7 @@ exec_cfg = {
 # Step Configuration
 step_cfg = {
     'cls_sim_load': False,
-    'cls_sim_prep': False,
+    'cls_sim_prep': True,
     'cls_sim_train': True
 }
 
