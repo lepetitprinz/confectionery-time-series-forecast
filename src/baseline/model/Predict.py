@@ -21,12 +21,12 @@ class Predict(object):
     }
 
     def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
-                 exg_list: list, hrchy: dict, common: dict):
+                 exg_list: list, hrchy: dict, common: dict, data_cfg: dict):
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
-        self.cnt = 0
+        self.data_cfg = data_cfg
         self.date = date
         self.data_vrsn_cd = data_vrsn_cd
         self.division = division    # SELL-IN / SELL-OUT
@@ -37,6 +37,7 @@ class Predict(object):
         self.cal_mst = mst_info['cal_mst']
 
         # Data Level Configuration
+        self.cnt = 0
         self.hrchy = hrchy
 
         # Algorithms

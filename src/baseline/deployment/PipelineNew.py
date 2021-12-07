@@ -9,24 +9,26 @@ from baseline.analysis.ResultSummary import ResultSummary
 from baseline.middle_out.MiddleOut import MiddleOut
 
 
+import os
+import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
 
-class PipelineBak(object):
+class PipelineNew(object):
     day_map = {
         'SELL_IN': {
-            'week': {
+            'w': {
                 'rst_from': 'rst_start_day',
                 'rst_to': 'rst_end_day'
             },
         },
         'SELL_OUT': {
-            'week': {
+            'w': {
                 'rst_from': 'rst_start_day_sell_out',
                 'rst_to': 'rst_end_day_sell_out'
             },
-            'month': {
+            'm': {
                 'rst_from': 'rst_start_day_sell_out_month',
                 'rst_to': 'rst_end_day_sell_out_out_month'
             }
@@ -74,8 +76,8 @@ class PipelineBak(object):
         # Data Configuration
         self.division = data_cfg['division']
         self.date = {
-            'date_from': self.common[self.day_map[data_cfg['division']]['rst_from']],
-            'date_to': self.common[self.day_map[data_cfg['division']]['rst_to']]
+            'date_from': self.common[self.day_map[data_cfg['division']][data_cfg['cycle']]['rst_from']],
+            'date_to': self.common[self.day_map[data_cfg['division']][data_cfg['cycle']]['rst_to']]
         }
         self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
 
@@ -161,8 +163,12 @@ class PipelineBak(object):
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
             else:
                 if self.division == 'SELL_IN':
-                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
+                    if self.data_cfg['in_out'] == 'out':
+                        # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
+                    elif self.data_cfg['in_out'] == 'in':
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date))  # Temp
+
                 elif self.division == 'SELL_OUT':
                     if self.data_cfg['cycle'] == 'w':
                         # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
@@ -254,8 +260,13 @@ class PipelineBak(object):
         # ================================================================================================= #
         # Load information form DB
         # Load master dataset
-        cust_code = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
-        cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
+        if self.data_cfg['in_out'] == 'out':
+            cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
+        elif self.data_cfg['in_out'] == 'in':
+            cust_grp = pd.read_csv(os.path.join('..', '..', 'data', 'sell_in_inqty_cust_grp_map.csv'))
+            cust_grp.columns = [col.lower() for col in cust_grp.columns]
+            # cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info_inqty())
+
         item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
 
@@ -269,7 +280,6 @@ class PipelineBak(object):
         param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
 
         mst_info = {
-            'cust_code': cust_code,
             'cust_grp': cust_grp,
             'item_mst': item_mst,
             'cal_mst': cal_mst,
@@ -295,6 +305,7 @@ class PipelineBak(object):
                 exg_list=exg_list,
                 hrchy=self.hrchy,
                 common=self.common,
+                data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
 
@@ -374,7 +385,8 @@ class PipelineBak(object):
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
                 hrchy=self.hrchy,
-                common=self.common
+                common=self.common,
+                data_cfg=self.data_cfg
             )
             if not self.exec_rslt_cfg['predict']:
                 # Forecast the model
@@ -418,6 +430,11 @@ class PipelineBak(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
+                # Save prediction of best algorithm to recent predictino table
+                table_pred_best_recent = 'M4S_O111600'
+                self.io.delete_from_db(sql=self.sql_conf.trunc_prediction())
+                self.io.insert_to_db(df=pred_best, tb_name=table_pred_best_recent)
+
             print("Forecast is finished\n")
 
         # ================================================================================================= #
@@ -442,10 +459,20 @@ class PipelineBak(object):
                 'date_to': self.common['middle_out_end_day']
             }
             sales_recent = None
+            # Sell-In Dataset
             if self.division == 'SELL_IN':
-                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent))
+                if self.data_cfg['in_out'] == 'out':
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent))
+                elif self.data_cfg['in_out'] == 'in':
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_recent))
+            # Sell-Out Dataset
             elif self.division == 'SELL_OUT':
-                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
+                if self.data_cfg['cycle'] == 'w':    # Weekly Prediction
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
+                elif self.data_cfg['cycle'] == 'm':    # Monthly Prediction
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent))
 
             if not self.step_cfg['cls_pred']:
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
@@ -478,7 +505,7 @@ class PipelineBak(object):
         if self.step_cfg['cls_rpt']:
             print("Step 6: Report result\n")
             test_vrsn_cd = self.test_vrsn_cd
-            # if self.step_cfg['clss_mdout']:
+
             if self.hrchy['lvl']['item'] < 5:
                 pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
                 test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
@@ -491,12 +518,40 @@ class PipelineBak(object):
                 'date_from': self.common['pred_start_day'],
                 'date_to': self.common['pred_end_day']
             }
-            sales_comp = None
-            if self.division == 'SELL_IN':
-                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(**date_compare))
-            elif self.division == 'SELL_OUT':
-                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_compare))
+            date_recent = {
+                'date_from': self.common['middle_out_start_day'],
+                'date_to': self.common['middle_out_end_day']
+            }
 
+            sales_comp = None
+            sales_recent = None
+
+            # Sell-In dataset
+            if self.division == 'SELL_IN':
+                if self.data_cfg['in_out'] == 'out':
+                    sales_comp = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test(**date_compare)
+                    )
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent)
+                    )
+                elif self.data_cfg['in_out'] == 'in':
+                    sales_comp = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_compare)
+                    )
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_recent)
+                    )
+            # Sell-Out dataset
+            elif self.division == 'SELL_OUT':
+                if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
+                    sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_compare))
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
+                elif self.data_cfg['cycle'] == 'm':  # Monthly Prediction
+                    sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_compare))
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent))
+
+            # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
             report = ResultSummary(
@@ -507,7 +562,7 @@ class PipelineBak(object):
                 hrchy=self.hrchy,
                 item_mst=item_mst
             )
-            result = report.compare_result(sales_comp=sales_comp, pred=pred_best)
+            result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
             result, result_info = report.make_db_format(data=result)
 
             # Remove Special Character

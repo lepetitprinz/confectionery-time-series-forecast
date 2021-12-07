@@ -1,13 +1,16 @@
-from baseline.deployment.PipelineBak import PipelineBak
+from baseline.deployment.PipelineNew import PipelineNew
 
 # Sales Data configuration
-division = 'SELL_OUT'    # SELL_IN / SELL_OUT / 7-11
-cycle = 'w'    # w(week) / m(month)
-test_vrsn_cd = 'TEST006_SKU_LVL'
+division = 'SELL_IN'    # SELL_IN / SELL_OUT
+in_out = 'in'    # SELL-IN : out / in
+cycle = 'w'    # SELL-OUT : w(week) / m(month)
+
+test_vrsn_cd = 'TEST_1207_INQTY_BRAND_LVL'
 
 # Data Configuration
 data_cfg = {
     'division': division,
+    'in_out': in_out,
     'cycle': cycle,
     'test_vrsn_cd': test_vrsn_cd
 }
@@ -36,9 +39,9 @@ step_cfg = {
     'cls_cns': False,
     'cls_prep': True,
     'cls_train': True,
-    'cls_pred': False,
-    'clss_mdout': False,
-    'cls_rpt': False
+    'cls_pred': True,
+    'clss_mdout': True,
+    'cls_rpt': True
 }
 
 # Load result configuration
@@ -55,14 +58,13 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = PipelineBak(
+pipeline = PipelineNew(
     data_cfg=data_cfg,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg,
-    test_vrsn_cd=test_vrsn_cd
+    unit_cfg=unit_cfg
 )
 
 # Execute Baseline Forecast

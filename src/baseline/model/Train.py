@@ -30,13 +30,13 @@ class Train(object):
     }
 
     def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
-                 hrchy: dict, exg_list: list,  exec_cfg: dict):
+                 hrchy: dict, exg_list: list, data_cfg: dict, exec_cfg: dict):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
         # Data Configuration
-        self.cnt = 0
+        self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
         self.data_vrsn_cd = data_vrsn_cd
         self.common = common
@@ -44,11 +44,11 @@ class Train(object):
         self.target_col = common['target_col']    # Target column
 
         self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        self.cust_code = mst_info['cust_code']
         self.cust_grp = mst_info['cust_grp']
         self.item_mst = mst_info['item_mst']
 
         # Data Level Configuration
+        self.cnt = 0
         self.hrchy = hrchy
 
         # Algorithm Configuration

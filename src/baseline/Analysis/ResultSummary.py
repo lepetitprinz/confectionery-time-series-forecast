@@ -79,9 +79,10 @@ class ResultSummary(object):
         return info
 
     def filter_recent_exist_sales(self, sales_recent: pd.DataFrame, pred: pd.DataFrame):
-        key_col_df = sales_recent[self.key_col].drop_duplicates().reset_index()
+        key_col_df = sales_recent[self.key_col].drop_duplicates().reset_index(drop=True)
         key_col_df['key'] = key_col_df[self.key_col[0]] + '-' + key_col_df[self.key_col[1]]
-        pred['key'] = pred[self.key_col[0]] + '-' + pred[config.HRCHY_SKU_TO_DB_SKU_MAP[self.key_col[1]]]
+        pred['key'] = pred[self.key_col[0]] + '-' + pred[self.key_col[1]]
+        # pred['key'] = pred[self.key_col[0]] + '-' + pred[config.HRCHY_SKU_TO_DB_SKU_MAP[self.key_col[1]]]
         masked = pred[pred['key'].isin(key_col_df['key'])]
         masked = masked.drop(columns=['key'])
 
@@ -90,11 +91,12 @@ class ResultSummary(object):
     def make_raw_result(self, sales_comp, sales_recent, pred):
         # if self.hrchy['key'][:-1] != 'C1-P5':
         #     sales, hrchy_item = self.resample_sales(data=sales)
+        pred = self.conv_data_type(data=pred)
         pred = self.filter_recent_exist_sales(sales_recent=sales_recent, pred=pred)
 
         # If execute middle out
         if self.hrchy['lvl']['item'] < 5:
-            pred = self.conv_data_type(data=pred)
+            # pred = self.conv_data_type(data=pred)
             pred['division_cd'] = self.division
             item_mst = self.item_mst.rename(columns=self.item_name_rev_map)
             pred = pd.merge(

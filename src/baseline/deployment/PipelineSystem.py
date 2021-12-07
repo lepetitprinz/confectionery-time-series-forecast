@@ -241,7 +241,6 @@ class Pipeline(object):
         # ================================================================================================= #
         # Load information form DB
         # Load master dataset
-        cust_code = self.io.get_df_from_db(sql=SqlConfig.sql_cust_code())
         cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
         item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
@@ -256,7 +255,6 @@ class Pipeline(object):
         param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
 
         mst_info = {
-            'cust_code': cust_code,
             'cust_grp': cust_grp,
             'item_mst': item_mst,
             'cal_mst': cal_mst,

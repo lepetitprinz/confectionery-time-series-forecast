@@ -20,7 +20,7 @@ class Pipeline(object):
         # ====================== #
         # 1. Load Data
         # ====================== #
-        item_profile = self.io.get_df_from_db(sql=self.sql_conf.sql_item_profile())
+        item_profile = self.io.get_df_from_db(sql=self.sql_conf.sql_bom_mst())
 
         # ====================== #
         # 2. Data Preprocessing

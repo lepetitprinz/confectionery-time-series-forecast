@@ -188,8 +188,9 @@ class Simulate(object):
 
     def save_result(self, result: list):
         df, info = self.make_db_format(result=result)
-        self.io.delete_from_db(sql=self.sql_conf.del_sim_result(**info))
-        self.io.insert_to_db(df=df, tb_name=self.tb_name)
+        if self.exec_cfg['save_db_yn']:
+            self.io.delete_from_db(sql=self.sql_conf.del_sim_result(**info))
+            self.io.insert_to_db(df=df, tb_name=self.tb_name)
 
         return result
 
