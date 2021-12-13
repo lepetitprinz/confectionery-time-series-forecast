@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 from baseline.deployment.PipelineNew import PipelineNew
 
 # Sales Data configuration
@@ -5,7 +9,7 @@ division = 'SELL_IN'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
-test_vrsn_cd = 'TEST_1130_SKU_LVL'
+test_vrsn_cd = 'CRONTAB_TEST'
 
 # Data Configuration
 data_cfg = {
@@ -18,8 +22,7 @@ data_cfg = {
 # Level Configuration
 lvl_cfg = {
     'cust_lvl': 1,   # SP1
-    'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
-    'middle_out': False
+    'item_lvl': 3,    # Biz - Line - Brand - Item - SKU
 }
 # Configuration
 exec_cfg = {
@@ -31,18 +34,17 @@ exec_cfg = {
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
-    'grid_search_yn': False,          # Grid Search
-    'filter_threshold_week_yn': False
+    'grid_search_yn': False          # Grid Search
 }
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
+    'cls_load': True,
     'cls_cns': True,
     'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,
-    'clss_mdout': False,
+    'clss_mdout': True,
     'cls_rpt': True
 }
 
@@ -70,4 +72,4 @@ pipeline = PipelineNew(
 )
 
 # Execute Baseline Forecast
-pipeline.run()
+# pipeline.run()

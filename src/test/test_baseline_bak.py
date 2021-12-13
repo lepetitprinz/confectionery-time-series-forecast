@@ -1,24 +1,15 @@
-from baseline.deployment.PipelineNew import PipelineNew
+from baseline.deployment.PipelineBak import PipelineBak
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
-in_out = 'in'    # SELL-IN : out / in
-cycle = 'w'    # SELL-OUT : w(week) / m(month)
-
-test_vrsn_cd = 'TEST_1207_INQTY_BRAND_LVL'
-
-# Data Configuration
-data_cfg = {
-    'division': division,
-    'in_out': in_out,
-    'cycle': cycle,
-    'test_vrsn_cd': test_vrsn_cd
-}
+# division : SELL_IN / SELL_OUT / 7-11
+division = 'SELL_IN'
+# division = 'SELL_OUT'
+test_vrsn_cd = 'TEST006_SKU_LVL'
 
 # Level Configuration
 lvl_cfg = {
     'cust_lvl': 1,   # SP1
-    'item_lvl': 3,    # Biz - Line - Brand - Item - SKU
+    'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
 }
 # Configuration
 exec_cfg = {
@@ -37,10 +28,10 @@ exec_cfg = {
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
-    'clss_mdout': True,
+    'cls_prep': False,
+    'cls_train': False,
+    'cls_pred': False,
+    'clss_mdout': False,
     'cls_rpt': True
 }
 
@@ -58,13 +49,14 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = PipelineNew(
-    data_cfg=data_cfg,
+pipeline = PipelineBak(
+    division=division,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg
+    unit_cfg=unit_cfg,
+    test_vrsn_cd=test_vrsn_cd
 )
 
 # Execute Baseline Forecast

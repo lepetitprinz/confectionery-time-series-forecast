@@ -10,12 +10,10 @@ from simulation.model.Train import Train
 
 
 class Pipeline(object):
-    def __init__(self, division: str, hrchy_lvl: int, lag: str,
-                 step_cfg: dict, exec_cfg: dict, exec_rslt_cfg: dict):
+    def __init__(self, division: str, lag: str, step_cfg: dict, exec_cfg: dict):
         # I/O & Execution Configuration
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.exec_rslt_cfg = exec_rslt_cfg
 
         # Class Configuration
         self.io = DataIO()
@@ -25,25 +23,32 @@ class Pipeline(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
+
         # Data Configuration
         self.division = division
-        self.date = {
-            'date_from': self.common['rst_start_day'],
-            'date_to': self.common['rst_end_day']
-        }
-        self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
+        self.data_vrsn_cd = self.common['rst_start_day'] + '-' + self.common['rst_end_day']
+        self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
+        self.threshold = 10
+
         # Data Level Configuration
         self.hrchy = {
-            'cnt': 0,
-            'lvl': hrchy_lvl
+            'cnt_all': 0,
+            'cnt_filtered': 0,
+            'lvl': 6,
+            'list': self.common['hrchy_cust'].split(',') + self.common['hrchy_item'].split(',')
         }
         self.lag = lag
 
         # Path Configuration
         self.path = {
-            'load': util.make_path_sim(module='load', division=division, step='load', extension='csv'),
-            'prep': util.make_path_sim(module='prep', division=division, step='prep', extension='pickle'),
-
+            'load': util.make_path_sim(
+                path=self.common['path_local'], module='load', division=division, data_vrsn=self.data_vrsn_cd,
+                step='load', extension='csv'
+            ),
+            'prep': util.make_path_sim(
+                path=self.common['path_local'], module='prep', division=division, data_vrsn=self.data_vrsn_cd,
+                step='prep', extension='pickle'
+            )
         }
 
     def run(self):
@@ -54,9 +59,10 @@ class Pipeline(object):
         if self.step_cfg['cls_sim_load']:
             if self.division == 'SELL_IN':
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Todo: Temp data
             elif self.division == 'SELL_OUT':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
+                # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))    # Todo: Temp data
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
@@ -72,7 +78,7 @@ class Pipeline(object):
                 sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
 
             # Load Exogenous dataset
-            exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='N'))
+            # exg = self.io.get_df_from_db(sql=SqlConfig.sql_exg_data(partial_yn='N'))
 
             # Initiate data preprocessing class
             preprocess = DataPrep(
@@ -81,15 +87,22 @@ class Pipeline(object):
                 division=self.division,
                 hrchy=self.hrchy,
                 lag=self.lag,
+                threshold=self.threshold,
+                exec_cfg=self.exec_cfg
             )
 
             # Preprocessing the dataset
-            data_prep, hrchy_cnt = preprocess.preprocess(sales=sales, exg=exg)
-            self.hrchy['cnt'] = hrchy_cnt
+            data_prep, hrchy_cnt, hrchy_cnt_filtered = preprocess.preprocess(sales=sales)
+            self.hrchy['cnt_all'] = hrchy_cnt
+            self.hrchy['cnt_filtered'] = hrchy_cnt_filtered
 
             # Save step result
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=(data_prep, hrchy_cnt), file_path=self.path['prep'], data_type='binary')
+                self.io.save_object(
+                    data=(data_prep, hrchy_cnt, hrchy_cnt_filtered),
+                    file_path=self.path['prep'],
+                    data_type='binary'
+                )
 
             print("Data preprocessing is finished.\n")
         # ================================================================================================= #
@@ -98,8 +111,12 @@ class Pipeline(object):
         if self.step_cfg['cls_sim_train']:
             print("Step3: Training")
             if not self.step_cfg['cls_sim_prep']:
-                data_prep, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
-                self.hrchy['cnt'] = hrchy_cnt
+                data_prep, hrchy_cnt, hrchy_cnt_filtered = self.io.load_object(
+                    file_path=self.path['prep'],
+                    data_type='binary'
+                )
+                self.hrchy['cnt_all'] = hrchy_cnt
+                self.hrchy['cnt_filtered'] = hrchy_cnt_filtered
 
             # Load necessary dataset
             # Algorithm

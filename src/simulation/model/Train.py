@@ -25,17 +25,19 @@ class Train(object):
 
     def __init__(self, data_version: str, division: str, hrchy: dict, common, exec_cfg: dict,
                  algorithms: pd.DataFrame):
+
         # Data Configuration
-        self.data_version = data_version
+        self.common = common
         self.division = division
-        self.cnt = 0
-        self.hrchy = hrchy
+        self.data_vrsn_cd = data_version
         self.target_col = common['target_col']
+        self.hrchy = hrchy
         self.exec_cfg = exec_cfg
+        self.cnt = 0
 
         # Train Option configuration
-        self.scoring = 'neg_root_mean_squared_error'
         self.cv = 5
+        self.scoring = 'neg_root_mean_squared_error'
         self.verbose = False
 
         # Algorithm Configuration
@@ -43,8 +45,11 @@ class Train(object):
         self.best_params = {}
         self.param_grids = config.PARAM_GRIDS_SIM
 
+        # Path Configuration
+        self.path_root = os.path.join('..', '..', 'simulation')
+
     def init(self):
-        self.prep_params()
+        self.prep_params(best_params={})
 
     def prep_params(self, best_params):
         # convert string type int to int type
@@ -69,32 +74,33 @@ class Train(object):
 
         print("Training is finished.")
 
-    def train_model(self, hrchy_code, data):
+    def train_model(self, hrchy_list: list, data):
         # Show training progress
         self.cnt += 1
-        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt_filtered']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt_filtered']})")
 
         # Split dataset
         data_split = self.split_data(data=data)
+        hrchy_code = hrchy_list[0] + '-' + hrchy_list[-1]    # cust_grp_code-sp1
         best_model = None
-        if len(data_split['y_train']) >= self.cv:
-            # Scaling
-            if self.exec_cfg['scaling_yn']:
-                scaler, x_scaled = self.scaling(data=data_split['x_train'])
-                data_split['x_train'] = x_scaled
-                self.save_scaler(scaler=scaler, hrchy_code=hrchy_code)
 
-            best_model = self.evaluation(
-                data=data_split,
-                estimators=self.algorithms,
-                grid_search_yn=self.exec_cfg['grid_search_yn'],
-                scoring=self.scoring,
-                cv=self.cv,
-                verbose=self.verbose
-            )
-            if self.exec_cfg['save_step_yn']:
-                self.save_best_model(estimator=best_model, hrchy_code=hrchy_code)
+        # Scaling
+        if self.exec_cfg['scaling_yn']:
+            scaler, x_scaled = self.scaling(data=data_split['x_train'])
+            data_split['x_train'] = x_scaled
+            self.save_object(result=scaler, module='scaler', hrchy_code=hrchy_code)
+
+        best_model = self.evaluation(
+            data=data_split,
+            estimators=self.algorithms,
+            grid_search_yn=self.exec_cfg['grid_search_yn'],
+            scoring=self.scoring,
+            cv=self.cv,
+            verbose=self.verbose
+        )
+        if self.exec_cfg['save_step_yn']:
+            self.save_object(result=best_model, module='model', hrchy_code=hrchy_code)
 
     def evaluation(self, data, estimators: list, grid_search_yn: bool, verbose: bool,
                    scoring='neg_root_mean_squared_error', cv=5):
@@ -177,17 +183,21 @@ class Train(object):
 
         return score, param_grid
 
+    def save_object(self, result, module: str, hrchy_code: str):
+        f = open(os.path.join(self.path_root, module, self.division + '_' + self.data_vrsn_cd + '_' +
+                              hrchy_code + '.pickle'), 'wb')
+        pickle.dump(result, f)
+        f.close()
+
     def save_best_model(self, estimator, hrchy_code: str):
-        f = open(os.path.join('..', '..', 'simulation', 'best_models',
-                 self.data_version + '_' + self.division + '_' + str(self.hrchy['lvl']) +
-                              '_' + hrchy_code + '.pickle'), 'wb')
+        f = open(os.path.join(self.path_root, 'model', self.division + '_' + self.data_vrsn_cd + '_' +
+                              hrchy_code + '.pickle'), 'wb')
         pickle.dump(estimator, f)
         f.close()
 
     def save_scaler(self, scaler, hrchy_code: str):
-        f = open(os.path.join('..', '..', 'simulation', 'scaler',
-                 self.data_version + '_' + self.division + '_' + str(self.hrchy['lvl']) +
-                              '_' + hrchy_code + '.pickle'), 'wb')
+        f = open(os.path.join(self.path_root, 'scaler', self.division + '_' + self.data_vrsn_cd + '_' +
+                              hrchy_code + '.pickle'), 'wb')
         pickle.dump(scaler, f)
         f.close()
 

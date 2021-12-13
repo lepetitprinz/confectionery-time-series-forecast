@@ -6,6 +6,25 @@ from datetime import datetime
 from collections import defaultdict
 
 
+def counting(hrchy_lvl, df=None, val=None, lvl=0, cnt=0):
+    if lvl == 0:
+        for key, val in df.items():
+            cnt = counting(hrchy_lvl=hrchy_lvl, val=val, lvl=lvl+1, cnt=cnt)
+
+    elif lvl < hrchy_lvl:
+        for key_hrchy, val_hrchy in val.items():
+            cnt = counting(hrchy_lvl=hrchy_lvl, val=val_hrchy, lvl=lvl+1, cnt=cnt)
+
+        return cnt
+
+    elif lvl == hrchy_lvl:
+        for key_hrchy in val.keys():
+            cnt += 1
+        return cnt
+
+    return cnt
+
+
 def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0, cnt=0) -> tuple:
     grp = {}
     col = hrchy[lvl]
@@ -70,18 +89,71 @@ def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
     return temp
 
 
-def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> None:
+def hrchy_recursion_with_none(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
+    temp = None
+    if lvl == 0:
+        temp = {}
+        for key, val in df.items():
+            result = hrchy_recursion_with_none(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
+            if result is not None:
+                temp[key] = result
+        if len(temp) == 0:
+            return None
+
+    elif lvl < hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            result = hrchy_recursion_with_none(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
+            if result is not None:
+                temp[key_hrchy] = result
+        if len(temp) == 0:
+            return None
+        return temp
+
+    elif lvl == hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            result = fn(val_hrchy)
+            if result is not None:
+                temp[key_hrchy] = result
+        if len(temp) == 0:
+            return None
+        return temp
+
+    return temp
+
+
+def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]) -> None:
     if lvl == 0:
         for key, val in df.items():
-            hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
+            hrchy.append(key)
+            hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl+1, hrchy=hrchy)
+            hrchy.remove(key)
 
     elif lvl < hrchy_lvl:
         for key_hrchy, val_hrchy in val.items():
-            hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
+            hrchy.append(key_hrchy)
+            hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+            hrchy.remove(key_hrchy)
 
     elif lvl == hrchy_lvl:
         for key_hrchy, val_hrchy in val.items():
-            fn(key_hrchy, val_hrchy)
+            hrchy.append(key_hrchy)
+            fn(hrchy, val_hrchy)
+            hrchy.append(key_hrchy)
+
+# def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> None:
+#     if lvl == 0:
+#         for key, val in df.items():
+#             hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
+#
+#     elif lvl < hrchy_lvl:
+#         for key_hrchy, val_hrchy in val.items():
+#             hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
+#
+#     elif lvl == hrchy_lvl:
+#         for key_hrchy, val_hrchy in val.items():
+#             fn(key_hrchy, val_hrchy)
 
 
 def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
@@ -118,14 +190,14 @@ def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrc
     return temp
 
 
-def make_path_baseline(module: str, division: str, data_vrsn: str, hrchy_lvl: str, step: str, extension: str):
-    path = os.path.join('..', '..', module, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step + '.' + extension)
+def make_path_baseline(path: str, module: str, division: str, data_vrsn: str, hrchy_lvl: str, step: str, extension: str):
+    path = os.path.join(path, module, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step + '.' + extension)
 
     return path
 
 
-def make_path_sim(module: str, division: str, step: str, extension: str):
-    path = os.path.join('..', '..', 'simulation', module, division + '_' + step + '.' + extension)
+def make_path_sim(path: str, module: str, division: str, data_vrsn: str, step: str, extension: str):
+    path = os.path.join(path, 'simulation', module, division + '_' + data_vrsn + '_' + step + '.' + extension)
 
     return path
 

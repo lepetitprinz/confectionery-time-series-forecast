@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 from simulation.deployment.Pipeline import Pipeline
 
 division = 'SELL_IN'
@@ -31,4 +35,4 @@ pipeline = Pipeline(
     exec_rslt_cfg=exec_rslt_cfg
 )
 
-pipeline.run()
+# pipeline.run()

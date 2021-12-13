@@ -30,7 +30,7 @@ class Simulate(object):
     }
     hrchy_sku_to_db_sku_map = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 
-    def __init__(self, data_version: str, division_cd: str, date: dict, lag: str, exec_cfg: dict,
+    def __init__(self, data_version: str, division_cd: str, cust_grp_cd: str, date: dict, lag: str, exec_cfg: dict,
                  item_cd, discount):
         # Class Configuration
         self.io = DataIO()
@@ -38,10 +38,12 @@ class Simulate(object):
 
         # Execute Configuration
         self.exec_cfg = exec_cfg
+        self.path_root = os.path.join('..', '..', 'simulation', 'model')
 
         # Data Configuration
         self.data_version = data_version
         self.division_cd = division_cd
+        self.cust_grp_cd = cust_grp_cd
         self.date = date
         self.date_range = []
         self.cal = None
@@ -130,10 +132,8 @@ class Simulate(object):
         return result
 
     def load_best_estimator(self, hrchy_code: str):
-        # path = os.path.join(self.data_version + '_' + self.division_cd + '_' + str(self.hrchy_lvl) +
-        #                     '_' + hrchy_code + '.pickle')
-        path = os.path.join('..', '..', 'simulation', 'best_models', self.data_version + '_' + self.division_cd +
-                            '_' + '5' + '_' + hrchy_code + '.pickle')
+        path = os.path.join(self.path_root,  self.division_cd + '_' + self.data_version +
+                            '_' + self.cust_grp_cd + '-' + hrchy_code + '.pickle')
         f = open(path, 'rb')
         estimator = pickle.load(f)
 

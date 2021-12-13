@@ -8,6 +8,9 @@ PORT = '1433'
 USER = 'matrix'    # User name
 PASSWORD = 'Diam0nd123!'     # User password
 
+# Data filtering threshold
+threshold = 30
+
 #
 day_map = {
     'SELL_IN': {

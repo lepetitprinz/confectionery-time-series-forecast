@@ -37,9 +37,14 @@ class DataPrep(object):
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
 
+        # missing
+        self.threshold = config.threshold
+        self.miss_count = 0
+
         # Execute option
         self.imputer = 'knn'
-        self.sigma = float(common['outlier_sigma'])
+        # self.sigma = float(common['outlier_sigma'])
+        self.sigma = 2
         self.outlier_method = 'std'
         self.quantile_range = 0.02
         self.noise_rate = 0.1
@@ -100,30 +105,32 @@ class DataPrep(object):
 
             decompose.dao.session.close()
 
-        # Check Missing Values
-        # data_miss_rate = util.hrchy_recursion(
+        print("Week Count: ", len(self.date_range))
+
+        # Resampling
+        # data_resample = util.hrchy_recursion(
         #     hrchy_lvl=self.hrchy_level,
-        #     fn=self.check_missiing_value,
+        #     fn=self.resample,
         #     df=data_group
         # )
 
-        print("Week Count: ", len(self.date_range))
-        miss_rate = util.hrchy_recursion(
-            hrchy_lvl=self.hrchy_level,
-            fn=self.check_missiing_value,
-            df=data_group
-        )
-
         # Resampling
-        data_resample = util.hrchy_recursion(
+        data_resample = util.hrchy_recursion_with_none(
             hrchy_lvl=self.hrchy_level,
             fn=self.resample,
             df=data_group
         )
 
+        # # Filter Missing Values
+        # data_resample = util.hrchy_recursion_with_none(
+        #     hrchy_lvl=self.hrchy_level,
+        #     fn=self.filter_week_by_threshold,
+        #     df=data_resample
+        # )
+
         return data_resample, exg_list, hrchy_cnt
 
-    def rm_not_exist_sales(self, data) -> pd.DataFrame:
+    def rm_not_exist_sales(self, data: pd.DataFrame) -> pd.DataFrame:
         # Filter recent sales
         # Todo: middle_out_start_day -> self.date['eval_from']
         # Todo: middle_out_end_day -> self.date['eval_to']
@@ -132,12 +139,14 @@ class DataPrep(object):
         key_col_df = data_recent[self.key_col].drop_duplicates().reset_index()
         key_col_df['key'] = key_col_df[self.key_col[0]] + '-' + key_col_df[self.key_col[1]]
         data['key'] = data[self.key_col[0]] + '-' + data[self.key_col[1]]
+
+        # Boolean masking
         masked = data[data['key'].isin(key_col_df['key'])]
         masked = masked.drop(columns=['key'])
 
         return masked
 
-    def merge_exg(self, data: pd.DataFrame, exg: dict):
+    def merge_exg(self, data: pd.DataFrame, exg: dict) -> pd.DataFrame:
         cust_grp_list = list(data['cust_grp_cd'].unique())
 
         merged = pd.DataFrame()
@@ -208,7 +217,7 @@ class DataPrep(object):
 
         return grp
 
-    def resample(self, df: pd.DataFrame):
+    def resample(self, df: pd.DataFrame) -> pd.DataFrame:
         df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
         df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
 
@@ -216,7 +225,10 @@ class DataPrep(object):
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
-        missed_rate = 0
+        if self.exec_cfg['filter_threshold_week_yn']:
+            if len(df_resampled[df_resampled['qty'] != 0]) < self.threshold:
+                return None
+
         if len(df_resampled.index) != len(self.date_range):
             # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
@@ -229,21 +241,29 @@ class DataPrep(object):
 
         return df_resampled
 
-    def check_missiing_value(self,  df: pd.DataFrame):
-        df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
-        df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
+    def filter_week_by_threshold(self, df: pd.DataFrame):
+        # Check and add dates when sales does not exist
+        if len(df.index) < self.threshold:
+            return None
 
-        # Concatenate aggregation
-        df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
+        else:
+            return df
+
+    def check_missiing_value(self, df: pd.DataFrame) -> float:
+        # df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
+        # df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
+        #
+        # # Concatenate aggregation
+        # df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
         missed_rate = 0
-        if len(df_resampled.index) != len(self.date_range):
-            missed_rate = self.check_missing_data(df=df_resampled)
+        if len(df.index) != len(self.date_range):
+            missed_rate = self.check_missing_data(df=df)
 
         return missed_rate
 
-    def check_missing_data(self, df):
+    def check_missing_data(self, df: pd.DataFrame):
         tot_len = len(self.date_range)
         missed = tot_len - len(df.index)
         exist = tot_len - missed
@@ -251,7 +271,7 @@ class DataPrep(object):
 
         return exist, missed_rate
 
-    def resample_by_agg(self, df, agg: str):
+    def resample_by_agg(self, df: pd.DataFrame, agg: str) -> pd.DataFrame:
         resampled = pd.DataFrame()
         col_agg = set(df.columns).intersection(set(self.col_agg_map[agg]))
         if len(col_agg) > 0:
@@ -264,7 +284,7 @@ class DataPrep(object):
 
         return resampled
 
-    def fill_missing_date(self, df):
+    def fill_missing_date(self, df: pd.DataFrame) -> pd.DataFrame:
         idx_add = list(set(self.date_range) - set(df.index))
         data_add = np.zeros((len(idx_add), df.shape[1]))
         df_add = pd.DataFrame(data_add, index=idx_add, columns=df.columns)
@@ -273,7 +293,7 @@ class DataPrep(object):
 
         return df
 
-    def add_data_level(self, org, resampled):
+    def add_data_level(self, org: pd.DataFrame, resampled: pd.DataFrame) -> pd.DataFrame:
         cols = self.hrchy['apply'][:self.hrchy_level + 1]
         data_level = org[cols].iloc[0].to_dict()
         data_lvl = pd.DataFrame(data_level, index=resampled.index)
@@ -281,7 +301,7 @@ class DataPrep(object):
 
         return df_resampled
 
-    def impute_data(self, df: pd.DataFrame, feat: str):
+    def impute_data(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
         feature = deepcopy(df[feat])
         if self.imputer == 'knn':
             feature = np.where(feature.values == 0, np.nan, feature.values)
@@ -304,7 +324,7 @@ class DataPrep(object):
 
         return df
 
-    def remove_outlier(self, df: pd.DataFrame, feat: str):
+    def remove_outlier(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
         feature = deepcopy(df[feat])
         lower, upper = 0, 0
 
@@ -329,7 +349,7 @@ class DataPrep(object):
         return df
 
     @staticmethod
-    def make_seq_to_cust_map(df: pd.DataFrame):
+    def make_seq_to_cust_map(df: pd.DataFrame) -> dict:
         seq_to_cust = df[['seq', 'cust_cd']].set_index('seq').to_dict('index')
 
         return seq_to_cust

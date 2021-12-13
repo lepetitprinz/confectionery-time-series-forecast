@@ -9,12 +9,16 @@ class Pipeline(object):
     """
     Ranking Pipeline
     """
-    def __init__(self, item_col: str, meta_col: str):
+    def __init__(self, exec_cfg: dict, item_col: str, meta_col: str):
+        # Class configuration
+        self.io = DataIO()
+        self.sql_conf = SqlConfig()
+        self.exec_cfg = exec_cfg
+
+        # Data configuration
         self.item_col = item_col
         self.meta_col = meta_col
         self.tb_name_rank = 'M4S_O110300'
-        self.sql_conf = SqlConfig()
-        self.io = DataIO()
 
     def run(self):
         # ====================== #
@@ -48,5 +52,7 @@ class Pipeline(object):
             results.append([item_cd, rank_result])
 
         # Save
-        results_db = prep.conv_to_db_table(data=results)
-        self.io.insert_to_db(df=results_db, tb_name=self.tb_name_rank)
+        if self.exec_cfg['save_db_yn']:
+            results_db = prep.conv_to_db_table(data=results)
+            self.io.delete_from_db(sql=self.sql_conf.del_profile())
+            self.io.insert_to_db(df=results_db, tb_name=self.tb_name_rank)

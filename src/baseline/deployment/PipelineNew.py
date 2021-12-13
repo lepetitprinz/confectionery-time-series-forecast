@@ -8,10 +8,10 @@ from baseline.model.Predict import Predict
 from baseline.analysis.ResultSummary import ResultSummary
 from baseline.middle_out.MiddleOut import MiddleOut
 
-
 import os
 import pandas as pd
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -57,6 +57,7 @@ class PipelineNew(object):
 
         # I/O & Execution Configuration
         self.data_cfg = data_cfg
+        self.lvl_cfg = lvl_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
         self.exec_rslt_cfg = exec_rslt_cfg
@@ -100,43 +101,49 @@ class PipelineNew(object):
 
         # Path Configuration
         self.path = {
-            'load': util.make_path_baseline(module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
-                                            hrchy_lvl='', step='load', extension='csv'),
-            'cns': util.make_path_baseline(module='data', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl='',
-                                           step='cns', extension='csv'),
-            'prep': util.make_path_baseline(module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
-                                            hrchy_lvl=self.hrchy['key'], step='prep', extension='pickle'),
-            'train': util.make_path_baseline(module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
-                                             hrchy_lvl=self.hrchy['key'], step='train', extension='pickle'),
+            'load': util.make_path_baseline(
+                path=self.common['path_local'], module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl='', step='load', extension='csv'),
+            'cns': util.make_path_baseline(
+                path=self.common['path_local'], module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl='', step='cns', extension='csv'),
+            'prep': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                 hrchy_lvl=self.hrchy['key'], step='prep', extension='pickle'),
+            'train': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='train', extension='pickle'),
             'train_score_best': util.make_path_baseline(
-                module='result', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='train_score_best', extension='pickle'
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='train_score_best', extension='pickle'
             ),
-            'pred': util.make_path_baseline(module='result', division=self.division,  data_vrsn=self.data_vrsn_cd,
-                                            hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
-            'pred_best': util.make_path_baseline(module='result', division=self.division,  data_vrsn=self.data_vrsn_cd,
-                                                 hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
+            'pred': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
+            'pred_best': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
             'score_all_csv': util.make_path_baseline(
-                module='prediction', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='score_all', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_all', extension='csv'),
             'score_best_csv': util.make_path_baseline(
-                module='prediction', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='score_best', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_best', extension='csv'),
             'pred_all_csv': util.make_path_baseline(
-                module='prediction', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_all', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all', extension='csv'),
             'pred_best_csv': util.make_path_baseline(
-                module='prediction', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_best', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv'),
             'middle_out': util.make_path_baseline(
-                module='prediction', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_middle_out', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out', extension='csv'),
             'middle_out_db': util.make_path_baseline(
-                module='prediction', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_middle_out_db', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
             'report': util.make_path_baseline(
-                module='report', division=self.division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='report', extension='csv')
+                path=self.common['path_local'], module='report', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='report', extension='csv')
         }
 
     def run(self):
@@ -165,7 +172,7 @@ class PipelineNew(object):
                 if self.division == 'SELL_IN':
                     if self.data_cfg['in_out'] == 'out':
                         # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
                     elif self.data_cfg['in_out'] == 'in':
                         sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date))  # Temp
 
@@ -260,6 +267,7 @@ class PipelineNew(object):
         # ================================================================================================= #
         # Load information form DB
         # Load master dataset
+        cust_grp = None
         if self.data_cfg['in_out'] == 'out':
             cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
         elif self.data_cfg['in_out'] == 'in':
@@ -469,9 +477,9 @@ class PipelineNew(object):
                         sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_recent))
             # Sell-Out Dataset
             elif self.division == 'SELL_OUT':
-                if self.data_cfg['cycle'] == 'w':    # Weekly Prediction
+                if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
                     sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
-                elif self.data_cfg['cycle'] == 'm':    # Monthly Prediction
+                elif self.data_cfg['cycle'] == 'm':  # Monthly Prediction
                     sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent))
 
             if not self.step_cfg['cls_pred']:
@@ -506,7 +514,7 @@ class PipelineNew(object):
             print("Step 6: Report result\n")
             test_vrsn_cd = self.test_vrsn_cd
 
-            if self.hrchy['lvl']['item'] < 5:
+            if self.lvl_cfg['middle_out']:
                 pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
                 test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
             else:
@@ -560,7 +568,8 @@ class PipelineNew(object):
                 data_vrsn=self.data_vrsn_cd,
                 test_vrsn=test_vrsn_cd,
                 hrchy=self.hrchy,
-                item_mst=item_mst
+                item_mst=item_mst,
+                lvl_cfg=self.lvl_cfg
             )
             result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
             result, result_info = report.make_db_format(data=result)

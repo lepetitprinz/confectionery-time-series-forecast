@@ -393,6 +393,14 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
+    def del_profile():
+        sql = """
+            DELETE
+              FROM M4S_O110300
+        """
+        return sql
+
+    @staticmethod
     def del_prediction(**kwargs):
         sql = f"""
             DELETE
@@ -520,20 +528,20 @@ class SqlConfig(object):
                  , QTY
                  , CREATE_DATE
               FROM (
-                     SELECT DIVISION_CD
-                          , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                          , ITEM_CD          AS SKU_CD
-                          , YYMMDD
-                          , SEQ
-                          , FROM_DC_CD
-                          , UNIT_PRICE
-                          , RTRIM(UNIT_CD)   AS UNIT_CD
-                          , DISCOUNT
-                          , WEEK
-                          , RST_SALES_QTY    AS QTY
-                          , CREATE_DATE
-                       FROM M4S_I002170_INQTY
-                      WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                    SELECT DIVISION_CD
+                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+                         , ITEM_CD          AS SKU_CD
+                         , YYMMDD
+                         , SEQ
+                         , FROM_DC_CD
+                         , UNIT_PRICE
+                         , RTRIM(UNIT_CD)   AS UNIT_CD
+                         , DISCOUNT
+                         , WEEK
+                         , RST_SALES_QTY    AS QTY
+                         , CREATE_DATE
+                      FROM M4S_I002170_INQTY
+                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
                    ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM_CD        AS SKU_CD
@@ -931,6 +939,4 @@ class SqlConfig(object):
     # Sell-Out Monthly Group
     @staticmethod
     def sql_sell_out_month_grp_test(**kwargs):
-
-
         pass
