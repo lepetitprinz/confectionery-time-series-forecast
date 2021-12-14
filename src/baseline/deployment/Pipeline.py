@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-class PipelineNew(object):
+class Pipeline(object):
     day_map = {
         'SELL_IN': {
             'w': {
@@ -153,7 +153,10 @@ class PipelineNew(object):
         data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
         if self.data_vrsn_cd not in list(data_vrsn_list['data_vrsn_cd']):
             data_vrsn_db = util.make_data_version(data_version=self.data_vrsn_cd)
+            # Insert current data version code
             self.io.insert_to_db(df=data_vrsn_db, tb_name='M4S_I110420')
+            # Previous data version usage convert to 'N'
+            self.io.update_from_db(sql=self.sql_conf.update_data_version(**{'data_vrsn_cd': self.data_vrsn_cd}))
         # ================================================================================================= #
         # 1. Load the dataset
         # ================================================================================================= #
@@ -189,6 +192,39 @@ class PipelineNew(object):
 
             print("Data load is finished\n")
         # ================================================================================================= #
+        # 2.0. Load information
+        # ================================================================================================= #
+        # Load information form DB
+        # Load master dataset
+        cust_grp = None
+        if self.data_cfg['in_out'] == 'out':
+            cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
+        elif self.data_cfg['in_out'] == 'in':
+            cust_grp = pd.read_csv(os.path.join('..', '..', 'data', 'sell_in_inqty_cust_grp_map.csv'))
+            cust_grp.columns = [col.lower() for col in cust_grp.columns]
+            # cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info_inqty())
+
+        item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
+        cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
+
+        # Load Algorithm & Hyper-parameter Information
+        model_mst = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
+        model_mst = model_mst.set_index(keys='model').to_dict('index')
+
+        param_grid = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
+        param_grid['stat_cd'] = param_grid['stat_cd'].apply(lambda x: x.lower())
+        param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
+        param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
+
+        mst_info = {
+            'cust_grp': cust_grp,
+            'item_mst': item_mst,
+            'cal_mst': cal_mst,
+            'model_mst': model_mst,
+            'param_grid': param_grid
+        }
+
+        # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
         if self.step_cfg['cls_cns']:
@@ -205,7 +241,7 @@ class PipelineNew(object):
 
             # Initiate consistency check class
             cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy, date=self.date,
-                                   err_grp_map=err_grp_map, save_yn=False)
+                                   mst_info=mst_info, exec_cfg=self.exec_cfg, err_grp_map=err_grp_map)
 
             # Execute Consistency check
             sales = cns.check(df=sales)
@@ -262,38 +298,6 @@ class PipelineNew(object):
                 )
 
             print("Data preprocessing is finished\n")
-        # ================================================================================================= #
-        # 4.0. Load information
-        # ================================================================================================= #
-        # Load information form DB
-        # Load master dataset
-        cust_grp = None
-        if self.data_cfg['in_out'] == 'out':
-            cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
-        elif self.data_cfg['in_out'] == 'in':
-            cust_grp = pd.read_csv(os.path.join('..', '..', 'data', 'sell_in_inqty_cust_grp_map.csv'))
-            cust_grp.columns = [col.lower() for col in cust_grp.columns]
-            # cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info_inqty())
-
-        item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
-        cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
-
-        # Load Algorithm & Hyper-parameter Information
-        model_mst = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
-        model_mst = model_mst.set_index(keys='model').to_dict('index')
-
-        param_grid = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
-        param_grid['stat_cd'] = param_grid['stat_cd'].apply(lambda x: x.lower())
-        param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
-        param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
-
-        mst_info = {
-            'cust_grp': cust_grp,
-            'item_mst': item_mst,
-            'cal_mst': cal_mst,
-            'model_mst': model_mst,
-            'param_grid': param_grid
-        }
 
         # ================================================================================================= #
         # 4. Training
@@ -438,9 +442,9 @@ class PipelineNew(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
-                # Save prediction of best algorithm to recent predictino table
+                # Save prediction of best algorithm to recent prediction table
                 table_pred_best_recent = 'M4S_O111600'
-                self.io.delete_from_db(sql=self.sql_conf.trunc_prediction())
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**({'division_cd': self.division})))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best_recent)
 
             print("Forecast is finished\n")

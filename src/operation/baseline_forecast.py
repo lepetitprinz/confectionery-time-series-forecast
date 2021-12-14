@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineNew import PipelineNew
+from baseline.deployment.Pipeline import Pipeline
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
@@ -62,7 +62,7 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = PipelineNew(
+pipeline = Pipeline(
     data_cfg=data_cfg,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,

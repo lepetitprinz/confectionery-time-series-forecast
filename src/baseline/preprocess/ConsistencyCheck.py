@@ -1,29 +1,32 @@
+import common.config as config
 from common.SqlConfig import SqlConfig
 from dao.DataIO import DataIO
 
-from copy import deepcopy
-import numpy as np
+import os
 import pandas as pd
+from copy import deepcopy
 
 
 class ConsistencyCheck(object):
     def __init__(self, division: str, common: dict, hrchy: dict, date: dict,
-                 err_grp_map: dict, save_yn: bool):
+                 mst_info: dict, exec_cfg: dict, err_grp_map: dict):
         # Class Configuration
         self.io = DataIO()
         self.sql_config = SqlConfig()
 
         # Data Configuration
+        self.exec_cfg = exec_cfg
+        self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
         self.division = division
         self.common = common
         self.hrchy = hrchy
-        self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
+        self.mst_info = mst_info
         self.err_grp_map = err_grp_map
         self.unit_cd = common['unit_cd'].split(',')
 
         # Save and Load Configuration
-        self.cns_tb_name = 'M4S_I002174'
-        self.save_yn = save_yn
+        self.save_path = os.path.join(self.common['path_local'], 'result')
+        self.tb_name = 'M4S_I002174'
 
     def check(self, df: pd.DataFrame) -> pd.DataFrame:
         # Code Mapping
@@ -33,7 +36,7 @@ class ConsistencyCheck(object):
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
         normal = self.check_prod_level(df=df)
-        if self.division == 'SELL_IN':
+        if self.division == 'SELL_OUT':
             normal = self.check_unit_code(df=normal)
             normal = self.check_unit_code_map(df=normal)
 
@@ -48,9 +51,17 @@ class ConsistencyCheck(object):
         normal = df[~na_rows]
 
         # save the error data
-        err = self.make_err_format(df=err, err_cd='err001')
-        if len(err) > 0 and self.save_yn:
-            self.io.insert_to_db(df=err, tb_name=self.cns_tb_name)
+        err_cd = 'err001'
+        err = self.make_err_format(df=err, err_cd=err_cd)
+        if self.exec_cfg['save_step_yn']:
+            path = os.path.join(
+                self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
+                err_cd + '.csv')
+            err.to_csv(path, index=False, encoding='cp949')
+        if len(err) > 0 and self.exec_cfg['save_db_yn']:
+            info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
+            self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
+            self.io.insert_to_db(df=err, tb_name=self.tb_name)
 
         return normal
 
@@ -59,9 +70,19 @@ class ConsistencyCheck(object):
         err = df[~df['unit_cd'].isin(self.unit_cd)]
         normal = df[df['unit_cd'].isin(self.unit_cd)]
 
-        err = self.make_err_format(df=err, err_cd='err002')
-        if len(err) > 0 and self.save_yn:
-            self.io.insert_to_db(df=err, tb_name=self.cns_tb_name)
+        err_cd = 'err002'
+        err = self.make_err_format(df=err, err_cd=err_cd)
+
+        if self.exec_cfg['save_step_yn']:
+            path = os.path.join(
+                self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
+                err_cd + '.csv')
+            err.to_csv(path, index=False, encoding='cp949')
+
+        if len(err) > 0 and self.exec_cfg['save_db_yn']:
+            info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
+            self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
+            self.io.insert_to_db(df=err, tb_name=self.tb_name)
 
         return normal
 
@@ -77,9 +98,20 @@ class ConsistencyCheck(object):
         normal = merged[~merged['box_bol'].isna()]
 
         # Save Error
-        err = self.make_err_format(df=err, err_cd='err003')
-        if len(err) > 0 and self.save_yn:
-            self.io.insert_to_db(df=err, tb_name=self.cns_tb_name)
+        err_cd = 'err003'
+        err = self.make_err_format(df=err, err_cd=err_cd)
+
+        # Save result
+        if self.exec_cfg['save_step_yn']:
+            path = os.path.join(
+                self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
+                err_cd + '.csv')
+            err.to_csv(path, index=False, encoding='cp949')
+
+        if len(err) > 0 and self.exec_cfg['save_db_yn']:
+            info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
+            self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
+            self.io.insert_to_db(df=err, tb_name=self.tb_name)
 
         return normal
 
@@ -94,14 +126,26 @@ class ConsistencyCheck(object):
         df['data_vrsn_cd'] = self.data_vrsn_cd
         df['err_grp_cd'] = self.err_grp_map[err_cd]
         df['err_cd'] = err_cd.upper()
-        if self.division == 'sell_out':
+        if self.division == 'SELL_OUT':
             df['from_dc_cd'] = ''
         df['create_user_cd'] = 'SYSTEM'
 
-        df = df.rename(columns={'biz_cd': 'item_attr01_cd',
-                                'line_cd': 'item_attr02_cd',
-                                'brand_cd': 'item_attr03_cd',
-                                'item_cd': 'item_attr04_cd',
-                                'sku_cd': 'item_attr05_cd'})
+        # Merge SP1 information
+        cust_grp = self.mst_info['cust_grp']
+        cust_grp['cust_grp_cd'] = cust_grp['cust_grp_cd'].astype(str)
+        df['cust_grp_cd'] = df['cust_grp_cd'].astype(str)
+        df = pd.merge(df, cust_grp, on='cust_grp_cd', how='left')
+
+        # Merge item master information
+        item_mst = self.mst_info['item_mst']
+        item_mst['sku_cd'] = item_mst['sku_cd'].astype(str)
+        df['sku_cd'] = df['sku_cd'].astype(str)
+        df = pd.merge(df, item_mst, on='sku_cd', how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+
+        df = df.fillna('')
+        df = df.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
+        df = df.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
+
+        df['seq'] = df['seq'] + '-' + df['cust_grp_cd'] + '-' + df['item_cd']
 
         return df

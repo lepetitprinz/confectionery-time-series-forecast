@@ -1,7 +1,6 @@
 import common.util as util
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
-from baseline.deployment.Cycle import Cycle
 from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
@@ -9,19 +8,37 @@ from baseline.model.Predict import Predict
 from baseline.analysis.ResultSummary import ResultSummary
 from baseline.middle_out.MiddleOut import MiddleOut
 
-
+import os
+import pandas as pd
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
-class Pipeline(object):
-    def __init__(self, division: str, lvl_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict,
-                 unit_cfg: dict, test_vrsn_cd=''):
+class PipelineSystem(object):
+    day_map = {
+        'SELL_IN': {
+            'w': {
+                'rst_from': 'rst_start_day',
+                'rst_to': 'rst_end_day'
+            },
+        },
+        'SELL_OUT': {
+            'w': {
+                'rst_from': 'rst_start_day_sell_out',
+                'rst_to': 'rst_end_day_sell_out'
+            },
+            'm': {
+                'rst_from': 'rst_start_day_sell_out_month',
+                'rst_to': 'rst_end_day_sell_out_out_month'
+            }
+        }
+    }
+
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict,
+                 unit_cfg: dict):
         """
-        :param division: Sales (SELL-IN / SELL-OUT)
-        :param lvl_cfg: Data Level Configuration
-            - cust_lvl: Customer Level (Customer Group - Customer)
-            - item_lvl: Item Level (Biz/Line/Brand/Item/SKU)
+        :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
             - save_step_yn: Save Each Step Object or not
             - save_db_yn: Save Result to DB or not
@@ -33,13 +50,17 @@ class Pipeline(object):
         :param step_cfg: Execute Configuration
         """
         # Test version code
-        self.test_vrsn_cd = test_vrsn_cd
+        self.test_vrsn_cd = data_cfg['test_vrsn_cd']
 
         # I/O & Execution Configuration
+        self.data_cfg = data_cfg
+        self.lvl_cfg = {}
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
         self.exec_rslt_cfg = exec_rslt_cfg
         self.unit_cfg = unit_cfg
+
+        self.decompose_yn = exec_cfg['decompose_yn']
 
         # Class Configuration
         self.io = DataIO()
@@ -49,13 +70,35 @@ class Pipeline(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
+        self.data_lvl = self.io.get_df_from_db(
+            sql=SqlConfig.sql_data_level()
+        )
 
         # Data Configuration
-        self.division = division
-        self.date = {}
-        self.data_vrsn_cd = self.date['hist_from'] + '-' + self.date['hist_to']
+        self.division = data_cfg['division']
+        # self.date = {
+        #     'date_from': self.common[self.day_map[data_cfg['division']][data_cfg['cycle']]['rst_from']],
+        #     'date_to': self.common[self.day_map[data_cfg['division']][data_cfg['cycle']]['rst_to']]
+        # }
+        self.date = {'date_from': '20200706', 'date_to': '20210704'}    # ToDo : Exception
+        self.data_vrsn_cd = self.date['date_from'] + '-' + self.date['date_to']
 
         # Data Level Configuration
+        self.hrchy = {}
+
+        # Path Configuration
+        self.path = {}
+
+    def init(self):
+        is_null = self.data_lvl.isnull().values
+        # item_lvl = 5 - sum(is_null[0])
+        lvl_cfg = {}
+        lvl_cfg['cust_lvl'] = 1
+        lvl_cfg['item_lvl'] = 3
+        # lvl_cfg['item_lvl'] = item_lvl
+        lvl_cfg['middle-out'] = True
+        self.lvl_cfg = lvl_cfg
+
         self.hrchy = {
             'cnt': 0,
             'key': "C" + str(lvl_cfg['cust_lvl']) + '-' + "P" + str(lvl_cfg['item_lvl']) + '-',
@@ -72,63 +115,53 @@ class Pipeline(object):
                      self.common['hrchy_item'].split(',')[:lvl_cfg['item_lvl']]
         }
 
-        # Path Configuration
         self.path = {
-            'load': util.make_path_baseline(module='data', division=division, data_vrsn=self.data_vrsn_cd,
-                                            hrchy_lvl='', step='load', extension='csv'),
-            'cns': util.make_path_baseline(module='data', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl='',
-                                           step='cns', extension='csv'),
-            'prep': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
-                                            hrchy_lvl=self.hrchy['key'], step='prep', extension='pickle'),
-            'train': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
-                                             hrchy_lvl=self.hrchy['key'], step='train', extension='pickle'),
-            'train_score_best': util.make_path_baseline(module='result', division=division, data_vrsn=self.data_vrsn_cd,
-                                                        hrchy_lvl=self.hrchy['key'], step='train_score_best',
-                                                        extension='pickle'),
-            'pred': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
-                                            hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
-            'pred_best': util.make_path_baseline(module='result', division=division,  data_vrsn=self.data_vrsn_cd,
-                                                 hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
+            'load': util.make_path_baseline(
+                path=self.common['path_local'], module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl='', step='load', extension='csv'),
+            'cns': util.make_path_baseline(
+                path=self.common['path_local'], module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl='', step='cns', extension='csv'),
+            'prep': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='prep', extension='pickle'),
+            'train': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='train', extension='pickle'),
+            'train_score_best': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='train_score_best', extension='pickle'
+            ),
+            'pred': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
+            'pred_best': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
             'score_all_csv': util.make_path_baseline(
-                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='score_all', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_all', extension='csv'),
             'score_best_csv': util.make_path_baseline(
-                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='score_best', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_best', extension='csv'),
             'pred_all_csv': util.make_path_baseline(
-                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_all', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all', extension='csv'),
             'pred_best_csv': util.make_path_baseline(
-                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_best', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv'),
             'middle_out': util.make_path_baseline(
-                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_middle_out', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out', extension='csv'),
             'middle_out_db': util.make_path_baseline(
-                module='prediction', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='pred_middle_out_db', extension='csv'),
+                path=self.common['path_local'], module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
             'report': util.make_path_baseline(
-                module='report', division=division, data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'],
-                step='report', extension='csv')
+                path=self.common['path_local'], module='report', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='report', extension='csv')
         }
 
     def run(self):
-        # ================================================================================================= #
-        # 0. Set system date period
-        # ================================================================================================= #
-        cycle = Cycle(common=self.common, rule='w')
-        cycle.calc_period()
-        self.date = {
-            'date_from': cycle.hist_period[0],
-            'date_to': cycle.hist_period[1],
-            'hist_from': cycle.hist_period[0],
-            'hist_to': cycle.hist_period[1],
-            'eval_from': cycle.eval_period[0],
-            'eval_to': cycle.eval_period[1],
-            'pred_from': cycle.pred_period[0],
-            'pred_to': cycle.pred_period[1],
-        }
-
         # ================================================================================================= #
         # 0. Check the data version
         # ================================================================================================= #
@@ -144,24 +177,66 @@ class Pipeline(object):
             print("Step 1: Load the dataset\n")
             if self.unit_cfg['unit_test_yn']:
                 kwargs = {
-                    'date_from': self.date['hist_from'],
-                    'date_to': self.date['hist_to'],
+                    'date_from': self.date['date_from'],
+                    'date_to': self.date['date_to'],
                     'cust_grp_cd': self.unit_cfg['cust_grp_cd'],
                     'item_cd': self.unit_cfg['item_cd']
                 }
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
             else:
                 if self.division == 'SELL_IN':
-                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Temp
+                    if self.data_cfg['in_out'] == 'out':
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                        # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
+                    elif self.data_cfg['in_out'] == 'in':
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date))  # Temp
+
                 elif self.division == 'SELL_OUT':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
+                    if self.data_cfg['cycle'] == 'w':
+                        # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_test(**self.date))
+                    elif self.data_cfg['cycle'] == 'm':
+                        sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_test(**self.date))
 
                 # Save Step result
                 if self.exec_cfg['save_step_yn']:
                     self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
 
             print("Data load is finished\n")
+
+        # ================================================================================================= #
+        # 2.0. Load information
+        # ================================================================================================= #
+        # Load information form DB
+        # Load master dataset
+        cust_grp = None
+        if self.data_cfg['in_out'] == 'out':
+            cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
+        elif self.data_cfg['in_out'] == 'in':
+            cust_grp = pd.read_csv(os.path.join('..', '..', 'data', 'sell_in_inqty_cust_grp_map.csv'))
+            cust_grp.columns = [col.lower() for col in cust_grp.columns]
+            # cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info_inqty())
+
+        item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
+        cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
+
+        # Load Algorithm & Hyper-parameter Information
+        model_mst = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
+        model_mst = model_mst.set_index(keys='model').to_dict('index')
+
+        param_grid = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
+        param_grid['stat_cd'] = param_grid['stat_cd'].apply(lambda x: x.lower())
+        param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
+        param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
+
+        mst_info = {
+            'cust_grp': cust_grp,
+            'item_mst': item_mst,
+            'cal_mst': cal_mst,
+            'model_mst': model_mst,
+            'param_grid': param_grid
+        }
+
         # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
@@ -179,7 +254,7 @@ class Pipeline(object):
 
             # Initiate consistency check class
             cns = ConsistencyCheck(division=self.division, common=self.common, hrchy=self.hrchy, date=self.date,
-                                   err_grp_map=err_grp_map, save_yn=False)
+                                   mst_info=mst_info, exec_cfg=self.exec_cfg, err_grp_map=err_grp_map)
 
             # Execute Consistency check
             sales = cns.check(df=sales)
@@ -210,17 +285,17 @@ class Pipeline(object):
             # Initiate data preprocessing class
             preprocess = DataPrep(
                 date=self.date,
-                division=self.division,
                 common=self.common,
                 hrchy=self.hrchy,
+                data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
 
             if self.exec_cfg['rm_not_exist_lvl_yn']:
                 sales_recent = self.io.get_df_from_db(
                     sql=self.sql_conf.sql_sell_in_week_grp_test(
-                        **{'date_from': self.date['pred_from'],
-                           'date_to':  self.date['pred_to']}))
+                        **{'date_from': self.common['pred_start_day'],
+                           'date_to': self.common['pred_end_day']}))
                 preprocess.sales_recent = sales_recent
 
             # Preprocessing the dataset
@@ -236,31 +311,6 @@ class Pipeline(object):
                 )
 
             print("Data preprocessing is finished\n")
-        # ================================================================================================= #
-        # 4.0. Load information
-        # ================================================================================================= #
-        # Load information form DB
-        # Load master dataset
-        cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info())
-        item_mst = self.io.get_df_from_db(sql=SqlConfig.sql_item_view())
-        cal_mst = self.io.get_df_from_db(sql=SqlConfig.sql_calendar())
-
-        # Load Algorithm & Hyper-parameter Information
-        model_mst = self.io.get_df_from_db(sql=SqlConfig.sql_algorithm(**{'division': 'FCST'}))
-        model_mst = model_mst.set_index(keys='model').to_dict('index')
-
-        param_grid = self.io.get_df_from_db(sql=SqlConfig.sql_best_hyper_param_grid())
-        param_grid['stat_cd'] = param_grid['stat_cd'].apply(lambda x: x.lower())
-        param_grid['option_cd'] = param_grid['option_cd'].apply(lambda x: x.lower())
-        param_grid = util.make_lvl_key_val_map(df=param_grid, lvl='stat_cd', key='option_cd', val='option_val')
-
-        mst_info = {
-            'cust_grp': cust_grp,
-            'item_mst': item_mst,
-            'cal_mst': cal_mst,
-            'model_mst': model_mst,
-            'param_grid': param_grid
-        }
 
         # ================================================================================================= #
         # 4. Training
@@ -280,6 +330,7 @@ class Pipeline(object):
                 exg_list=exg_list,
                 hrchy=self.hrchy,
                 common=self.common,
+                data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
 
@@ -359,7 +410,8 @@ class Pipeline(object):
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
                 hrchy=self.hrchy,
-                common=self.common
+                common=self.common,
+                data_cfg=self.data_cfg
             )
             if not self.exec_rslt_cfg['predict']:
                 # Forecast the model
@@ -403,6 +455,11 @@ class Pipeline(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
+                # Save prediction of best algorithm to recent predictino table
+                table_pred_best_recent = 'M4S_O111600'
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**({'division_cd': self.division})))
+                self.io.insert_to_db(df=pred_best, tb_name=table_pred_best_recent)
+
             print("Forecast is finished\n")
 
         # ================================================================================================= #
@@ -422,10 +479,25 @@ class Pipeline(object):
                 item_mst=item_mst
             )
             # Load compare dataset
-            sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(
-                **{'date_from': self.date['eval_from'],
-                   'date_to': self.date['eval_to']})
-            )
+            date_recent = {
+                'date_from': self.common['middle_out_start_day'],
+                'date_to': self.common['middle_out_end_day']
+            }
+            sales_recent = None
+            # Sell-In Dataset
+            if self.division == 'SELL_IN':
+                if self.data_cfg['in_out'] == 'out':
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent))
+                elif self.data_cfg['in_out'] == 'in':
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_recent))
+            # Sell-Out Dataset
+            elif self.division == 'SELL_OUT':
+                if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
+                elif self.data_cfg['cycle'] == 'm':  # Monthly Prediction
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent))
 
             if not self.step_cfg['cls_pred']:
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
@@ -458,8 +530,8 @@ class Pipeline(object):
         if self.step_cfg['cls_rpt']:
             print("Step 6: Report result\n")
             test_vrsn_cd = self.test_vrsn_cd
-            # if self.step_cfg['clss_mdout']:
-            if self.hrchy['lvl']['item'] < 5:
+
+            if self.lvl_cfg['middle_out']:
                 pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
                 test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
             else:
@@ -467,10 +539,44 @@ class Pipeline(object):
                     pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Load compare dataset
-            sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp_test(
-               **{'date_from': self.date['pred_from'],
-                  'date_to': self.date['pred_to']}))
+            date_compare = {
+                'date_from': self.common['pred_start_day'],
+                'date_to': self.common['pred_end_day']
+            }
+            date_recent = {
+                'date_from': self.common['middle_out_start_day'],
+                'date_to': self.common['middle_out_end_day']
+            }
 
+            sales_comp = None
+            sales_recent = None
+
+            # Sell-In dataset
+            if self.division == 'SELL_IN':
+                if self.data_cfg['in_out'] == 'out':
+                    sales_comp = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test(**date_compare)
+                    )
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test(**date_recent)
+                    )
+                elif self.data_cfg['in_out'] == 'in':
+                    sales_comp = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_compare)
+                    )
+                    sales_recent = self.io.get_df_from_db(
+                        sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_recent)
+                    )
+            # Sell-Out dataset
+            elif self.division == 'SELL_OUT':
+                if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
+                    sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_compare))
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
+                elif self.data_cfg['cycle'] == 'm':  # Monthly Prediction
+                    sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_compare))
+                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent))
+
+            # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
             report = ResultSummary(
@@ -479,9 +585,10 @@ class Pipeline(object):
                 data_vrsn=self.data_vrsn_cd,
                 test_vrsn=test_vrsn_cd,
                 hrchy=self.hrchy,
-                item_mst=item_mst
+                item_mst=item_mst,
+                lvl_cfg=self.lvl_cfg
             )
-            result = report.compare_result(sales_comp=sales_comp, pred=pred_best)
+            result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
             result, result_info = report.make_db_format(data=result)
 
             # Remove Special Character

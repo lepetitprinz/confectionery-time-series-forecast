@@ -29,6 +29,9 @@ class DataIO(object):
     def delete_from_db(self, sql: str):
         self.session.delete(sql=sql)
 
+    def update_from_db(self, sql: str):
+        self.session.update(sql=sql)
+
     @staticmethod
     def save_object(data, data_type: str, file_path: str) -> None:
         """

@@ -1,11 +1,11 @@
-from baseline.deployment.PipelineNew import PipelineNew
+from baseline.deployment.Pipeline import Pipeline
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
-test_vrsn_cd = 'TEST_1130_SKU_LVL'
+test_vrsn_cd = 'TEST_1214_SKU_LVL'
 
 # Data Configuration
 data_cfg = {
@@ -60,7 +60,7 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = PipelineNew(
+pipeline = Pipeline(
     data_cfg=data_cfg,
     lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,

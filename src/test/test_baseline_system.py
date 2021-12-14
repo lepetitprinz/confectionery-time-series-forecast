@@ -1,16 +1,24 @@
-from baseline.deployment.PipelineBak import PipelineBak
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from baseline.deployment.PipelineSystem import PipelineSystem
 
 # Sales Data configuration
-# division : SELL_IN / SELL_OUT / 7-11
-division = 'SELL_IN'
-# division = 'SELL_OUT'
-test_vrsn_cd = 'TEST006_SKU_LVL'
+division = 'SELL_IN'    # SELL_IN / SELL_OUT
+in_out = 'out'    # SELL-IN : out / in
+cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
-# Level Configuration
-lvl_cfg = {
-    'cust_lvl': 1,   # SP1
-    'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
+test_vrsn_cd = 'TEST_SELL_IN_BRAND'
+
+# Data Configuration
+data_cfg = {
+    'division': division,
+    'in_out': in_out,
+    'cycle': cycle,
+    'test_vrsn_cd': test_vrsn_cd
 }
+
 # Configuration
 exec_cfg = {
     'save_step_yn': True,            # Save each step result to object or csv
@@ -21,17 +29,18 @@ exec_cfg = {
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
-    'grid_search_yn': False          # Grid Search
+    'grid_search_yn': False,          # Grid Search
+    'filter_threshold_week_yn': False
 }
 
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
-    'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': False,
-    'cls_pred': False,
-    'clss_mdout': False,
+    'cls_cns': True,
+    'cls_prep': True,
+    'cls_train': True,
+    'cls_pred': True,
+    'clss_mdout': True,
     'cls_rpt': True
 }
 
@@ -49,15 +58,14 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = PipelineBak(
-    division=division,
-    lvl_cfg=lvl_cfg,
+pipeline = PipelineSystem(
+    data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg,
-    test_vrsn_cd=test_vrsn_cd
+    unit_cfg=unit_cfg
 )
 
 # Execute Baseline Forecast
+pipeline.init()
 pipeline.run()

@@ -92,15 +92,10 @@ class SqlSession(object):
         with self.engine.connect() as conn:
             conn.execute(statement)
 
-    def upsert(self, df: pd.DataFrame, tb_name: str):
-        table = self.get_table_meta(tb_name=tb_name)
-        stmt = insert(table).values(df.to_dict('records'))
-        stmt = stmt.on_conflict_do_update(
-            constraint='post_key',
-            set_={}
-            )
+    def update(self, sql: str):
+        statement = text(sql)
         with self.engine.connect() as conn:
-            conn.execute(stmt)
+            conn.execute(statement)
 
     def get_table_meta(self, tb_name: str):
         metadata = MetaData(bind=self.engine)

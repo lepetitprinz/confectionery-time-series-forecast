@@ -162,7 +162,7 @@ class DataPrep(object):
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
         # df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
         # Convert unit code
-        if self.data_cfg['division'] == 'SELL_IN':
+        if self.data_cfg['division'] == 'SELL_OUT':
             conditions = [df['unit_cd'] == 'EA',
                           df['unit_cd'] == 'BOL',
                           df['unit_cd'] == 'BOX']

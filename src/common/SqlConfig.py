@@ -123,17 +123,31 @@ class SqlConfig(object):
     # Sales dataset
     ######################################
     # SELL-IN Table
+
     @staticmethod
     def sql_sell_in(**kwargs):
         sql = f""" 
-                    SELECT DIVISION_CD
-                         , CUST_GRP_CD
-                         , BIZ_CD
-                         , LINE_CD
-                         , BRAND_CD
-                         , ITEM_CD
-                         , SALES.SKU_CD
---                          , CONVERT(CHAR, DATEADD(WEEK, 15, CONVERT(DATE, YYMMDD)), 112) AS YYMMDD 
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , BIZ_CD
+                 , LINE_CD
+                 , BRAND_CD
+                 , ITEM_CD
+                 , SALES.SKU_CD
+                 , YYMMDD
+                 , SEQ
+                 , FROM_DC_CD
+                 , UNIT_PRICE
+                 , UNIT_CD
+                 , 0 AS DISCOUNT
+                 , WEEK
+                 , QTY
+                 , CREATE_DATE
+              FROM (
+                    SELECT PROJECT_CD
+                         , DIVISION_CD
+                         , SOLD_CUST_GRP_CD AS CUST_CD
+                         , ITEM_CD AS SKU_CD
                          , YYMMDD
                          , SEQ
                          , FROM_DC_CD
@@ -141,35 +155,28 @@ class SqlConfig(object):
                          , UNIT_CD
                          , DISCOUNT
                          , WEEK
-                         , QTY
+                         , RST_SALES_QTY AS QTY
                          , CREATE_DATE
-                      FROM (
-                            SELECT PROJECT_CD
-                                 , DIVISION_CD
-                                 , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                                 , ITEM_CD AS SKU_CD
-                                 , YYMMDD
-                                 , SEQ
-                                 , FROM_DC_CD
-                                 , UNIT_PRICE
-                                 , RTRIM(UNIT_CD) AS UNIT_CD
-                                 , DISCOUNT
-                                 , WEEK
-                                 , RST_SALES_QTY AS QTY
-                                 , CREATE_DATE
-                              FROM M4S_I002170
-                             WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
-                            ) SALES
-                      LEFT OUTER JOIN (
-                                       SELECT ITEM_CD AS SKU_CD
-                                            , ITEM_ATTR01_CD AS BIZ_CD
-                                            , ITEM_ATTR02_CD AS LINE_CD
-                                            , ITEM_ATTR03_CD AS BRAND_CD
-                                            , ITEM_ATTR04_CD AS ITEM_CD
-                                         FROM VIEW_I002040
-                                        WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                                      ) ITEM
-                        ON SALES.SKU_CD = ITEM.SKU_CD
+                      FROM M4S_I002170
+                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                       AND RST_SALES_QTY <> 0
+                   ) SALES
+              LEFT OUTER JOIN (
+                               SELECT ITEM_CD AS SKU_CD
+                                    , ITEM_ATTR01_CD AS BIZ_CD
+                                    , ITEM_ATTR02_CD AS LINE_CD
+                                    , ITEM_ATTR03_CD AS BRAND_CD
+                                    , ITEM_ATTR04_CD AS ITEM_CD
+                                 FROM VIEW_I002040
+                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                              ) ITEM
+                ON SALES.SKU_CD = ITEM.SKU_CD
+              LEFT OUTER JOIN (
+                               SELECT CUST_CD
+                                    , CUST_GRP_CD
+                                 FROM M4S_I002060
+                              ) CUST
+                ON SALES.CUST_CD = CUST.CUST_CD
                """
         return sql
 
@@ -203,7 +210,7 @@ class SqlConfig(object):
                         , CREATE_DATE
                      FROM M4S_I002173
                    -- WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']} # Todo: Exception
-                   ) SALES
+                  ) SALES
              LEFT OUTER JOIN (
                               SELECT ITEM_CD AS SKU_CD
                                    , ITEM_ATTR01_CD AS BIZ_CD
@@ -228,10 +235,10 @@ class SqlConfig(object):
                          , ITEM_CD
                          , PRICE_START_YYMMDD
                          , FAC_PRICE
-                    FROM M4S_I002041
-                   WHERE PRICE_QTY_UNIT_CD = 'BOX'
-                     AND FAC_PRICE <> 0
-                    ) BOX
+                      FROM M4S_I002041
+                     WHERE PRICE_QTY_UNIT_CD = 'BOX'
+                       AND FAC_PRICE <> 0
+                   ) BOX
               LEFT OUTER JOIN (
                                SELECT PROJECT_CD
                                     , ITEM_CD
@@ -305,22 +312,21 @@ class SqlConfig(object):
                  , YYMMDD
                  , SUM(RESULT_SALES) AS QTY
               FROM (
-                   SELECT DATA_VRSN_CD
-                        , DIVISION_CD
-                        , WEEK
-                        , YYMMDD
-                        , RESULT_SALES
-                        , ITEM_ATTR01_CD
-                        , ITEM_ATTR02_CD
-                        , ITEM_ATTR03_CD
-                        , ITEM_ATTR04_CD
-                        , ITEM_CD
-                   FROM M4S_O110600
-                   WHERE 1 = 1
-                     AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
-                     AND DIVISION_CD = '{kwargs['division_cd']}'
-                     AND FKEY LIKE '%{kwargs['fkey']}%'
-                     AND ITEM_CD ='{kwargs['item_cd']}'
+                    SELECT DATA_VRSN_CD
+                         , DIVISION_CD
+                         , WEEK
+                         , YYMMDD
+                         , RESULT_SALES
+                         , ITEM_ATTR01_CD
+                         , ITEM_ATTR02_CD
+                         , ITEM_ATTR03_CD
+                         , ITEM_ATTR04_CD
+                         , ITEM_CD
+                      FROM M4S_O110600
+                     WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+                       AND DIVISION_CD = '{kwargs['division_cd']}'
+                       AND FKEY LIKE '%{kwargs['fkey']}%'
+                       AND ITEM_CD ='{kwargs['item_cd']}'
                   ) PRED
              GROUP BY DATA_VRSN_CD
                     , DIVISION_CD
@@ -337,37 +343,108 @@ class SqlConfig(object):
     @staticmethod
     def sql_sales_item(**kwargs):
         sql = f"""
-        SELECT * 
-          FROM (
-                SELECT CAL.YYMMDD
-                     , RST_SALES_QTY AS QTY_LAG
-                  FROM (
-                        SELECT *
-                          FROM M4S_I002175
-                         WHERE DIVISION_CD = '{kwargs['division_cd']}'
-                           AND ITEM_CD = '{kwargs['item_cd']}'
-                       ) SALES
-                  LEFT OUTER JOIN (
-                                   SELECT START_WEEK_DAY AS YYMMDD
-                                        , YY
-                                        , WEEK
-                                     FROM M4S_I002030
-                                   GROUP BY START_WEEK_DAY
-                                          , YY
-                                          , WEEK
-                                  ) CAL
-                    ON SALES.YYMMDD = CAL.YY
-                   AND SALES.WEEK = CAL.WEEK
-            ) RSLT
-          WHERE 1=1
-            AND YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
-                """
+            SELECT * 
+              FROM (
+                    SELECT CAL.YYMMDD
+                         , RST_SALES_QTY AS QTY_LAG
+                      FROM (
+                            SELECT *
+                              FROM M4S_I002175
+                             WHERE DIVISION_CD = '{kwargs['division_cd']}'
+                               AND ITEM_CD = '{kwargs['item_cd']}'
+                           ) SALES
+                      LEFT OUTER JOIN (
+                                       SELECT START_WEEK_DAY AS YYMMDD
+                                            , YY
+                                            , WEEK
+                                         FROM M4S_I002030
+                                        GROUP BY START_WEEK_DAY
+                                               , YY
+                                               , WEEK
+                                      ) CAL
+                        ON SALES.YYMMDD = CAL.YY
+                       AND SALES.WEEK = CAL.WEEK
+                   ) RSLT
+             WHERE YYMMDD BETWEEN '{kwargs['from_date']}' AND '{kwargs['to_date']}'
+              """
 
+        return sql
+
+    @staticmethod
+    def sql_data_level():
+        sql = """
+            select S_COL02
+                 , S_COL03
+                 , S_COL04
+                 , S_COL05
+                 , S_COL06
+            from M4S_I103030
+        """
+        return sql
+
+    @staticmethod
+    def sql_what_if_param():
+        sql = """
+            SELECT DATA_VRSN_CD
+                 , DIVISION_CD
+                 , WI_VRSN_ID
+                 , WI_VRSN_SEQ
+                 , DISCOUNT
+                 , FROM_YYMMDD
+                 , TO_YYMMDD
+                 , SALES_MGMT_CD
+                 , ITEM_CD
+                 , EXEC_YN
+                 , CREATE_USER_CD
+              FROM M4S_I110530
+             WHERE EXEC_YN = 'N'
+        """
+        return sql
+
+    ######################################
+    # Update Query
+    ######################################
+    @staticmethod
+    def update_data_version(**kwargs):
+        sql = f"""
+            UPDATE M4S_I110420
+               SET USE_YN = 'N'
+             WHERE DATA_VRSN_CD <> '{kwargs['data_vrsn_cd']}'
+        """
+        return sql
+
+    @staticmethod
+    def update_what_if_param(**kwargs):
+        sql = f"""
+            UPDATE M4S_I110530
+               SET EXEC_YN = 'Y'
+             WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND WI_VRSN_ID = '{kwargs['wi_vrsn_id']}'
+               AND WI_VRSN_SEQ = '{kwargs['wi_vrsn_seq']}'
+               AND DISCOUNT = '{kwargs['discount']}'
+               AND FROM_YYMMDD = '{kwargs['from_yymmdd']}'
+               AND TO_YYMMDD = '{kwargs['to_yymmdd']}'
+               AND SALES_MGMT_CD = '{kwargs['sales_mgmt_cd']}'
+               AND ITEM_CD = '{kwargs['item_cd']}'
+               AND CREATE_USER_CD = '{kwargs['create_user_cd']}'
+        """
         return sql
 
     ######################################
     # Delete Query
     ######################################
+    @staticmethod
+    def del_sales_err(**kwargs):
+        sql = f"""
+            DELETE
+              FROM M4S_I002174
+             WHERE DATA_VRSN_CD =  '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND ERR_CD = '{kwargs['err_cd']}'
+        """
+        return sql
+
     @staticmethod
     def del_openapi(**kwargs):
         sql = f"""
@@ -448,9 +525,11 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def trunc_prediction():
-        sql = """
-            TRUNCATE TABLE M4S_O111600
+    def del_pred_recent(**kwargs):
+        sql = f"""
+            DELETE
+              FROM M4S_O111600
+             WHERE DIVISION_CD = '{kwargs['division_cd']}'
         """
         return sql
 
@@ -739,8 +818,7 @@ class SqlConfig(object):
                                             , UNIT_CD
                                             , RST_SALES_QTY
                                         FROM  M4S_I002170_TEST
-                                       WHERE 1=1
-                                         AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                                       WHERE YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
                                          AND RST_SALES_QTY > 0    -- Remove minus quantity
                                          --AND SOLD_CUST_GRP_CD = '1033' -- exception
                                      ) SALES
@@ -868,8 +946,7 @@ class SqlConfig(object):
                          , RST_SALES_QTY AS QTY
                          , CREATE_DATE
                       FROM M4S_I002173_SELL_OUT
-                     WHERE 1=1
-                       AND SOLD_CUST_GRP_CD <> '1173'
+                     WHERE SOLD_CUST_GRP_CD <> '1173'
                        AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
                   ) SELL
              INNER JOIN M4S_I002179 MAP

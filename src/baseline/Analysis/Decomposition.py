@@ -11,12 +11,11 @@ class Decomposition(object):
         self.dao = DataIO()
         self.date_range = date_range
         self.division = division
-        self.hrchy_list = hrchy_list
-        self.hrchy_lvl_cd = hrchy_lvl_cd
+        self.hrchy = hrchy
         self.x = common['target_col']
         self.model = 'additive'     # additive / multiplicative
         self.tb_name = 'M4S_O110500'
-        self.save_to_db_yn = True
+        self.save_to_db_yn = False
 
     def decompose(self, df):
         data = pd.Series(data=df[self.x].to_numpy(), index=df.index)
@@ -35,12 +34,12 @@ class Decomposition(object):
 
         # Seasonal Decomposition
         decomposed = seasonal_decompose(x=data_resampled, model=self.model)
-        item_info = df[self.hrchy_list].drop_duplicates()
+        item_info = df[self.hrchy['apply']].drop_duplicates()
         item_info = item_info.iloc[0].to_dict()
         result = pd.DataFrame(
-            {'project_cd': 'ENT002',
+            {'project_cd': 'ENT001',
              'division_cd': self.division,
-             'hrchy_lvl_cd': self.hrchy_lvl_cd,
+             'hrchy_lvl_cd': self.hrchy['key'][:-1],
              'item_attr01_cd': item_info.get('biz_cd', np.nan),
              'item_attr02_cd': item_info.get('line_cd', np.nan),
              'item_attr03_cd': item_info.get('brand_cd', np.nan),
