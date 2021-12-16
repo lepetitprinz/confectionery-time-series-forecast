@@ -8,7 +8,7 @@ from copy import deepcopy
 
 
 class ConsistencyCheck(object):
-    def __init__(self, division: str, common: dict, hrchy: dict, date: dict,
+    def __init__(self, data_vrsn_cd: str, division: str, common: dict, hrchy: dict,
                  mst_info: dict, exec_cfg: dict, err_grp_map: dict):
         # Class Configuration
         self.io = DataIO()
@@ -16,7 +16,7 @@ class ConsistencyCheck(object):
 
         # Data Configuration
         self.exec_cfg = exec_cfg
-        self.data_vrsn_cd = date['date_from'] + '-' + date['date_to']
+        self.data_vrsn_cd = data_vrsn_cd
         self.division = division
         self.common = common
         self.hrchy = hrchy

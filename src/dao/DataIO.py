@@ -40,7 +40,7 @@ class DataIO(object):
         :pram file_path: file path
         """
         if data_type == 'csv':
-            data.to_csv(file_path, index=False, encoding='cp949')
+            data.to_csv(file_path, index=False)
 
         elif data_type == 'binary':
             with open(file_path, 'wb') as handle:
@@ -52,7 +52,8 @@ class DataIO(object):
     def load_object(file_path: str, data_type: str):
         data = None
         if data_type == 'csv':
-            data = pd.read_csv(file_path, encoding='cp949')
+            data = pd.read_csv(file_path)
+            # data = pd.read_csv(file_path, encoding='cp949')
 
         elif data_type == 'binary':
             with open(file_path, 'rb') as handle:

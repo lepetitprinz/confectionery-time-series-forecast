@@ -28,6 +28,7 @@ class SqlConfig(object):
     def sql_calendar():
         sql = """
             SELECT YYMMDD
+                 , YYMM
                  , WEEK
               FROM M4S_I002030
         """
@@ -178,6 +179,49 @@ class SqlConfig(object):
                               ) CUST
                 ON SALES.CUST_CD = CUST.CUST_CD
                """
+        return sql
+
+    @staticmethod
+    def sql_sell_in_week_grp(**kwargs):
+        sql = f""" 
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , SKU_CD
+                 , YY
+                 , WEEK
+                 , SUM(RST_SALES_QTY) AS SALES
+              FROM (
+                    SELECT DIVISION_CD
+                         , CUST.CUST_GRP_CD
+                         , SKU_CD
+                         , YY
+                         , WEEK
+                         , RST_SALES_QTY
+                      FROM (
+                            SELECT DIVISION_CD
+                                 , SOLD_CUST_GRP_CD AS CUST_CD
+                                 , ITEM_CD          as SKU_CD
+                                 , YY
+                                 , WEEK
+                                 , RST_SALES_QTY
+                              FROM M4S_I002170
+                             WHERE 1 = 1
+                               AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                               AND RST_SALES_QTY > 0 -- Remove minus quantity
+                           ) SALES
+                     INNER JOIN (
+                                 SELECT CUST_CD
+                                      , CUST_GRP_CD
+                                   FROM M4S_I002060
+                                ) CUST
+                        ON SALES.CUST_CD = CUST.CUST_CD
+                   ) SALES--      
+             GROUP BY DIVISION_CD
+                    , CUST_GRP_CD
+                    , SKU_CD
+                    , YY
+                    , WEEK
+             """
         return sql
 
     # SELL-OUT
@@ -389,7 +433,7 @@ class SqlConfig(object):
                  , DIVISION_CD
                  , WI_VRSN_ID
                  , WI_VRSN_SEQ
-                 , DISCOUNT
+                 , DISCOUNT/ 100 AS DISCOUNT
                  , FROM_YYMMDD
                  , TO_YYMMDD
                  , SALES_MGMT_CD
@@ -398,6 +442,17 @@ class SqlConfig(object):
                  , CREATE_USER_CD
               FROM M4S_I110530
              WHERE EXEC_YN = 'N'
+        """
+        return sql
+
+    @staticmethod
+    def sql_old_item_list():
+        sql = """
+            SELECT ITEM_CD 
+              FROM M4S_I002040
+             WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+               AND NEW_ITEM_YN = 'N'
+               AND ITEM_NM NOT LIKE '%삭제%'
         """
         return sql
 
@@ -470,10 +525,12 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def del_profile():
-        sql = """
+    def del_profile(**kwargs):
+        sql = f"""
             DELETE
               FROM M4S_O110300
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
         """
         return sql
 

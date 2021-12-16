@@ -47,9 +47,11 @@ class Predict(object):
 
     def forecast(self, df):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
-        prediction = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl,
-                                                     fn=self.forecast_model,
-                                                     df=df)
+        prediction = util.hrchy_recursion_extend_key(
+            hrchy_lvl=hrchy_tot_lvl,
+            fn=self.forecast_model,
+            df=df
+        )
 
         return prediction
 
@@ -95,7 +97,7 @@ class Predict(object):
         return data
 
     def make_db_format_pred_all(self, df, hrchy_key: str):
-        end_date = datetime.strptime(self.date['date_to'], '%Y%m%d')
+        end_date = datetime.strptime(self.date['history']['to'], '%Y%m%d')
         end_date -= timedelta(days=6)    # Week start day
 
         result_pred = []
@@ -113,14 +115,18 @@ class Predict(object):
                     if hrchy_key[3:5] == 'P5':
                         result_pred.append(
                             [hrchy_key + pred[0] + '-' + pred[5]] + pred[:-1] +
-                            [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
+                            [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction]
+                        )
                     else:
                         result_pred.append(
                             [hrchy_key + pred[0] + '-' + pred[lvl+1]] + pred[:-1] +
-                            [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
+                            [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction]
+                        )
                 else:
-                    result_pred.append([hrchy_key + pred[lvl+1]] + pred[:-1] +
-                                       [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction])
+                    result_pred.append(
+                        [hrchy_key + pred[lvl+1]] + pred[:-1] +
+                        [datetime.strftime(end_date + timedelta(weeks=(j + 1)), '%Y%m%d'), prediction]
+                    )
 
         result_pred = pd.DataFrame(result_pred)
         cols = ['fkey'] + self.hrchy['apply'] + ['stat_cd', 'yymmdd', 'result_sales']
@@ -131,30 +137,38 @@ class Predict(object):
         result_pred['create_user_cd'] = 'SYSTEM'
 
         if self.hrchy['lvl']['item'] > 0:
-            result_pred = pd.merge(result_pred,
-                                   self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
-                                   on=self.hrchy['list']['item'][: self.hrchy['lvl']['item']],
-                                   how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+            result_pred = pd.merge(
+                result_pred,
+                self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
+                on=self.hrchy['list']['item'][: self.hrchy['lvl']['item']],
+                how='left',
+                suffixes=('', '_DROP')
+            ).filter(regex='^(?!.*_DROP)')
 
         if self.hrchy['lvl']['cust'] > 0:
-            result_pred = pd.merge(result_pred,
-                                   self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
-                                   on=self.hrchy['list']['cust'][: self.hrchy['lvl']['cust']],
-                                   how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+            result_pred = pd.merge(
+                result_pred,
+                self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
+                on=self.hrchy['list']['cust'][: self.hrchy['lvl']['cust']],
+                how='left',
+                suffixes=('', '_DROP')
+            ).filter(regex='^(?!.*_DROP)')
 
             result_pred = result_pred.fillna('-')
-
-        result_pred = pd.merge(result_pred, self.cal_mst, on='yymmdd', how='left')
+        calendar = self.cal_mst[['yymmdd', 'week']]
+        result_pred = pd.merge(result_pred, calendar, on='yymmdd', how='left')
 
         # Rename columns
         result_pred = result_pred.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         result_pred = result_pred.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
 
         # Prediction information
-        pred_info = {'project_cd': 'ENT001',
-                     'data_vrsn_cd': self.data_vrsn_cd,
-                     'division_cd': self.division,
-                     'fkey': hrchy_key[:-1]}
+        pred_info = {
+            'project_cd': 'ENT001',
+            'data_vrsn_cd': self.data_vrsn_cd,
+            'division_cd': self.division,
+            'fkey': hrchy_key[:-1]
+        }
 
         return result_pred, pred_info
 

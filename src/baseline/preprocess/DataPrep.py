@@ -24,12 +24,12 @@ class DataPrep(object):
             'sum': common['agg_sum'].split(','),
             'avg': common['agg_avg'].split(',')
         }
-        self.date_range = pd.date_range(
-            start=date['date_from'],
-            end=date['date_to'],
+        self.hist_date_range = pd.date_range(
+            start=date['history']['from'],
+            end=date['history']['to'],
             freq=common['resample_rule']
         )
-        self.date_length = len(self.date_range)
+        self.date_length = len(self.hist_date_range)
         self.exg_map = config.EXG_MAP    # Exogenous variable map
         self.key_col = ['cust_grp_cd', 'sku_cd']
 
@@ -43,8 +43,8 @@ class DataPrep(object):
 
         # Execute option
         self.imputer = 'knn'
-        # self.sigma = float(common['outlier_sigma'])
-        self.sigma = 2
+        self.sigma = float(common['outlier_sigma'])
+        # self.sigma = 2
         self.outlier_method = 'std'
         self.quantile_range = 0.02
         self.noise_rate = 0.1
@@ -94,7 +94,7 @@ class DataPrep(object):
                 common=self.common,
                 division=self.data_cfg['division'],
                 hrchy=self.hrchy,
-                date_range=self.date_range
+                date_range=self.hist_date_range
             )
 
             util.hrchy_recursion(
@@ -105,14 +105,7 @@ class DataPrep(object):
 
             decompose.dao.session.close()
 
-        print("Week Count: ", len(self.date_range))
-
-        # Resampling
-        # data_resample = util.hrchy_recursion(
-        #     hrchy_lvl=self.hrchy_level,
-        #     fn=self.resample,
-        #     df=data_group
-        # )
+        print("Week Count: ", len(self.hist_date_range))
 
         # Resampling
         data_resample = util.hrchy_recursion_with_none(
@@ -229,7 +222,7 @@ class DataPrep(object):
             if len(df_resampled[df_resampled['qty'] != 0]) < self.threshold:
                 return None
 
-        if len(df_resampled.index) != len(self.date_range):
+        if len(df_resampled.index) != len(self.hist_date_range):
             # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
 
@@ -249,7 +242,7 @@ class DataPrep(object):
         else:
             return df
 
-    def check_missiing_value(self, df: pd.DataFrame) -> float:
+    def check_missing_value(self, df: pd.DataFrame) -> float:
         # df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
         # df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
         #
@@ -258,13 +251,13 @@ class DataPrep(object):
 
         # Check and add dates when sales does not exist
         missed_rate = 0
-        if len(df.index) != len(self.date_range):
+        if len(df.index) != len(self.hist_date_range):
             missed_rate = self.check_missing_data(df=df)
 
         return missed_rate
 
     def check_missing_data(self, df: pd.DataFrame):
-        tot_len = len(self.date_range)
+        tot_len = len(self.hist_date_range)
         missed = tot_len - len(df.index)
         exist = tot_len - missed
         missed_rate = 100 - round((missed / tot_len) * 100, 1)
@@ -285,7 +278,7 @@ class DataPrep(object):
         return resampled
 
     def fill_missing_date(self, df: pd.DataFrame) -> pd.DataFrame:
-        idx_add = list(set(self.date_range) - set(df.index))
+        idx_add = list(set(self.hist_date_range) - set(df.index))
         data_add = np.zeros((len(idx_add), df.shape[1]))
         df_add = pd.DataFrame(data_add, index=idx_add, columns=df.columns)
         df = df.append(df_add)

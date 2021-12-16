@@ -6,7 +6,7 @@ from recommend.feature_engineering.Profiling import Profiling
 from recommend.feature_engineering.Rank import Rank
 
 
-class Pipeline(object):
+class PipelineCycle(object):
     """
     Ranking Pipeline
     """
@@ -21,6 +21,7 @@ class Pipeline(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
+
         # Data configuration
         self.item_col = 'sku_cd'
         self.meta_col = 'bom_cd'
@@ -41,15 +42,21 @@ class Pipeline(object):
         self.date = init.date
         self.data_vrsn_cd = init.data_vrsn_cd
 
-        # ====================================================================== #
+        # ====================================================================== # #
         # 2. Load Data
         # ====================================================================== #
         item_profile = self.io.get_df_from_db(sql=self.sql_conf.sql_bom_mst())
+        data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
+        calendar = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
 
         # ====================================================================== #
         # 3. Data Preprocessing
         # ====================================================================== #
-        prep = DataPrep(item_col=self.item_col, meta_col=self.meta_col)
+        prep = DataPrep(
+            common=self.common,
+            data_vrsn_cd=self.data_vrsn_cd,
+            data_vrsn_list=data_vrsn_list,
+            cal=calendar)
         data_prep = prep.preprocess(data=item_profile)
 
         # ====================================================================== #

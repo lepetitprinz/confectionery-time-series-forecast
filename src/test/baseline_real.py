@@ -1,26 +1,27 @@
-from baseline.deployment.Pipeline import Pipeline
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from baseline.deployment.PipelineReal import PipelineReal
 
 # Sales Data configuration
-division = 'SELL_OUT'    # SELL_IN / SELL_OUT
+division = 'SELL_IN'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
-test_vrsn_cd = 'TEST_1214_SKU_LVL'
+test_vrsn_cd = 'TEST_SELL_IN_BRAND'
 
-# Data Configuration
-data_cfg = {
-    'division': division,
-    'in_out': in_out,
-    'cycle': cycle,
-    'test_vrsn_cd': test_vrsn_cd
+# Execute Configuration
+step_cfg = {
+    'cls_load': False,
+    'cls_cns': False,
+    'cls_prep': False,
+    'cls_train': False,
+    'cls_pred': True,
+    'clss_mdout': True,
+    'cls_rpt': True
 }
 
-# Level Configuration
-lvl_cfg = {
-    'cust_lvl': 1,   # SP1
-    'item_lvl': 5,    # Biz - Line - Brand - Item - SKU
-    'middle_out': False
-}
 # Configuration
 exec_cfg = {
     'save_step_yn': True,            # Save each step result to object or csv
@@ -33,17 +34,6 @@ exec_cfg = {
     'feature_selection_yn': False,   # Feature Selection
     'grid_search_yn': False,          # Grid Search
     'filter_threshold_week_yn': False
-}
-
-# Execute Configuration
-step_cfg = {
-    'cls_load': False,
-    'cls_cns': True,
-    'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
-    'clss_mdout': False,
-    'cls_rpt': True
 }
 
 # Load result configuration
@@ -60,9 +50,16 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = Pipeline(
+# Data Configuration
+data_cfg = {
+    'division': division,
+    'in_out': in_out,
+    'cycle': cycle,
+    'test_vrsn_cd': test_vrsn_cd
+}
+
+pipeline = PipelineReal(
     data_cfg=data_cfg,
-    lvl_cfg=lvl_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,

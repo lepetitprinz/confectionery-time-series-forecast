@@ -2,9 +2,11 @@ import pandas as pd
 
 
 class DataPrep(object):
-    def __init__(self, item_col: str, meta_col: str):
-        self.item_col = item_col
-        self.meta_col = meta_col
+    def __init__(self, common: dict, data_vrsn_cd: str, data_vrsn_list: pd.DataFrame, cal: pd.DataFrame):
+        self.common = common
+        self.data_vrsn_cd = data_vrsn_cd
+        self.data_vrsn_list = data_vrsn_list
+        self.cal = cal
         self.col_str = ['sku_cd', 'bom_cd']
 
     def preprocess(self, data: pd.DataFrame):
@@ -22,15 +24,17 @@ class DataPrep(object):
     def check_na(self):
         pass
 
-    @staticmethod
-    def conv_to_db_table(data: list):
-        db = []
+    def make_db_format(self, data: list):
+        similar = []
         for item, ranks in data:
             for i, rank in enumerate(ranks):
-                db.append([item, i+1, rank[0], rank[1]])
+                similar.append([item, i+1, rank[0], rank[1]])
 
-        db = pd.DataFrame(db, columns=['item_cd', 'rank', 'sim_item_cd', 'score'])
-        db['project_cd'] = 'ENT001'
-        db['create_user_cd'] = 'SYSTEM'
+        result = pd.DataFrame(similar, columns=['item_cd', 'rank', 'sim_item_cd', 'score'])
+        result['project_cd'] = self.common['project_cd']
+        result['data_vrsn_cd'] = self.data_vrsn_cd
+        result['create_user_cd'] = 'SYSTEM'
 
-        return db
+        # result = pd.merge(result, self.cal, on)
+
+        return result

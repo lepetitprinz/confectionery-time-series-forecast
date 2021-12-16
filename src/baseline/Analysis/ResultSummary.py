@@ -15,13 +15,14 @@ class ResultSummary(object):
     }
     sku_name_map = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 
-    def __init__(self, common: dict, division: str, data_vrsn: str, test_vrsn: str,
+    def __init__(self, data_vrsn: str, division: str, date: dict, common: dict,  test_vrsn: str,
                  hrchy: dict, item_mst: pd.DataFrame, lvl_cfg: dict):
         # Data Information Configuration
+        self.data_vrsn = data_vrsn
+        self.division = division
+        self.date = date
         self.common = common
         self.item_mst = item_mst
-        self.division = division
-        self.data_vrsn = data_vrsn
         self.test_vrsn = test_vrsn
         self.lvl_cfg = lvl_cfg
 
@@ -180,8 +181,8 @@ class ResultSummary(object):
         data['yy'] = data[self.common['date_col']].str.slice(0, 4)
 
         # Filter comparing days
-        data = data[data['yymmdd'] >= self.common['pred_start_day']]
-        data = data[data['yymmdd'] <= self.common['pred_end_day']]
+        data = data[data['yymmdd'] >= self.date['evaluation']['from']]
+        data = data[data['yymmdd'] <= self.date['evaluation']['to']]
 
         # Convert minus values to zeros
         data['pred'] = np.where(data['pred'] < 0, 0, data['pred'])  # Todo Exception

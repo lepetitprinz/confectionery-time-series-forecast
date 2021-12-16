@@ -107,7 +107,7 @@ class MiddleOut(object):
 
     # Step2. Calculate ratio
     def calc_ratio(self, df_upper, df_lower):
-        result = self.merge(left=df_upper, right=df_lower)
+        result = self.merge_df(left=df_upper, right=df_lower)
         result['ratio'] = result[self.target_col + '_' + 'lower'] / result[self.target_col + '_' + 'upper']
         result = self.drop_qty(df=result)
 
@@ -151,7 +151,7 @@ class MiddleOut(object):
 
         return split_qty
 
-    def merge(self, left, right):
+    def merge_df(self, left, right):
         on = list(left.columns)
         on.remove(self.target_col + '_' + 'upper')
         merged = pd.merge(left, right, on=on)
