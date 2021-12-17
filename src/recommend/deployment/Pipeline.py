@@ -77,7 +77,7 @@ class Pipeline(object):
         # 6. Save result
         # ====================================================================== #
         if self.exec_cfg['save_db_yn']:
-            results_db = prep.make_db_format(data=results)
+            results_db = prep.add_db_info(data=results)
             info = {'project_cd': self.common['project_cd'], 'data_vrsn_cd': self.data_vrsn_cd}
             self.io.delete_from_db(sql=self.sql_conf.del_profile(**info))
             self.io.insert_to_db(df=results_db, tb_name=self.tb_name_rank)

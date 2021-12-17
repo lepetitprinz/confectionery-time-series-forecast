@@ -36,10 +36,10 @@ class Init(object):
         self.level = {}
         self.path = {}
 
-    def run(self, item_lvl: int):
+    def run(self, cust_lvl: int, item_lvl: int):
         self.set_date()
         self.set_data_version()
-        self.set_level(item_lvl=item_lvl)
+        self.set_level(cust_lvl=cust_lvl, item_lvl=item_lvl)
         self.set_hrchy()
         self.set_path()
 
@@ -65,8 +65,8 @@ class Init(object):
         else:
             date = {
                 'history': {
-                    'from': self.common[self.day_map[self.data_cfg['division']][self.data_cfg['cycle']]['rst_from']],
-                    'to': self.common[self.day_map[self.data_cfg['division']][self.data_cfg['cycle']]['rst_to']]
+                    'from': self.common[self.day_map[self.division][self.data_cfg['cycle']]['rst_from']],
+                    'to': self.common[self.day_map[self.division][self.data_cfg['cycle']]['rst_to']]
                 },
                 'middle_out': {
                     'from': self.common['middle_out_start_day'],
@@ -83,9 +83,9 @@ class Init(object):
     def set_data_version(self):
         self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
 
-    def set_level(self, item_lvl: int):
+    def set_level(self, cust_lvl: int, item_lvl: int):
         level = {
-            'cust_lvl': 1,    # Fixed
+            'cust_lvl': cust_lvl,    # Fixed
             'item_lvl': item_lvl,
             'middle_out': self.middle_out
         }

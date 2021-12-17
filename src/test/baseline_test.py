@@ -7,15 +7,15 @@ cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
 test_vrsn_cd = 'TEST_1216_SKU_LVL'
 cust_lvl = 1
-item_lvl = 3  # Biz - Line - Brand - Item - SKU
+item_lvl = 5  # Biz - Line - Brand - Item - SKU
 
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': False,
+    'cls_prep': True,
     'cls_train': False,
-    'cls_pred': True,
+    'cls_pred': False,
     'clss_mdout': False,
     'cls_rpt': False
 }
@@ -38,7 +38,7 @@ exec_cfg = {
 # Load result configuration
 exec_rslt_cfg = {
     'train': False,
-    'predict': True,
+    'predict': False,
     'middle_out': False
 }
 

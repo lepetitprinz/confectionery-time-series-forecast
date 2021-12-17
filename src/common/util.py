@@ -142,19 +142,6 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
             fn(hrchy, val_hrchy)
             hrchy.append(key_hrchy)
 
-# def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0) -> None:
-#     if lvl == 0:
-#         for key, val in df.items():
-#             hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
-#
-#     elif lvl < hrchy_lvl:
-#         for key_hrchy, val_hrchy in val.items():
-#             hrchy_recursion_with_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
-#
-#     elif lvl == hrchy_lvl:
-#         for key_hrchy, val_hrchy in val.items():
-#             fn(key_hrchy, val_hrchy)
-
 
 def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
     if lvl == 0:

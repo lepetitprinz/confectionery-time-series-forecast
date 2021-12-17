@@ -53,7 +53,10 @@ class DataPrep(object):
         # ------------------------------- #
         # 1. Preprocess sales dataset
         # ------------------------------- #
-        exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
+        if not self.exec_cfg['decompose_yn']:
+            exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
+        else:
+            exg_list = []
 
         # convert data type
         for col in self.STR_TYPE_COLS:
@@ -69,10 +72,11 @@ class DataPrep(object):
         data[self.common['date_col']] = data[self.common['date_col']].astype(np.int64)
 
         # 2. Preprocess Exogenous dataset
-        exg = util.prep_exg_all(data=exg)
+        if not self.exec_cfg['decompose_yn']:
+            exg = util.prep_exg_all(data=exg)
 
-        # Merge sales data & exogenous(all) data
-        data = self.merge_exg(data=data, exg=exg)
+            # Merge sales data & exogenous(all) data
+            data = self.merge_exg(data=data, exg=exg)
 
         # preprocess sales dataset
         data = self.conv_data_type(df=data)
@@ -97,15 +101,14 @@ class DataPrep(object):
                 date_range=self.hist_date_range
             )
 
-            util.hrchy_recursion(
+            decomposed = util.hrchy_recursion_with_none(
                 hrchy_lvl=self.hrchy_level,
                 fn=decompose.decompose,
                 df=data_group
             )
 
-            decompose.dao.session.close()
-
-        print("Week Count: ", len(self.hist_date_range))
+            return decomposed, exg_list, hrchy_cnt
+        # print("Week Count: ", len(self.hist_date_range))
 
         # Resampling
         data_resample = util.hrchy_recursion_with_none(
@@ -228,6 +231,9 @@ class DataPrep(object):
 
         if self.exec_cfg['rm_outlier_yn']:
             df_resampled = self.remove_outlier(df=df_resampled, feat=self.common['target_col'])
+
+        if self.exec_cfg['impute_yn']:
+            df_resampled = self.impute_data(df=df_resampled, feat=self.common['target_col'])
 
         # Add data level
         df_resampled = self.add_data_level(org=df, resampled=df_resampled)
@@ -370,5 +376,19 @@ class DataPrep(object):
             values = feature + rand_norm
 
         df[self.common['target_col']] = values
+
+        return df
+
+    @staticmethod
+    def ravel_df(hrchy: list, df: pd.DataFrame):
+        result = df.to_numpy()
+
+        return result
+
+    def conv_decomposed_list(self, data):
+        cols = ['project_cd', 'division_cd', 'hrchy_lvl_cd', 'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd',
+                'item_attr04_cd', 'yymmdd', 'org_val', 'trend_val', 'seasonal_val', 'resid_val', 'create_user_cd']
+
+        df = pd.DataFrame(data, columns=cols)
 
         return df

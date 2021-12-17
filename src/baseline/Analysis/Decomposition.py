@@ -1,5 +1,3 @@
-from dao.DataIO import DataIO
-
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -8,7 +6,6 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 class Decomposition(object):
     def __init__(self, common, division: str, hrchy: dict, date_range):
-        self.dao = DataIO()
         self.date_range = date_range
         self.division = division
         self.hrchy = hrchy
@@ -33,25 +30,26 @@ class Decomposition(object):
         data_resampled = data_resampled.fillna(0)
 
         # Seasonal Decomposition
-        decomposed = seasonal_decompose(x=data_resampled, model=self.model)
-        item_info = df[self.hrchy['apply']].drop_duplicates()
-        item_info = item_info.iloc[0].to_dict()
-        result = pd.DataFrame(
-            {'project_cd': 'ENT001',
-             'division_cd': self.division,
-             'hrchy_lvl_cd': self.hrchy['key'][:-1],
-             'item_attr01_cd': item_info.get('biz_cd', np.nan),
-             'item_attr02_cd': item_info.get('line_cd', np.nan),
-             'item_attr03_cd': item_info.get('brand_cd', np.nan),
-             'item_attr04_cd': item_info.get('item_cd', np.nan),
-             'yymmdd': [datetime.strftime(dt, '%Y%m%d') for dt in list(data_resampled.index)],
-             'org_val': decomposed.observed,
-             'trend_val': decomposed.trend.fillna(0),
-             'seasonal_val': decomposed.seasonal.fillna(0),
-             'resid_val': decomposed.resid.fillna(0),
-             'create_user_cd': 'SYSTEM',
-             'create_date': datetime.now()})
+        try:
+            decomposed = seasonal_decompose(x=data_resampled, model=self.model)
+            item_info = df[self.hrchy['apply']].drop_duplicates()
+            item_info = item_info.iloc[0].to_dict()
+            result = pd.DataFrame({
+                'project_cd': 'ENT001',
+                'division_cd': self.division,
+                'hrchy_lvl_cd': self.hrchy['key'][:-1],
+                'item_attr01_cd': item_info.get('biz_cd', ''),
+                'item_attr02_cd': item_info.get('line_cd', ''),
+                'item_attr03_cd': item_info.get('brand_cd', ''),
+                'item_attr04_cd': item_info.get('item_cd', ''),
+                'yymmdd': [datetime.strftime(dt, '%Y%m%d') for dt in list(data_resampled.index)],
+                'org_val': decomposed.observed,
+                'trend_val': np.round(decomposed.trend.fillna(0), 1),
+                'seasonal_val': np.round(decomposed.seasonal.fillna(0), 1),
+                'resid_val': np.round(decomposed.resid.fillna(0), 1),
+                'create_user_cd': 'SYSTEM'
+            })
+            return result
 
-        # Save
-        if self.save_to_db_yn:
-            self.dao.insert_to_db(df=result, tb_name=self.tb_name)
+        except ValueError:
+            return None

@@ -7,35 +7,34 @@ from recommend.feature_engineering.Rank import Rank
 
 
 class PipelineCycle(object):
-    """
-    Ranking Pipeline
-    """
-    def __init__(self, data_cfg: dict, exec_cfg: dict):
+    def __init__(self, cfg: dict):
         # Class configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
-        self.data_cfg = data_cfg
-        self.exec_cfg = exec_cfg
+
+        # Execute configuration
+        self.cfg = cfg
+
+        # Data configuration
         self.common = self.io.get_dict_from_db(
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-
-        # Data configuration
-        self.item_col = 'sku_cd'
-        self.meta_col = 'bom_cd'
-        self.top_n = 10
-        self.tb_name_rank = 'M4S_O110300'
-
         self.date = {}
         self.data_vrsn_cd = {}
+
+        self.item_col = 'sku_cd'
+        self.meta_col = 'bom_cd'
+        self.rank_n = 30
+        self.filter_n = 10
+        self.tb_name_rank = 'M4S_O110300'
 
     def run(self):
         # ====================================================================== #
         # 1. initiate basic setting
         # ====================================================================== #
-        init = Init(data_cfg=self.data_cfg, common=self.common)
+        init = Init(cfg=self.cfg, common=self.common)
         init.run()
 
         # Set initialized object
@@ -46,6 +45,7 @@ class PipelineCycle(object):
         # 2. Load Data
         # ====================================================================== #
         item_profile = self.io.get_df_from_db(sql=self.sql_conf.sql_bom_mst())
+        item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
         calendar = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
 
@@ -56,7 +56,9 @@ class PipelineCycle(object):
             common=self.common,
             data_vrsn_cd=self.data_vrsn_cd,
             data_vrsn_list=data_vrsn_list,
-            cal=calendar)
+            item_mst=item_mst,
+            cal=calendar
+        )
         data_prep = prep.preprocess(data=item_profile)
 
         # ====================================================================== #
@@ -71,7 +73,7 @@ class PipelineCycle(object):
         rank = Rank(
             item_indices=profile.item_indices,
             similarity=similarity,
-            top_n=self.top_n
+            top_n=self.rank_n
         )
 
         results = []
@@ -81,10 +83,15 @@ class PipelineCycle(object):
             results.append([item_cd, rank_result])
 
         # ====================================================================== #
+        # 6. Line Filtering
+        # ====================================================================== #
+        results = prep.filter_rerank_by_line(data=results, filter_n=self.filter_n)
+
+        # ====================================================================== #
         # 6. Save result
         # ====================================================================== #
-        if self.exec_cfg['save_db_yn']:
-            results_db = prep.make_db_format(data=results)
+        if self.cfg['save_db_yn']:
+            results_db = prep.add_db_info(data=results)
             info = {'project_cd': self.common['project_cd'], 'data_vrsn_cd': self.data_vrsn_cd}
             self.io.delete_from_db(sql=self.sql_conf.del_profile(**info))
             self.io.insert_to_db(df=results_db, tb_name=self.tb_name_rank)

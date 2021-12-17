@@ -70,7 +70,7 @@ class PipelineTest(object):
             common=self.common,
             division=self.division
         )
-        init.run(item_lvl=self.item_lvl)
+        init.run(cust_lvl=1, item_lvl=self.item_lvl)
 
         # Set initialized object
         self.date = init.date

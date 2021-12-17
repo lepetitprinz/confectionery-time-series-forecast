@@ -75,7 +75,7 @@ class PipelineReal(object):
             common=self.common,
             division=self.division
         )
-        init.run(item_lvl=self.item_lvl)    # Todo : Exception
+        init.run(cust_lvl=1, item_lvl=self.item_lvl)    # Todo : Exception
 
         # Set initialized object
         self.data_vrsn_cd = init.data_vrsn_cd

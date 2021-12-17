@@ -8,6 +8,7 @@ class SqlConfig(object):
     def sql_data_version():
         sql = f"""
             SELECT DATA_VRSN_CD
+                 , EXEC_DATE
               FROM M4S_I110420
             """
         return sql
@@ -50,6 +51,7 @@ class SqlConfig(object):
                  , ITEM_NM AS SKU_NM
               FROM VIEW_I002040
              WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
+               AND USE_YN = 'Y'
              GROUP BY ITEM_ATTR01_CD
                     , ITEM_ATTR01_NM
                     , ITEM_ATTR02_CD
@@ -549,13 +551,23 @@ class SqlConfig(object):
     @staticmethod
     def del_hyper_params(**kwargs):
         sql = f"""
-        DELETE
-          FROM M4S_I103011
-         WHERE PROJECT_CD = '{kwargs['project_cd']}'
-           AND STAT_CD = '{kwargs['stat_cd']}'
-           AND OPTION_CD = '{kwargs['option_cd']}'
+            DELETE
+              FROM M4S_I103011
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND STAT_CD = '{kwargs['stat_cd']}'
+               AND OPTION_CD = '{kwargs['option_cd']}'
         """
         return sql
+
+    @staticmethod
+    def del_decomposition(**kwargs):
+        sql = f"""
+            DELETE
+              FROM M4S_O110500
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               and HRCHY_LVL_CD LIKE '{kwargs['hrchy_lvl_cd']}%'
+        """
 
     @staticmethod
     def del_compare_result(**kwargs):

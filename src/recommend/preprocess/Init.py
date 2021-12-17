@@ -1,20 +1,19 @@
-import pandas as pd
-
 from operation.Cycle import Cycle
 
 
 class Init(object):
-    def __init__(self, data_cfg: dict, common: dict):
-        self.data_cfg = data_cfg
+    def __init__(self, cfg: dict, common: dict):
+        self.cfg = cfg
         self.common = common
         self.date = {}
-        self.data_vrsn_cd = {}
+        self.data_vrsn_cd = ''
 
     def run(self):
         self.set_date()
+        self.set_data_version()
 
     def set_date(self):
-        cycle = Cycle(common=self.common, rule=self.data_cfg['cycle'])
+        cycle = Cycle(common=self.common, rule=self.cfg['cycle'])
         cycle.calc_period()
         date = {
             'history': {
@@ -35,3 +34,4 @@ class Init(object):
 
     def set_data_version(self):
         self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
+

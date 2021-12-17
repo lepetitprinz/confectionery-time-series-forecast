@@ -15,15 +15,16 @@ test_vrsn_cd = 'TEST_SELL_IN_BRAND'
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': False,
+    'cls_prep': True,
     'cls_train': False,
-    'cls_pred': True,
-    'clss_mdout': True,
-    'cls_rpt': True
+    'cls_pred': False,
+    'clss_mdout': False,
+    'cls_rpt': False
 }
 
 # Configuration
 exec_cfg = {
+    'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
     'save_db_yn': False,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
