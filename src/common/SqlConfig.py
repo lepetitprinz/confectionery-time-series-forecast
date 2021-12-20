@@ -161,7 +161,7 @@ class SqlConfig(object):
                          , RST_SALES_QTY AS QTY
                          , CREATE_DATE
                       FROM M4S_I002170
-                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                     WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                        AND RST_SALES_QTY <> 0
                    ) SALES
               LEFT OUTER JOIN (
@@ -208,8 +208,8 @@ class SqlConfig(object):
                                  , RST_SALES_QTY
                               FROM M4S_I002170
                              WHERE 1 = 1
-                               AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
-                               AND RST_SALES_QTY > 0 -- Remove minus quantity
+                               AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                               AND RST_SALES_QTY <> 0 -- Remove 0 quantity
                            ) SALES
                      INNER JOIN (
                                  SELECT CUST_CD
@@ -255,7 +255,7 @@ class SqlConfig(object):
                         , RST_SALES_QTY AS QTY
                         , CREATE_DATE
                      FROM M4S_I002173
-                   -- WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']} # Todo: Exception
+                   -- WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']} # Todo: Exception
                   ) SALES
              LEFT OUTER JOIN (
                               SELECT ITEM_CD AS SKU_CD
@@ -640,7 +640,7 @@ class SqlConfig(object):
                          , RST_SALES_QTY AS QTY
                          , CREATE_DATE
                       FROM M4S_I002170_TEST
-                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                     WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                     ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM_CD AS SKU_CD
@@ -689,7 +689,7 @@ class SqlConfig(object):
                          , RST_SALES_QTY    AS QTY
                          , CREATE_DATE
                       FROM M4S_I002170_INQTY
-                     WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                     WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                    ) SALES
               LEFT OUTER JOIN (
                                SELECT ITEM_CD        AS SKU_CD
@@ -743,7 +743,7 @@ class SqlConfig(object):
                                          , UNIT_CD
                                          , RST_SALES_QTY
                                       FROM M4S_I002170_INQTY
-                                     WHERE YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
                                    ) SALES
               LEFT OUTER JOIN (
                                SELECT BOX.ITEM_CD                                 AS SKU_CD
@@ -828,7 +828,7 @@ class SqlConfig(object):
                            , RST_SALES_QTY AS QTY
                            , CREATE_DATE
                         FROM M4S_I002170_TEST
-                       WHERE YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                       WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                        AND RST_SALES_QTY > 0 
                        AND SOLD_CUST_GRP_CD = '{kwargs['cust_grp_cd']}',
                        AND ITEM_CD = '{kwargs['item_cd']}'
@@ -887,7 +887,7 @@ class SqlConfig(object):
                                             , UNIT_CD
                                             , RST_SALES_QTY
                                         FROM  M4S_I002170_TEST
-                                       WHERE YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                                       WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
                                          AND RST_SALES_QTY > 0    -- Remove minus quantity
                                          --AND SOLD_CUST_GRP_CD = '1033' -- exception
                                      ) SALES
@@ -1016,7 +1016,7 @@ class SqlConfig(object):
                          , CREATE_DATE
                       FROM M4S_I002173_SELL_OUT
                      WHERE SOLD_CUST_GRP_CD <> '1173'
-                       AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+                       AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                   ) SELL
              INNER JOIN M4S_I002179 MAP
                 ON SELL.SKU_CD = MAP.BAR_CD
@@ -1044,7 +1044,7 @@ class SqlConfig(object):
                          FROM M4S_I002173_SELL_OUT
                         WHERE 1 = 1
                           AND SOLD_CUST_GRP_CD <> '1173'
-                          AND YYMMDD BETWEEN '{kwargs['date_from']}' AND '{kwargs['date_to']}'
+                          AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
                        ) SALES
                  INNER JOIN (
                              SELECT BAR_CD
@@ -1078,7 +1078,7 @@ class SqlConfig(object):
              INNER JOIN TEST_NEW.dbo.SELLOUT_PAST_K7_MASTER ITEM
                 ON SALES.ITEM_CD = ITEM.K7_CD
              WHERE SALES.SOLD_CUST_GRP_CD = '1173'
-               AND YYMMDD BETWEEN {kwargs['date_from']} AND {kwargs['date_to']}
+               AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
         """
         return sql
 

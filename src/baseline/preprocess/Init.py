@@ -153,6 +153,12 @@ class Init(object):
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
             'report': util.make_path_baseline(
                 path=self.common['path_local'], module='report', division=self.division, data_vrsn=self.data_vrsn_cd,
-                hrchy_lvl=self.hrchy['key'], step='report', extension='csv')
+                hrchy_lvl=self.hrchy['key'], step='report', extension='csv'),
+            'decompose': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='decompose', extension='csv'),
+            'decompose_db': util.make_path_baseline(
+                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'),
         }
         self.path = path

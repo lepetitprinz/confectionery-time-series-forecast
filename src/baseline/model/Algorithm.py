@@ -1,5 +1,3 @@
-from common.SuppressStdout import SuppressStdout
-
 import ast
 import warnings
 import numpy as np
@@ -64,7 +62,7 @@ class Algorithm(object):
                         seasonal=bool(cfg['seasonal']), period=ast.literal_eval(cfg['period']))
 
         try:
-            model_fit = model.fit()
+            model_fit = model.fit(cov_type='HC0')
 
             # Make multi-step prediction
             yhat = model_fit.forecast(steps=pred_step)

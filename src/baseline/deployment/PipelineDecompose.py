@@ -14,7 +14,6 @@ class PipelineDecompose(object):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
-        :param step_cfg: Execute Configuration
         """
         self.item_lvl = item_lvl
 
@@ -90,12 +89,17 @@ class PipelineDecompose(object):
 
         # Preprocessing the dataset
         decomposed, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=pd.DataFrame())
+        if self.exec_cfg['save_step_yn']:
+            self.io.save_object(data=decomposed, file_path=self.path['decompose'], data_type='binary')
+
         decomposed_list = util.hrchy_recursion_extend_key(
             hrchy_lvl=self.hrchy['lvl']['total']-1,
             df=decomposed,
             fn=preprocess.ravel_df
         )
         result = preprocess.conv_decomposed_list(data=decomposed_list)
+        if self.exec_cfg['save_step_yn']:
+            self.io.save_object(data=result, file_path=self.path['decompose_db'], data_type='csv')
 
         if self.exec_cfg['save_db_yn']:
             info = {

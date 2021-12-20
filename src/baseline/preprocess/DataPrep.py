@@ -213,7 +213,7 @@ class DataPrep(object):
 
         return grp
 
-    def resample(self, df: pd.DataFrame) -> pd.DataFrame:
+    def resample(self, df: pd.DataFrame):
         df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
         df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
 
@@ -229,6 +229,9 @@ class DataPrep(object):
             # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
 
+        if self.exec_cfg['rm_fwd_zero_sales_yn']:
+            df_resampled = self.rm_fwd_zero_sales(df=df_resampled, feat=self.common['target_col'])
+
         if self.exec_cfg['rm_outlier_yn']:
             df_resampled = self.remove_outlier(df=df_resampled, feat=self.common['target_col'])
 
@@ -240,13 +243,13 @@ class DataPrep(object):
 
         return df_resampled
 
-    def filter_week_by_threshold(self, df: pd.DataFrame):
-        # Check and add dates when sales does not exist
-        if len(df.index) < self.threshold:
-            return None
+    @staticmethod
+    def rm_fwd_zero_sales(df, feat: str) -> pd.DataFrame:
+        feature = df[feat].to_numpy()
+        feature = np.trim_zeros(feature, trim='f')
+        df_trim = df.iloc[len(df) - len(feature):, :]
 
-        else:
-            return df
+        return df_trim
 
     def check_missing_value(self, df: pd.DataFrame) -> float:
         # df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
@@ -303,11 +306,12 @@ class DataPrep(object):
     def impute_data(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
         feature = deepcopy(df[feat])
         if self.imputer == 'knn':
-            feature = np.where(feature.values == 0, np.nan, feature.values)
-            feature = feature.reshape(-1, 1)
-            imputer = KNNImputer(n_neighbors=3)
-            feature = imputer.fit_transform(feature)
-            feature = feature.ravel()
+            if len(feature) > 0:
+                feature = np.where(feature.values == 0, np.nan, feature.values)
+                feature = feature.reshape(-1, 1)
+                imputer = KNNImputer(n_neighbors=3)
+                feature = imputer.fit_transform(feature)
+                feature = feature.ravel()
 
         elif self.imputer == 'before':
             for i in range(1, len(feature)):
@@ -359,11 +363,11 @@ class DataPrep(object):
         # Calculate mean, max, min
         feat_mean = feature.mean()
         feat_max = feature.max()
-        feat_min = feature.min()
+        # feat_min = feature.min()
 
         # Set noise range
         rand_max = ceil(feat_max * self.noise_rate)
-        rand_min = round(feat_min * self.noise_rate)
+        # rand_min = round(feat_min * self.noise_rate)
         rand_norm = np.random.rand(self.date_length)
 
         rand_list = np.random.randint(0, rand_max, self.date_length) + rand_norm
@@ -385,7 +389,8 @@ class DataPrep(object):
 
         return result
 
-    def conv_decomposed_list(self, data):
+    @staticmethod
+    def conv_decomposed_list(data):
         cols = ['project_cd', 'division_cd', 'hrchy_lvl_cd', 'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd',
                 'item_attr04_cd', 'yymmdd', 'org_val', 'trend_val', 'seasonal_val', 'resid_val', 'create_user_cd']
 

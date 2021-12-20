@@ -52,16 +52,16 @@ class PipelineReal(object):
         self.path = {}
         self.date = {    # Todo : Test Exception
             'history': {
-                'from': '20200706',
-                'to': '20210704'
+                'from': '20201102',
+                'to': '20211031'
             },
             'middle_out': {
-                'from': '20210405',
-                'to': '20210704'
+                'from': '20210802',
+                'to': '20211031'
             },
             'evaluation': {
-                'from': '20210705',
-                'to': '20211003'
+                'from': '20211101',
+                'to': '20220130'
             }
         }
 
@@ -78,7 +78,7 @@ class PipelineReal(object):
         init.run(cust_lvl=1, item_lvl=self.item_lvl)    # Todo : Exception
 
         # Set initialized object
-        self.data_vrsn_cd = init.data_vrsn_cd
+        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
         self.level = init.level
         self.hrchy = init.hrchy
         self.path = init.path
@@ -368,8 +368,8 @@ class PipelineReal(object):
             )
             # Load compare dataset
             date_recent = {
-                'date_from': self.date['middle_out']['from'],
-                'date_to': self.date['middle_out']['to']
+                'from': self.date['middle_out']['from'],
+                'to': self.date['middle_out']['to']
             }
             sales_recent = None
             # Sell-In Dataset
@@ -430,12 +430,12 @@ class PipelineReal(object):
 
             # Load compare dataset
             date_compare = {
-                'date_from': self.date['evaluation']['from'],
-                'date_to': self.date['evaluation']['to']
+                'from': self.date['evaluation']['from'],
+                'to': self.date['evaluation']['to']
             }
             date_recent = {
-                'date_from': self.date['middle_out']['from'],
-                'date_to': self.date['middle_out']['to']
+                'from': self.date['middle_out']['from'],
+                'to': self.date['middle_out']['to']
             }
 
             sales_comp = None

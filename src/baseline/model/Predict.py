@@ -39,6 +39,7 @@ class Predict(object):
         # Data Level Configuration
         self.cnt = 0
         self.hrchy = hrchy
+        self.fixed_n_test = 4
 
         # Algorithms
         self.param_grid = mst_info['param_grid']
@@ -69,14 +70,22 @@ class Predict(object):
             data = feature_by_variable[self.model_info[model]['variate']]
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
-            try:
-                prediction = self.estimators[model](
-                    history=data,
-                    cfg=self.param_grid[model],
-                    pred_step=n_test
-                )
-            except ValueError:
-                prediction = [10**10-1] * n_test
+
+            if self.model_info[model]['variate'] == 'univ':
+                length = len(data)
+            else:
+                length = len(data['endog'])
+            if length > self.fixed_n_test:
+                try:
+                    prediction = self.estimators[model](
+                        history=data,
+                        cfg=self.param_grid[model],
+                        pred_step=n_test
+                    )
+                except ValueError:
+                    prediction = [10**10-1] * n_test
+            else:
+                prediction = [10 ** 10 - 1] * n_test
             models.append(hrchy + [model.upper(), prediction])
 
         return models

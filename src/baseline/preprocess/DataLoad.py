@@ -38,8 +38,8 @@ class DataLoad(object):
         else:
             if self.division == 'SELL_IN':
                 if self.data_cfg['in_out'] == 'out':
-                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
+                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))  # Temp
                 elif self.data_cfg['in_out'] == 'in':
                     sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date))  # Temp
 

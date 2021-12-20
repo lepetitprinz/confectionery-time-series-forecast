@@ -13,9 +13,9 @@ item_lvl = 5  # Biz - Line - Brand - Item - SKU
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
+    'cls_prep': False,
     'cls_train': False,
-    'cls_pred': False,
+    'cls_pred': True,
     'clss_mdout': False,
     'cls_rpt': False
 }
@@ -32,7 +32,8 @@ exec_cfg = {
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
     'grid_search_yn': False,          # Grid Search
-    'filter_threshold_week_yn': False
+    'filter_threshold_week_yn': False,
+    'rm_fwd_zero_sales_yn': True
 }
 
 # Load result configuration

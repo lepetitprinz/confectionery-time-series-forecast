@@ -79,6 +79,7 @@ class DataPrep(object):
         data['data_vrsn_cd'] = self.data_vrsn_cd
         data['create_user_cd'] = 'SYSTEM'
         data['yymmdd'] = self.data_version_info['exec_date'].values[0]
+        data['yy'] = data['yymmdd'].str.slice(stop=4)
 
         result = pd.merge(data, self.cal, how='left', on='yymmdd')
 

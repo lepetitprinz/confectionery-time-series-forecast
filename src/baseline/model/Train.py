@@ -58,6 +58,8 @@ class Train(object):
         self.model_candidates = list(self.model_info.keys())
 
         # Training Configuration
+        self.fixed_n_test = 4
+        self.err_val = float(10**10 - 1)
         self.validation_method = 'train_test'
         self.grid_search_yn = exec_cfg['grid_search_yn']
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
@@ -101,7 +103,7 @@ class Train(object):
 
         return feature_by_variable
 
-    def validation(self, data, model: str) -> Tuple[float, dict]:
+    def validation(self, data, model: str) -> Tuple[float, float, dict]:
         if self.validation_method == 'train_test':
             score = self.train_test_validation(data=data, model=model)
 
@@ -113,7 +115,7 @@ class Train(object):
 
         return score
 
-    def train_test_validation(self, model: str, data) -> tuple:
+    def train_test_validation(self, model: str, data) -> Tuple[float, float, dict]:
         # set test length
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
@@ -149,17 +151,35 @@ class Train(object):
 
         return err, acc, best_params
 
-    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int):
+    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int) -> tuple:
         data_length = len(data)
 
         data_train, data_test = None, None
         if self.model_info[model]['variate'] == 'univ':
-            data_train = data.iloc[: data_length - n_test]
-            data_test = data.iloc[data_length - n_test:]
+            if data_length - n_test >= n_test:
+                data_train = data.iloc[: data_length - n_test]
+                data_test = data.iloc[data_length - n_test:]
+
+            elif data_length > self.fixed_n_test:
+                data_train = data.iloc[: data_length - self.fixed_n_test]
+                data_test = data.iloc[data_length - self.fixed_n_test:]
+
+            else:
+                data_train = data.iloc[: data_length - 1]
+                data_test = data.iloc[data_length - 1:]
 
         elif self.model_info[model]['variate'] == 'multi':
-            data_train = data.iloc[: data_length - n_test, :]
-            data_test = data.iloc[data_length - n_test:, :]
+            if data_length - n_test >= n_test:
+                data_train = data.iloc[: data_length - n_test, :]
+                data_test = data.iloc[data_length - n_test:, :]
+
+            elif data_length > self.fixed_n_test:
+                data_train = data.iloc[: data_length - self.fixed_n_test, :]
+                data_test = data.iloc[data_length - self.fixed_n_test:, :]
+
+            else:
+                data_train = data.iloc[: data_length - 1, :]
+                data_test = data.iloc[data_length - 1:, :]
 
             x_train = data_train[self.exo_col_list].values
             x_test = data_test[self.exo_col_list].values
@@ -176,7 +196,7 @@ class Train(object):
         return data_train, data_test
 
     @staticmethod
-    def calc_accuracy(test, pred):
+    def calc_accuracy(test, pred) -> float:
         pred = np.where(pred < 0, 0, pred)
         arr_acc = np.array([test, pred]).T
         arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
@@ -190,38 +210,46 @@ class Train(object):
 
         return acc
 
-    def evaluation(self, model, params, train, test, n_test) -> tuple:
+    def evaluation(self, model, params, train, test, n_test) -> Tuple[float, float]:
         # evaluation
         acc = 0
-        try:
-            yhat = self.estimators[model](
-                history=train,
-                cfg=params,
-                pred_step=n_test
-            )
-            # yhat = np.nan_to_num(yhat)
-            if yhat is not None:
-                err = 0
-                if self.model_info[model]['variate'] == 'univ':
-                    err = round(mean_squared_error(test, yhat, squared=False), 2)
-                    acc = self.calc_accuracy(test=test, pred=yhat)
+        if self.model_info[model]['variate'] == 'univ':
+            length = len(train)
+        else:
+            length = len(train['endog'])
 
-                elif self.model_info[model]['variate'] == 'multi':
-                    err = round(mean_squared_error(test['endog'], yhat, squared=False), 2)
-                    acc = self.calc_accuracy(test=test['endog'], pred=yhat)
+        if length > self.fixed_n_test:
+            try:
+                yhat = self.estimators[model](
+                    history=train,
+                    cfg=params,
+                    pred_step=n_test
+                )
+                # yhat = np.nan_to_num(yhat)
+                if yhat is not None:
+                    err = 0
+                    if self.model_info[model]['variate'] == 'univ':
+                        err = round(mean_squared_error(test, yhat, squared=False), 2)
+                        acc = self.calc_accuracy(test=test, pred=yhat)
 
-                # Exception 처리
-                if err > 10 ** 10:
-                    err = float(10 ** 10 - 1)
-            else:
-                err = 10 ** 10 - 1  # Not solvable problem
+                    elif self.model_info[model]['variate'] == 'multi':
+                        err = round(mean_squared_error(test['endog'], yhat, squared=False), 2)
+                        acc = self.calc_accuracy(test=test['endog'], pred=yhat)
 
-        except ValueError:
-            err = 10 ** 10 - 1  # Not solvable problem
+                    # Exception 처리
+                    if err > 10 ** 10:
+                        err = self.err_val
+                else:
+                    err = self.err_val    # Not solvable problem
+
+            except ValueError:
+                err = self.err_val  # Not solvable problem
+        else:
+            err = self.err_val
 
         return err, acc
 
-    def grid_search(self, model, train, test, n_test) -> Tuple[float, dict]:
+    def grid_search(self, model, train, test, n_test) -> Tuple[tuple, dict]:
         param_grid_list = self.get_param_list(model=model)
 
         err_list = []
@@ -263,7 +291,8 @@ class Train(object):
 
         return rmse
 
-    def scaling(self, train, test) -> tuple:
+    @staticmethod
+    def scaling(train, test) -> tuple:
         x_train = train['exog']
         x_test = test['exog']
 
@@ -276,7 +305,7 @@ class Train(object):
 
         return train, test
 
-    def make_best_params_data(self, model: str, params: dict):
+    def make_best_params_data(self, model: str, params: dict) -> tuple:
         model = model.upper()
         data, info = [], []
         for key, val in params.items():
@@ -307,7 +336,7 @@ class Train(object):
 
         return values_combine_map_list
 
-    def save_best_params(self, scores):
+    def save_best_params(self, scores) -> None:
         # Count best params for each data level
         util.hrchy_recursion(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
@@ -325,12 +354,12 @@ class Train(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_hyper_params(**params_info))
             self.io.insert_to_db(df=best_params, tb_name='M4S_I103011')
 
-    def count_best_params(self, data):
+    def count_best_params(self, data) -> None:
         for algorithm in data:
             model, score, accuracy, params = algorithm
             self.best_params_cnt[model][str(params)] += 1
 
-    def make_score_result(self, data: dict, hrchy_key: str, fn):
+    def make_score_result(self, data: dict, hrchy_key: str, fn) -> Tuple[pd.DataFrame, dict]:
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
         result = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl, fn=fn, df=data)
 
