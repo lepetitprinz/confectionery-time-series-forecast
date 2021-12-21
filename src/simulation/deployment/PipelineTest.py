@@ -9,7 +9,7 @@ from simulation.preprocess.DataPrep import DataPrep
 from simulation.model.Train import Train
 
 
-class Pipeline(object):
+class PipelineTest(object):
     def __init__(self, division: str, lag: str, step_cfg: dict, exec_cfg: dict):
         # I/O & Execution Configuration
         self.step_cfg = step_cfg

@@ -25,7 +25,7 @@ class Cycle(object):
             hist_to = today - datetime.timedelta(days=1)
 
             # Period: Evaluation ToDo: Additional function
-            eval_from = today - datetime.timedelta(days=int(self.common['week_eval'] )* 7)
+            eval_from = today - datetime.timedelta(days=int(self.common['week_eval']) * 7)
             eval_to = today - datetime.timedelta(days=1)
 
             # Period: Forecast

@@ -333,11 +333,6 @@ class PipelineCycle(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_prediction(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
-                # Save prediction of best algorithm to recent predictino table
-                table_pred_best_recent = 'M4S_O111600'
-                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**({'division_cd': self.division})))
-                self.io.insert_to_db(df=pred_best, tb_name=table_pred_best_recent)
-
             print("Forecast is finished\n")
 
         # ================================================================================================= #
@@ -402,6 +397,10 @@ class PipelineCycle(object):
                     print("Save middle-out results on DB")
                     self.io.delete_from_db(sql=self.sql_conf.del_prediction(**middle_info))
                     self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
+
+                    # Save prediction of best algorithm to recent prediction table
+                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**({'division_cd': self.division})))
+                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 
             print("Middle-out is finished\n")
         # ================================================================================================= #

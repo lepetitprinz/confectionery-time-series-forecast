@@ -1,4 +1,4 @@
-from simulation.deployment.Pipeline import Pipeline
+from simulation.deployment.PipelineTest import PipelineTest
 
 division = 'SELL_IN'
 lag = 'w1'
@@ -19,7 +19,7 @@ step_cfg = {
     'cls_sim_train': True     # Training
 }
 
-pipeline = Pipeline(
+pipeline = PipelineTest(
     division=division,
     lag=lag,
     exec_cfg=exec_cfg,

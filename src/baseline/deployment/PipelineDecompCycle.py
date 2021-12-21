@@ -9,8 +9,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-class PipelineDecompose(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, exec_rslt_cfg: dict, item_lvl: int):
+class PipelineDecompCycle(object):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, item_lvl: int):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
@@ -21,7 +21,6 @@ class PipelineDecompose(object):
         # I/O & Execution Configuration
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
-        self.exec_rslt_cfg = exec_rslt_cfg
 
         # Class Configuration
         self.io = DataIO()
@@ -41,20 +40,7 @@ class PipelineDecompose(object):
         self.hrchy = {}
         self.level = {}
         self.path = {}
-        self.date = {    # Todo : Test Exception
-            'history': {
-                'from': '20201102',
-                'to': '20211031'
-            },
-            'middle_out': {
-                'from': '20210802',
-                'to': '20211031'
-            },
-            'evaluation': {
-                'from': '20211101',
-                'to': '20220130'
-            }
-        }
+        self.date = {}
 
     def run(self):
         # ================================================================================================= #
@@ -72,13 +58,13 @@ class PipelineDecompose(object):
         self.data_vrsn_cd = init.data_vrsn_cd
         self.level = init.level
         self.hrchy = init.hrchy
+        self.date = init.date
         self.path = init.path
 
         # ================================================================================================= #
         # 2. Time series decomposition
         # ================================================================================================= #
         print("Step 3: Time series decomposition\n")
-
         # Initiate data preprocessing class
         preprocess = DataPrep(
             date=self.date,
@@ -89,13 +75,12 @@ class PipelineDecompose(object):
         )
 
         # Preprocessing the dataset
-        if not self.exec_rslt_cfg['decompose']:
-            sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
-            decomposed, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=pd.DataFrame())
+        sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
+        decomposed, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=pd.DataFrame())
 
-            # Save the result
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=decomposed, file_path=self.path['decompose'], data_type='binary')
+        # Save the result
+        if self.exec_cfg['save_step_yn']:
+            self.io.save_object(data=decomposed, file_path=self.path['decompose'], data_type='binary')
 
         else:
             decomposed = self.io.load_object(file_path=self.path['decompose'], data_type='binary')

@@ -29,8 +29,11 @@ class SqlConfig(object):
     def sql_calendar():
         sql = """
             SELECT YYMMDD
+                 , YY
                  , YYMM
                  , WEEK
+                 , START_WEEK_DAY
+                 , END_WEEK_DAY
               FROM M4S_I002030
         """
         return sql
@@ -73,7 +76,7 @@ class SqlConfig(object):
                    , LINK_SALES_MGMT_NM AS CUST_GRP_NM
                 FROM M4S_I204020
                WHERE PROJECT_CD = 'ENT001'
-                 AND SALES_MGMT_VRSN_ID = '202111_V0'
+                 AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
                  AND USE_YN = 'Y'
         """
         return sql
@@ -164,14 +167,14 @@ class SqlConfig(object):
                      WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                        AND RST_SALES_QTY <> 0
                    ) SALES
-              LEFT OUTER JOIN (
-                               SELECT ITEM_CD AS SKU_CD
-                                    , ITEM_ATTR01_CD AS BIZ_CD
-                                    , ITEM_ATTR02_CD AS LINE_CD
-                                    , ITEM_ATTR03_CD AS BRAND_CD
-                                    , ITEM_ATTR04_CD AS ITEM_CD
-                                 FROM VIEW_I002040
-                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+             INNER JOIN (
+                         SELECT ITEM_CD AS SKU_CD
+                              , ITEM_ATTR01_CD AS BIZ_CD
+                              , ITEM_ATTR02_CD AS LINE_CD
+                              , ITEM_ATTR03_CD AS BRAND_CD
+                              , ITEM_ATTR04_CD AS ITEM_CD
+                           FROM VIEW_I002040
+                          WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
                               ) ITEM
                 ON SALES.SKU_CD = ITEM.SKU_CD
               LEFT OUTER JOIN (
@@ -255,17 +258,19 @@ class SqlConfig(object):
                         , RST_SALES_QTY AS QTY
                         , CREATE_DATE
                      FROM M4S_I002173
+                    WHERE 1=1
+                      AND RST_SALES_QTY <> 0
                    -- WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']} # Todo: Exception
                   ) SALES
-             LEFT OUTER JOIN (
-                              SELECT ITEM_CD AS SKU_CD
-                                   , ITEM_ATTR01_CD AS BIZ_CD
-                                   , ITEM_ATTR02_CD AS LINE_CD
-                                   , ITEM_ATTR03_CD AS BRAND_CD
-                                   , ITEM_ATTR04_CD AS ITEM_CD
-                                FROM VIEW_I002040
-                               WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                             ) ITEM
+            INNER JOIN (
+                        SELECT ITEM_CD AS SKU_CD
+                             , ITEM_ATTR01_CD AS BIZ_CD
+                             , ITEM_ATTR02_CD AS LINE_CD
+                             , ITEM_ATTR03_CD AS BRAND_CD
+                             , ITEM_ATTR04_CD AS ITEM_CD
+                          FROM VIEW_I002040
+                         WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                       ) ITEM
                ON SALES.SKU_CD = ITEM.SKU_CD
                """
         return sql
@@ -435,14 +440,14 @@ class SqlConfig(object):
                  , DIVISION_CD
                  , WI_VRSN_ID
                  , WI_VRSN_SEQ
-                 , DISCOUNT/ 100 AS DISCOUNT
-                 , FROM_YYMMDD
-                 , TO_YYMMDD
                  , SALES_MGMT_CD
                  , ITEM_CD
+                 , YY
+                 , WEEK
+                 , DISCOUNT / 100 AS DISCOUNT
                  , EXEC_YN
                  , CREATE_USER_CD
-              FROM M4S_I110530
+              FROM M4S_I110521
              WHERE EXEC_YN = 'N'
         """
         return sql
@@ -473,17 +478,17 @@ class SqlConfig(object):
     @staticmethod
     def update_what_if_param(**kwargs):
         sql = f"""
-            UPDATE M4S_I110530
+            UPDATE M4S_I110521
                SET EXEC_YN = 'Y'
              WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
                AND WI_VRSN_ID = '{kwargs['wi_vrsn_id']}'
                AND WI_VRSN_SEQ = '{kwargs['wi_vrsn_seq']}'
-               AND DISCOUNT = '{kwargs['discount']}'
-               AND FROM_YYMMDD = '{kwargs['from_yymmdd']}'
-               AND TO_YYMMDD = '{kwargs['to_yymmdd']}'
                AND SALES_MGMT_CD = '{kwargs['sales_mgmt_cd']}'
                AND ITEM_CD = '{kwargs['item_cd']}'
+               AND DISCOUNT = '{kwargs['discount']}'
+               AND YY = '{kwargs['yy']}'
+               AND WEEK = '{kwargs['week']}'
                AND CREATE_USER_CD = '{kwargs['create_user_cd']}'
         """
         return sql
@@ -565,6 +570,7 @@ class SqlConfig(object):
             DELETE
               FROM M4S_O110500
              WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
                and HRCHY_LVL_CD LIKE '{kwargs['hrchy_lvl_cd']}%'
         """
@@ -585,11 +591,16 @@ class SqlConfig(object):
     def del_sim_result(**kwargs):
         sql = f"""
         DELETE
-          FROM M4S_I110500
+          FROM M4S_I110521
          WHERE PROJECT_CD = '{kwargs['project_cd']}'
            AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
            AND DIVISION_CD = '{kwargs['division_cd']}'
+           AND WI_VRSN_ID = '{kwargs['wi_vrsn_id']}'
+           AND WI_VRSN_SEQ = '{kwargs['wi_vrsn_seq']}'
+           AND SALES_MGMT_CD = '{kwargs['sales_mgmt_cd']}'
            AND ITEM_CD = '{kwargs['item_cd']}'
+           AND CREATE_USER_CD = '{kwargs['create_user_cd']}'
+           AND EXEC_YN = 'Y'
         """
         return sql
 
@@ -642,15 +653,15 @@ class SqlConfig(object):
                       FROM M4S_I002170_TEST
                      WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                     ) SALES
-              LEFT OUTER JOIN (
-                               SELECT ITEM_CD AS SKU_CD
-                                    , ITEM_ATTR01_CD AS BIZ_CD
-                                    , ITEM_ATTR02_CD AS LINE_CD
-                                    , ITEM_ATTR03_CD AS BRAND_CD
-                                    , ITEM_ATTR04_CD AS ITEM_CD
-                                 FROM VIEW_I002040
-                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                              ) ITEM
+             INNER JOIN (
+                         SELECT ITEM_CD AS SKU_CD
+                              , ITEM_ATTR01_CD AS BIZ_CD
+                              , ITEM_ATTR02_CD AS LINE_CD
+                              , ITEM_ATTR03_CD AS BRAND_CD
+                              , ITEM_ATTR04_CD AS ITEM_CD
+                           FROM VIEW_I002040
+                          WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                        ) ITEM
                 ON SALES.SKU_CD = ITEM.SKU_CD
                """
 
@@ -691,15 +702,15 @@ class SqlConfig(object):
                       FROM M4S_I002170_INQTY
                      WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                    ) SALES
-              LEFT OUTER JOIN (
-                               SELECT ITEM_CD        AS SKU_CD
-                                    , ITEM_ATTR01_CD AS BIZ_CD
-                                    , ITEM_ATTR02_CD AS LINE_CD
-                                    , ITEM_ATTR03_CD AS BRAND_CD
-                                    , ITEM_ATTR04_CD AS ITEM_CD
-                                 FROM VIEW_I002040
-                                WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                              ) ITEM
+             INNER JOIN (
+                         SELECT ITEM_CD        AS SKU_CD
+                              , ITEM_ATTR01_CD AS BIZ_CD
+                              , ITEM_ATTR02_CD AS LINE_CD
+                              , ITEM_ATTR03_CD AS BRAND_CD
+                              , ITEM_ATTR04_CD AS ITEM_CD
+                           FROM VIEW_I002040
+                          WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                        ) ITEM
                 ON SALES.SKU_CD = ITEM.SKU_CD
         """
         return sql
@@ -834,15 +845,15 @@ class SqlConfig(object):
                        AND ITEM_CD = '{kwargs['item_cd']}'
                        --and SOLD_CUST_GRP_CD = '1033' -- exception
                       ) SALES
-                LEFT OUTER JOIN (
-                                 SELECT ITEM_CD AS SKU_CD
-                                      , ITEM_ATTR01_CD AS BIZ_CD
-                                      , ITEM_ATTR02_CD AS LINE_CD
-                                      , ITEM_ATTR03_CD AS BRAND_CD
-                                      , ITEM_ATTR04_CD AS ITEM_CD
-                                   FROM VIEW_I002040
-                                  WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                                ) ITEM
+               INNER JOIN (
+                           SELECT ITEM_CD AS SKU_CD
+                                , ITEM_ATTR01_CD AS BIZ_CD
+                                , ITEM_ATTR02_CD AS LINE_CD
+                                , ITEM_ATTR03_CD AS BRAND_CD
+                                , ITEM_ATTR04_CD AS ITEM_CD
+                             FROM VIEW_I002040
+                            WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                          ) ITEM
                   ON SALES.SKU_CD = ITEM.SKU_CD
                  """
 

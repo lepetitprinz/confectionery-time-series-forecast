@@ -18,9 +18,11 @@ class SimulateDB(object):
     week_standard = 'start'    # start / end
     fkey_map = {3: 'C0-P3', 4: 'C0-P4', 5: 'C0-P5', 6: 'C1-P5'}
     lag_option = {'w1': 1, 'w2': 2}
-    estimators = {'rf': RandomForestRegressor,
-                  'gb': GradientBoostingRegressor,
-                  'et': ExtraTreesRegressor}
+    estimators = {
+        'rf': RandomForestRegressor,
+        'gb': GradientBoostingRegressor,
+        'et': ExtraTreesRegressor
+    }
 
     # Rename columns
     hrchy_cd_to_db_cd_map = {
@@ -48,12 +50,13 @@ class SimulateDB(object):
             val='OPTION_VAL'
         )
         self.item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
+        self.cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
         self.input_col = 'discount'
         self.date_col = self.common['date_col']
         self.target_col = self.common['target_col']
         self.lag = lag
         self.hrchy_lvl = 6
-        self.tb_name = 'M4S_I110500'
+        self.tb_name = 'M4S_I110521'
 
     def run(self):
         exec_df = self.io.get_df_from_db(sql=self.sql_conf.sql_what_if_param())
@@ -61,7 +64,7 @@ class SimulateDB(object):
 
         for sim in exec_list:
             result = self.simulate(sim=sim)
-            print(result)
+            # print(result)
             result, info = self.make_db_format(result=result, sim=sim)
             if self.exec_cfg['save_db_yn']:
                 self.save_result(result=result, info=info)
@@ -81,7 +84,11 @@ class SimulateDB(object):
         return result
 
     def set_date_range(self, sim: dict):
-        date_list = list(pd.date_range(start=sim['from_yymmdd'], end=sim['to_yymmdd'], freq='W'))
+        cal = self.cal_mst
+        cal = cal[(cal['yy'] == sim['yy']) & (cal['week'] == sim['week'])]
+        cal = cal[['start_week_day', 'end_week_day']].drop_duplicates().iloc[0].to_dict()
+
+        date_list = list(pd.date_range(start=cal['start_week_day'], end=cal['end_week_day'], freq='W'))
         date_list = [datetime.strftime(date - timedelta(days=6), '%Y%m%d') for date in date_list]
 
         self.date_range = date_list
@@ -206,18 +213,18 @@ class SimulateDB(object):
         df['division_cd'] = sim['division_cd']
         df['wi_vrsn_id'] = sim['wi_vrsn_id']
         df['wi_vrsn_seq'] = sim['wi_vrsn_seq']
-        df['week'] = self.cal['week']
-        df[self.date_col] = self.cal[self.date_col]
-        df['yy'] = df['yymmdd'].str.slice(stop=4)
-        df['discount'] = sim['discount']
         df['sales_mgmt_cd'] = sim['sales_mgmt_cd']
         df['item_cd'] = sim['item_cd']
+        df['yy'] = df['yymmdd'].str.slice(stop=4)
+        df['week'] = self.cal['week']
+        # df[self.date_col] = self.cal[self.date_col]
+        df['discount'] = sim['discount']
         df['create_user_cd'] = sim['create_user_cd']
 
         #
-        item_mst = self.item_mst.rename(columns=self.hrchy_cd_to_db_cd_map)
-        item_mst = item_mst.rename(columns=self.hrchy_sku_to_db_sku_map)
-        df = pd.merge(df, item_mst, how='left', on='item_cd')
+        # item_mst = self.item_mst.rename(columns=self.hrchy_cd_to_db_cd_map)
+        # item_mst = item_mst.rename(columns=self.hrchy_sku_to_db_sku_map)
+        # df = pd.merge(df, item_mst, how='left', on='item_cd')
 
         info = {
             'project_cd': project_cd,
@@ -225,7 +232,9 @@ class SimulateDB(object):
             'division_cd': sim['division_cd'],
             'wi_vrsn_id': sim['wi_vrsn_id'],
             'wi_vrsn_seq': sim['wi_vrsn_seq'],
-            'item_cd': sim['item_cd']
+            'sales_mgmt_cd': sim['sales_mgmt_cd'],
+            'item_cd': sim['item_cd'],
+            'create_user_cd': sim['create_user_cd'],
         }
 
         return df, info

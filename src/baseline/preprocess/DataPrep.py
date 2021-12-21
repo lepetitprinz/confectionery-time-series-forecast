@@ -29,6 +29,7 @@ class DataPrep(object):
             end=date['history']['to'],
             freq=common['resample_rule']
         )
+        self.date = date
         self.date_length = len(self.hist_date_range)
         self.exg_map = config.EXG_MAP    # Exogenous variable map
         self.key_col = ['cust_grp_cd', 'sku_cd']
@@ -96,9 +97,8 @@ class DataPrep(object):
         if self.exec_cfg['decompose_yn']:
             decompose = Decomposition(
                 common=self.common,
-                division=self.data_cfg['division'],
                 hrchy=self.hrchy,
-                date_range=self.hist_date_range
+                date=self.date
             )
 
             decomposed = util.hrchy_recursion_with_none(
@@ -389,11 +389,17 @@ class DataPrep(object):
 
         return result
 
-    @staticmethod
-    def conv_decomposed_list(data):
-        cols = ['project_cd', 'division_cd', 'hrchy_lvl_cd', 'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd',
-                'item_attr04_cd', 'yymmdd', 'org_val', 'trend_val', 'seasonal_val', 'resid_val', 'create_user_cd']
+    def conv_decomposed_list(self, data):
+        cols = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd',
+                'yymmdd', 'org_val', 'trend_val', 'seasonal_val', 'resid_val']
 
         df = pd.DataFrame(data, columns=cols)
+        df['project_cd'] = self.common['project_cd']
+        df['data_vrsn_cd'] = self.date['history']['from'] + '-' + self.date['history']['to']
+        df['division_cd'] = self.data_cfg['division']
+        df['hrchy_lvl_cd'] = self.hrchy['key'][:-1]
+        df['seq'] = [str(i+1).zfill(7) for i in range(len(df))]
+        df['create_user_cd'] = 'SYSTEM'
+        df = df[['project_cd', 'data_vrsn_cd', 'division_cd', 'hrchy_lvl_cd', 'seq'] + cols + ['create_user_cd']]
 
         return df

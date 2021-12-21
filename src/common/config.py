@@ -9,7 +9,7 @@ USER = 'matrix'    # User name
 PASSWORD = 'Diam0nd123!'     # User password
 
 # Data filtering threshold
-threshold = 30
+threshold = 4
 
 #
 day_map = {

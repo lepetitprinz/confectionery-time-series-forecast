@@ -17,4 +17,3 @@ sim = SimulateDB(
 )
 
 result = sim.run()
-
