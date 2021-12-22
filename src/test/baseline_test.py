@@ -36,6 +36,28 @@ exec_cfg = {
     'rm_fwd_zero_sales_yn': True
 }
 
+# Data Configuration
+data_cfg = {
+    'division': division,
+    'in_out': in_out,
+    'cycle': cycle,
+    'test_vrsn_cd': test_vrsn_cd,
+    'date': {
+        'history': {
+            'from': '20201102',
+            'to': '20211031'
+        },
+        'middle_out': {
+            'from': '20210802',
+            'to': '20211031'
+        },
+        'evaluation': {
+            'from': '20211101',
+            'to': '20220130'
+        }
+    }
+}
+
 # Load result configuration
 exec_rslt_cfg = {
     'train': False,
@@ -48,14 +70,6 @@ unit_cfg = {
     'unit_test_yn': False,
     'cust_grp_cd': '1202',
     'item_cd': '5100000'
-}
-
-# Data Configuration
-data_cfg = {
-    'division': division,
-    'in_out': in_out,
-    'cycle': cycle,
-    'test_vrsn_cd': test_vrsn_cd
 }
 
 pipeline = PipelineTest(

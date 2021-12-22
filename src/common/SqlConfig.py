@@ -138,14 +138,14 @@ class SqlConfig(object):
                  , BIZ_CD
                  , LINE_CD
                  , BRAND_CD
-                 , ITEM_CD
+                 , ITEM.ITEM_CD
                  , SALES.SKU_CD
                  , YYMMDD
                  , SEQ
                  , FROM_DC_CD
                  , UNIT_PRICE
                  , UNIT_CD
-                 , 0 AS DISCOUNT
+                 , 1- (RST_SALES_PRICE * 100 / (QTY * FAC_PRICE))  AS DISCOUNT
                  , WEEK
                  , QTY
                  , CREATE_DATE
@@ -162,6 +162,7 @@ class SqlConfig(object):
                          , DISCOUNT
                          , WEEK
                          , RST_SALES_QTY AS QTY
+                         , RST_SALES_PRICE
                          , CREATE_DATE
                       FROM M4S_I002170
                      WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
@@ -175,7 +176,9 @@ class SqlConfig(object):
                               , ITEM_ATTR04_CD AS ITEM_CD
                            FROM VIEW_I002040
                           WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                              ) ITEM
+                            AND USE_YN = 'Y'
+                            AND NEW_ITEM_YN = 'N'
+                        ) ITEM
                 ON SALES.SKU_CD = ITEM.SKU_CD
               LEFT OUTER JOIN (
                                SELECT CUST_CD
@@ -183,6 +186,14 @@ class SqlConfig(object):
                                  FROM M4S_I002060
                               ) CUST
                 ON SALES.CUST_CD = CUST.CUST_CD
+              LEFT OUTER JOIN (
+                               SELECT ITEM_CD AS SKU_CD
+                                    , PRICE_START_YYMMDD
+                                    , FAC_PRICE
+                                 FROM M4S_I002041
+                                WHERE PRICE_QTY_UNIT_CD = 'BOX'
+                              ) PRICE 
+                ON SALES.SKU_CD = PRICE.SKU_CD
                """
         return sql
 

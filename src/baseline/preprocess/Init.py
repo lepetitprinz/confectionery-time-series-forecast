@@ -47,7 +47,7 @@ class Init(object):
         if self.exec_cfg['cycle']:
             cycle = Cycle(common=self.common, rule=self.data_cfg['cycle'])
             cycle.calc_period()
-            date = {
+            self.date = {
                 'history': {
                     'from': cycle.hist_period[0],
                     'to': cycle.hist_period[1]
@@ -61,24 +61,8 @@ class Init(object):
                     'to': cycle.pred_period[1]
                 }
             }
-
         else:
-            date = {
-                'history': {
-                    'from': self.common[self.day_map[self.division][self.data_cfg['cycle']]['rst_from']],
-                    'to': self.common[self.day_map[self.division][self.data_cfg['cycle']]['rst_to']]
-                },
-                'middle_out': {
-                    'from': self.common['middle_out_start_day'],
-                    'to':  self.common['middle_out_end_day']
-                },
-                'evaluation': {
-                    'from': self.common['pred_start_day'],
-                    'to': self.common['pred_end_day']
-                }
-            }
-
-        self.date = date
+            self.date = self.data_cfg['date']
 
     def set_data_version(self):
         self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']

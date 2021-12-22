@@ -13,12 +13,12 @@ test_vrsn_cd = 'TEST_SELL_IN_BRAND'
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
+    'cls_load': True,
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': False,
     'cls_pred': False,
-    'clss_mdout': True,
+    'clss_mdout': False,
     'cls_rpt': False
 }
 
@@ -38,6 +38,28 @@ exec_cfg = {
     'rm_fwd_zero_sales_yn': True
 }
 
+# Data Configuration
+data_cfg = {
+    'division': division,
+    'in_out': in_out,
+    'cycle': cycle,
+    'test_vrsn_cd': test_vrsn_cd,
+    'date': {
+        'history': {
+            'from': '20201102',
+            'to': '20211031'
+        },
+        'middle_out': {
+            'from': '20210802',
+            'to': '20211031'
+        },
+        'evaluation': {
+            'from': '20211101',
+            'to': '20220130'
+        }
+    }
+}
+
 # Load result configuration
 exec_rslt_cfg = {
     'train': True,
@@ -52,13 +74,6 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-# Data Configuration
-data_cfg = {
-    'division': division,
-    'in_out': in_out,
-    'cycle': cycle,
-    'test_vrsn_cd': test_vrsn_cd
-}
 
 pipeline = PipelineReal(
     data_cfg=data_cfg,

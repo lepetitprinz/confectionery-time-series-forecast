@@ -21,7 +21,7 @@ class Init(object):
     def set_date(self) -> None:
         cycle = Cycle(common=self.common, rule=self.cycle)
         cycle.calc_period()
-        date = {
+        self.date = {
             'history': {
                 'from': cycle.hist_period[0],
                 'to': cycle.hist_period[1]
@@ -35,8 +35,6 @@ class Init(object):
                 'to': cycle.pred_period[1]
             }
         }
-
-        self.date = date
 
     def set_data_version(self) -> None:
         self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
