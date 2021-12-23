@@ -72,14 +72,6 @@ class PipelineReal(object):
         self.path = init.path
 
         # ================================================================================================= #
-        # 0. Check the data version
-        # ================================================================================================= #
-        data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
-        if self.data_vrsn_cd not in list(data_vrsn_list['data_vrsn_cd']):
-            data_vrsn_db = util.make_data_version(data_version=self.data_vrsn_cd)
-            self.io.insert_to_db(df=data_vrsn_db, tb_name='M4S_I110420')
-
-        # ================================================================================================= #
         # 2. Load the dataset
         # ================================================================================================= #
         sales = None

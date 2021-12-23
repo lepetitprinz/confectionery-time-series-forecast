@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineReal import PipelineReal
@@ -62,8 +63,8 @@ data_cfg = {
 
 # Load result configuration
 exec_rslt_cfg = {
-    'train': True,
-    'predict': True,
+    'train': False,
+    'predict': False,
     'middle_out': False
 }
 

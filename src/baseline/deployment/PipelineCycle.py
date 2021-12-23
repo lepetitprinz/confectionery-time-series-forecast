@@ -30,8 +30,8 @@ class PipelineCycle(object):
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.exec_rslt_cfg = exec_rslt_cfg
         self.unit_cfg = unit_cfg
+        self.exec_rslt_cfg = exec_rslt_cfg
 
         # Class Configuration
         self.io = DataIO()
@@ -71,14 +71,6 @@ class PipelineCycle(object):
         self.hrchy = init.hrchy
         self.date = init.date
         self.path = init.path
-
-        # ================================================================================================= #
-        # 0. Check the data version
-        # ================================================================================================= #
-        data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
-        if self.data_vrsn_cd not in list(data_vrsn_list['data_vrsn_cd']):
-            data_vrsn_db = util.make_data_version(data_version=self.data_vrsn_cd)
-            self.io.insert_to_db(df=data_vrsn_db, tb_name='M4S_I110420')
 
         # ================================================================================================= #
         # 2. Load the dataset

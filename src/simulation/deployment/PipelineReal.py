@@ -57,6 +57,7 @@ class PipelineReal(object):
         # ================================================================================================= #
         sales = None
         if self.step_cfg['cls_sim_load']:
+            print("Step 1: Load the dataset\n")
             if self.division == 'SELL_IN':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Todo: Temp data

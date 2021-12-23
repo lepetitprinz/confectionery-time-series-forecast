@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from collections import defaultdict
 
 
@@ -254,13 +254,16 @@ def prep_exg_partial(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_data_version(data_version: str) -> pd.DataFrame:
-    now = datetime.strftime(datetime.now(), '%Y%m%d')
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())  # Convert this week monday
+    monday = date.strftime(monday, '%Y%m%d')
     data = {
         'project_cd': ['ENT001'],
         'data_vrsn_cd': [data_version],
         'from_date': [data_version.split('-')[0]],
         'to_date': [data_version.split('-')[1]],
-        'exec_date': [now],
+        'exec_date': [monday],
+        'use_yn': 'Y',
         'create_user_cd': ['SYSTEM']
     }
     df = pd.DataFrame(data)

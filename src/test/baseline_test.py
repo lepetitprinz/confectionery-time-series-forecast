@@ -1,13 +1,16 @@
-from baseline.deployment.PipelineTest import PipelineTest
+import os
+import sys
+import time
+# sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from baseline.deployment.PipelineReal import PipelineReal
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
-test_vrsn_cd = 'TEST_1216_SKU_LVL'
-cust_lvl = 1
-item_lvl = 5  # Biz - Line - Brand - Item - SKU
+test_vrsn_cd = 'TEST001_1223_SELL_IN_1YEAR_ITEM'
 
 # Execute Configuration
 step_cfg = {
@@ -15,9 +18,9 @@ step_cfg = {
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': False,
-    'cls_pred': True,
+    'cls_pred': False,
     'clss_mdout': False,
-    'cls_rpt': False
+    'cls_rpt': True
 }
 
 # Configuration
@@ -43,20 +46,20 @@ data_cfg = {
     'cycle': cycle,
     'test_vrsn_cd': test_vrsn_cd,
     'date': {
-        'history': {
-            'from': '20201102',
-            'to': '20211031'
-        },
-        'middle_out': {
-            'from': '20210802',
-            'to': '20211031'
-        },
-        'evaluation': {
-            'from': '20211101',
-            'to': '20220130'
-        }
+            'history': {
+                'from': '20200706',
+                'to': '20210704'
+            },
+            'middle_out': {
+                'from': '20210405',
+                'to': '20210704'
+            },
+            'evaluation': {
+                'from': '20210705',
+                'to': '20211003'
+            }   
     }
-}
+    }
 
 # Load result configuration
 exec_rslt_cfg = {
@@ -72,14 +75,24 @@ unit_cfg = {
     'item_cd': '5100000'
 }
 
-pipeline = PipelineTest(
+
+pipeline = PipelineReal(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg,
-    item_lvl=item_lvl
+    unit_cfg=unit_cfg
 )
 
+
 # Execute Baseline Forecast
+
+print(test_vrsn_cd)
+
+start_time = time.time()
+
 pipeline.run()
+
+end_time = time.time()
+
+print('running time: ', end_time - start_time)
