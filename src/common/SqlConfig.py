@@ -135,7 +135,7 @@ class SqlConfig(object):
         sql = f"""
             SELECT DIVISION_CD
                  , CUST_GRP_CD
-                 , ITEM_ATTR01_CD AS BIS_CD
+                 , ITEM_ATTR01_CD AS BIZ_CD
                  , ITEM_ATTR02_CD AS LINE_CD
                  , ITEM_ATTR03_CD AS BRAND_CD
                  , ITEM_ATTR04_CD AS ITEM_CD
@@ -489,7 +489,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_what_if_param():
+    def sql_what_if_exec_info():
         sql = """
             SELECT DATA_VRSN_CD
                  , DIVISION_CD
@@ -497,13 +497,38 @@ class SqlConfig(object):
                  , WI_VRSN_SEQ
                  , SALES_MGMT_CD
                  , ITEM_CD
-                 , YY
-                 , WEEK
-                 , DISCOUNT / 100 AS DISCOUNT
-                 , EXEC_YN
                  , CREATE_USER_CD
-              FROM M4S_I110521
+              FROM M4S_I110520
              WHERE EXEC_YN = 'N'
+        """
+        return sql
+
+    @staticmethod
+    def sql_what_if_exec_list():
+        sql = """
+            SELECT DTL.DATA_VRSN_CD
+                 , DTL.DIVISION_CD
+                 , DTL.WI_VRSN_ID
+                 , DTL.WI_VRSN_SEQ
+                 , DTL.SALES_MGMT_CD
+                 , DTL.ITEM_CD
+                 , DTL.YY
+                 , DTL.WEEK
+                 , DISCOUNT / 100 AS DISCOUNT
+                 , DTL.CREATE_USER_CD
+              FROM M4S_I110521 DTL
+             INNER JOIN (
+                         SELECT *
+                           FROM M4S_I110520
+                          WHERE EXEC_YN = 'N'
+                        ) MST
+                ON DTL.DATA_VRSN_CD = MST.DATA_VRSN_CD
+               AND DTL.DIVISION_CD = MST.DIVISION_CD
+               AND DTL.WI_VRSN_ID = MST.WI_VRSN_ID
+               AND DTL.WI_VRSN_SEQ = MST.WI_VRSN_SEQ
+               AND DTL.SALES_MGMT_CD = MST.SALES_MGMT_CD
+               AND DTL.ITEM_CD = MST.ITEM_CD
+               AND DTL.CREATE_USER_CD = MST.CREATE_USER_CD
         """
         return sql
 
@@ -531,9 +556,9 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def update_what_if_param(**kwargs):
+    def update_what_if_exec_info(**kwargs):
         sql = f"""
-            UPDATE M4S_I110521
+            UPDATE M4S_I110520
                SET EXEC_YN = 'Y'
              WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
@@ -541,9 +566,6 @@ class SqlConfig(object):
                AND WI_VRSN_SEQ = '{kwargs['wi_vrsn_seq']}'
                AND SALES_MGMT_CD = '{kwargs['sales_mgmt_cd']}'
                AND ITEM_CD = '{kwargs['item_cd']}'
-               AND DISCOUNT = '{kwargs['discount']}'
-               AND YY = '{kwargs['yy']}'
-               AND WEEK = '{kwargs['week']}'
                AND CREATE_USER_CD = '{kwargs['create_user_cd']}'
         """
         return sql
@@ -655,7 +677,6 @@ class SqlConfig(object):
                AND SALES_MGMT_CD = '{kwargs['sales_mgmt_cd']}'
                AND ITEM_CD = '{kwargs['item_cd']}'
                AND CREATE_USER_CD = '{kwargs['create_user_cd']}'
-               AND EXEC_YN = 'Y'
         """
         return sql
 

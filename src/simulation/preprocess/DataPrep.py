@@ -18,8 +18,8 @@ class DataPrep(object):
         self.col_agg_map = {'sum': common['agg_sum'].split(','), 'avg': common['agg_avg'].split(',')}
         self.resample_rule = 'w'
         self.date_range = pd.date_range(
-            start=date['date_from'],
-            end=date['date_to'],
+            start=date['from'],
+            end=date['to'],
             freq=common['resample_rule'])
         self.lag = lag
         self.threshold = threshold

@@ -59,16 +59,28 @@ class SimulateDB(object):
         self.tb_name = 'M4S_I110521'
 
     def run(self):
-        exec_df = self.io.get_df_from_db(sql=self.sql_conf.sql_what_if_param())
-        exec_list = exec_df.to_dict('records')
+        exec_info_dict, exec_list = self.load_data()
+
+        for info in exec_info_dict:
+            self.io.update_from_db(sql=self.sql_conf.update_what_if_exec_info(**info))
 
         for sim in exec_list:
-            result = self.simulate(sim=sim)
-            # print(result)
-            result, info = self.make_db_format(result=result, sim=sim)
-            if self.exec_cfg['save_db_yn']:
-                self.save_result(result=result, info=info)
-                self.io.update_from_db(sql=self.sql_conf.update_what_if_param(**sim))
+            try:
+                result = self.simulate(sim=sim)
+                result, info = self.make_db_format(result=result, sim=sim)
+                if self.exec_cfg['save_db_yn']:
+                    self.save_result(result=result, info=info)
+            except ValueError:
+                print("SP1 + SKU does not exist")
+
+    def load_data(self):
+        # Load dataset
+        exec_info = self.io.get_df_from_db(sql=self.sql_conf.sql_what_if_exec_info())
+        exec_info_dict = exec_info.to_dict('records')
+        exec_df = self.io.get_df_from_db(sql=self.sql_conf.sql_what_if_exec_list())
+        exec_list = exec_df.to_dict('records')
+
+        return exec_info_dict, exec_list
 
     def simulate(self, sim: dict):
         self.set_date_range(sim=sim)

@@ -13,7 +13,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src/simulation" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/test" isTestSource="false" />
     </content>
-    <orderEntry type="jdk" jdkName="Remote Python 3.8.6 (sftp://root@10.109.2.96:22/opt/DF/venv/bin/python3.8)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.8" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">
