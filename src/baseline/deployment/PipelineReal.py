@@ -15,13 +15,16 @@ warnings.filterwarnings("ignore")
 
 
 class PipelineReal(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, unit_cfg: dict):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, unit_cfg: dict,
+                 path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
         :param step_cfg: Execute Configuration
         """
-        self.item_lvl = 3
+        # Hierarchy Level
+        self.item_lvl = data_cfg['item_lvl']
+
         # Test version code
         self.test_vrsn_cd = data_cfg['test_vrsn_cd']
 
@@ -31,6 +34,7 @@ class PipelineReal(object):
         self.exec_cfg = exec_cfg
         self.exec_rslt_cfg = exec_rslt_cfg
         self.unit_cfg = unit_cfg
+        self.path_root = path_root
 
         # Class Configuration
         self.io = DataIO()
@@ -60,13 +64,14 @@ class PipelineReal(object):
             data_cfg=self.data_cfg,
             exec_cfg=self.exec_cfg,
             common=self.common,
-            division=self.division
+            division=self.division,
+            path_root=self.path_root
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)    # Todo : Exception
 
         # Set initialized object
         self.date = init.date
-        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
+        self.data_vrsn_cd = init.data_vrsn_cd
         self.level = init.level
         self.hrchy = init.hrchy
         self.path = init.path

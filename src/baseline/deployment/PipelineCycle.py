@@ -16,7 +16,8 @@ warnings.filterwarnings("ignore")
 
 
 class PipelineCycle(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, unit_cfg: dict):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, unit_cfg: dict,
+                 path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
@@ -32,6 +33,7 @@ class PipelineCycle(object):
         self.exec_cfg = exec_cfg
         self.unit_cfg = unit_cfg
         self.exec_rslt_cfg = exec_rslt_cfg
+        self.path_root = path_root
 
         # Class Configuration
         self.io = DataIO()
@@ -61,15 +63,16 @@ class PipelineCycle(object):
             data_cfg=self.data_cfg,
             exec_cfg=self.exec_cfg,
             common=self.common,
-            division=self.division
+            division=self.division,
+            path_root=self.path_root
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)    # Todo : Exception
 
         # Set initialized object
+        self.date = init.date
         self.data_vrsn_cd = init.data_vrsn_cd
         self.level = init.level
         self.hrchy = init.hrchy
-        self.date = init.date
         self.path = init.path
 
         # ================================================================================================= #

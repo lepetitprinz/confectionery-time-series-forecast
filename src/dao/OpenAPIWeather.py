@@ -23,12 +23,14 @@ class OpenAPIWeather(object):
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum', 'rain_sum']
 
     def set_date_range(self):
-        today = datetime.date.today()
-        prev_monday = today - datetime.timedelta(days=today.weekday()+7)
-        prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
-
-        prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
-        prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
+        # today = datetime.date.today()
+        # prev_monday = today - datetime.timedelta(days=today.weekday()+7)
+        # prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
+        #
+        # prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
+        # prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
+        prev_monday = '20211201'
+        prev_sunday = '20211219'
 
         self.date = {'from': prev_monday, 'to': prev_sunday}
 

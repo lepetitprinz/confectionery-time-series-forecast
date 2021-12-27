@@ -140,7 +140,7 @@ def hrchy_recursion_with_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy
         for key_hrchy, val_hrchy in val.items():
             hrchy.append(key_hrchy)
             fn(hrchy, val_hrchy)
-            hrchy.append(key_hrchy)
+            hrchy.remove(key_hrchy)
 
 
 def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):

@@ -22,11 +22,12 @@ class Init(object):
         }
     }
 
-    def __init__(self, data_cfg: dict, exec_cfg: dict, common: dict, division: str):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, common: dict, division: str, path_root: str):
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
         self.common = common
         self.division = division
+        self.path_root = path_root
 
         # Setting
         self.data_vrsn_cd = ''
@@ -96,53 +97,53 @@ class Init(object):
     def set_path(self):
         path = {
             'load': util.make_path_baseline(
-                path=self.common['path_local'], module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl='', step='load', extension='csv'),
             'cns': util.make_path_baseline(
-                path=self.common['path_local'], module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='data', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl='', step='cns', extension='csv'),
             'prep': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='prep', extension='pickle'),
             'train': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='train', extension='pickle'),
             'train_score_best': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='train_score_best', extension='pickle'
             ),
             'pred': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
             'pred_best': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
             'score_all_csv': util.make_path_baseline(
-                path=self.common['path_local'], module='prediction', division=self.division,
+                path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_all', extension='csv'),
             'score_best_csv': util.make_path_baseline(
-                path=self.common['path_local'], module='prediction', division=self.division,
+                path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_best', extension='csv'),
             'pred_all_csv': util.make_path_baseline(
-                path=self.common['path_local'], module='prediction', division=self.division,
+                path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all', extension='csv'),
             'pred_best_csv': util.make_path_baseline(
-                path=self.common['path_local'], module='prediction', division=self.division,
+                path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv'),
             'middle_out': util.make_path_baseline(
-                path=self.common['path_local'], module='prediction', division=self.division,
+                path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out', extension='csv'),
             'middle_out_db': util.make_path_baseline(
-                path=self.common['path_local'], module='prediction', division=self.division,
+                path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
             'report': util.make_path_baseline(
-                path=self.common['path_local'], module='report', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='report', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='report', extension='csv'),
             'decompose': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='decompose', extension='csv'),
             'decompose_db': util.make_path_baseline(
-                path=self.common['path_local'], module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'),
         }
         self.path = path

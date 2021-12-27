@@ -9,6 +9,8 @@ division = 'SELL_IN'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+
 test_vrsn_cd = 'BASELINE_CYCLE'
 
 # Data Configuration
@@ -59,7 +61,8 @@ pipeline = PipelineCycle(
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg
+    unit_cfg=unit_cfg,
+    path_root=path_root
 )
 
 # Execute Baseline Forecast

@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 
 class PipelineDecompCycle(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, item_lvl: int):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, item_lvl: int, path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
@@ -35,6 +35,7 @@ class PipelineDecompCycle(object):
         )
 
         # Data Configuration
+        self.path_root = path_root
         self.division = 'SELL_IN'
         self.data_vrsn_cd = ''
         self.hrchy = {}
@@ -50,7 +51,8 @@ class PipelineDecompCycle(object):
             data_cfg=self.data_cfg,
             exec_cfg=self.exec_cfg,
             common=self.common,
-            division=self.division
+            division=self.division,
+            path_root=self.path_root
         )
         init.run(cust_lvl=self.cust_lvl, item_lvl=self.item_lvl)    # Todo : Exception
 

@@ -32,14 +32,14 @@ class SimulateDB(object):
     }
     hrchy_sku_to_db_sku_map = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 
-    def __init__(self, lag: str, exec_cfg: dict):
+    def __init__(self, lag: str, exec_cfg: dict, path: str):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
         # Execute Configuration
         self.exec_cfg = exec_cfg
-        self.path_root = os.path.join('..', '..', 'simulation', 'model')
+        self.path_root = path
 
         # Data Configuration
         self.date_range = []
@@ -120,10 +120,11 @@ class SimulateDB(object):
 
         # convert to datetime type
         pred[self.date_col] = pd.to_datetime(pred[self.date_col], format='%Y%m%d')
+        pred[self.date_col] = pred[self.date_col].dt.date
 
         # get first day
         date_sorted = pred[self.date_col].sort_values()
-        first_day = date_sorted[0]
+        first_day = date_sorted.values[0]
 
         # get days of previous week
         date_dict = self.get_prev_week_days(date=first_day)
@@ -133,6 +134,8 @@ class SimulateDB(object):
 
         if len(sales) > 0:
             sales = sales['qty_lag'].sum()
+        else:
+            sales = 0
 
         pred = pred.set_index(keys=self.date_col)
 
@@ -156,7 +159,7 @@ class SimulateDB(object):
         return result
 
     def load_best_estimator(self, sim: dict):
-        path = os.path.join(self.common['path_oper'], 'simulation', 'model', sim['division_cd'] + '_' +
+        path = os.path.join(self.path_root, sim['division_cd'] + '_' +
                             sim['data_vrsn_cd'] + '_' + sim['sales_mgmt_cd'][-4:] + '-' + sim['item_cd'] + '.pickle')
         f = open(path, 'rb')
         estimator = pickle.load(f)
@@ -168,6 +171,7 @@ class SimulateDB(object):
             'data_vrsn_cd': sim['data_vrsn_cd'],
             'division_cd': sim['division_cd'].upper(),
             'fkey': self.fkey_map[self.hrchy_lvl],
+            'cust_grp_cd': sim['sales_mgmt_cd'][-4:],
             'item_cd': sim['item_cd']
         }
         prediction = self.io.get_df_from_db(sql=self.sql_conf.sql_pred_item(**pred_conf))
@@ -177,6 +181,7 @@ class SimulateDB(object):
     def load_sales(self, date: dict, sim: dict):
         sales_conf = {
             'division_cd': sim['division_cd'],
+            'cust_grp_cd': sim['sales_mgmt_cd'][-4:],
             'item_cd': sim['item_cd'],
             'from_date': str(date['from_date']),
             'to_date': str(date['to_date'])
@@ -226,11 +231,12 @@ class SimulateDB(object):
         df['wi_vrsn_id'] = sim['wi_vrsn_id']
         df['wi_vrsn_seq'] = sim['wi_vrsn_seq']
         df['sales_mgmt_cd'] = sim['sales_mgmt_cd']
+        df['cust_grp_cd'] = sim['sales_mgmt_cd'][-4:]
         df['item_cd'] = sim['item_cd']
-        df['yy'] = df['yymmdd'].str.slice(stop=4)
-        df['week'] = self.cal['week']
-        # df[self.date_col] = self.cal[self.date_col]
-        df['discount'] = sim['discount']
+        df['yy'] = sim['yy']
+        df['yymm'] = sim['yymm']
+        df['week'] = sim['week']
+        df['discount'] = sim['discount'] * 100
         df['create_user_cd'] = sim['create_user_cd']
 
         #
@@ -246,6 +252,8 @@ class SimulateDB(object):
             'wi_vrsn_seq': sim['wi_vrsn_seq'],
             'sales_mgmt_cd': sim['sales_mgmt_cd'],
             'item_cd': sim['item_cd'],
+            'yy': sim['yy'],
+            'week': sim ['week'],
             'create_user_cd': sim['create_user_cd'],
         }
 

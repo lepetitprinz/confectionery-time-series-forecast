@@ -18,8 +18,8 @@ exec_cfg = {
 
 # Step Configuration
 step_cfg = {
-    'cls_sim_load': True,    # Data Load
-    'cls_sim_prep': True,     # Data Preprocessing
+    'cls_sim_load': False,    # Data Load
+    'cls_sim_prep': False,     # Data Preprocessing
     'cls_sim_train': True     # Training
 }
 

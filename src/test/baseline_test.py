@@ -14,12 +14,12 @@ test_vrsn_cd = 'TEST001_1223_SELL_IN_1YEAR_ITEM'
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
-    'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': False,
-    'cls_pred': False,
-    'clss_mdout': False,
+    'cls_load': True,
+    'cls_cns': True,
+    'cls_prep': True,
+    'cls_train': True,
+    'cls_pred': True,
+    'clss_mdout': True,
     'cls_rpt': True
 }
 
@@ -59,7 +59,7 @@ data_cfg = {
                 'to': '20211003'
             }   
     }
-    }
+}
 
 # Load result configuration
 exec_rslt_cfg = {

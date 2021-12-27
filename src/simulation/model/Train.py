@@ -83,7 +83,6 @@ class Train(object):
         # Split dataset
         data_split = self.split_data(data=data)
         hrchy_code = hrchy_list[0] + '-' + hrchy_list[-1]    # cust_grp_code-sp1
-        best_model = None
 
         # Scaling
         if self.exec_cfg['scaling_yn']:

@@ -4,6 +4,8 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineDecompCycle import PipelineDecompCycle
 
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+
 # Data Configuration
 data_cfg = {
     'division': 'SELL_IN',
@@ -27,7 +29,8 @@ exec_cfg = {
 pipeline_brand = PipelineDecompCycle(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
-    item_lvl=3
+    item_lvl=3,
+    path_root=path_root
 )
 pipeline_brand.run()
 
@@ -35,6 +38,7 @@ pipeline_brand.run()
 pipeline_item = PipelineDecompCycle(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
-    item_lvl=4
+    item_lvl=4,
+    path_root=path_root
 )
 pipeline_item.run()

@@ -409,6 +409,7 @@ class SqlConfig(object):
         sql = f"""
             SELECT DATA_VRSN_CD
                  , DIVISION_CD
+                 , CUST_GRP_CD
                  , ITEM_ATTR01_CD
                  , ITEM_ATTR02_CD
                  , ITEM_ATTR03_CD
@@ -423,6 +424,7 @@ class SqlConfig(object):
                          , WEEK
                          , YYMMDD
                          , RESULT_SALES
+                         , CUST_GRP_CD
                          , ITEM_ATTR01_CD
                          , ITEM_ATTR02_CD
                          , ITEM_ATTR03_CD
@@ -433,11 +435,13 @@ class SqlConfig(object):
                        AND DIVISION_CD = '{kwargs['division_cd']}'
                        AND FKEY LIKE '%{kwargs['fkey']}%'
                        AND ITEM_CD ='{kwargs['item_cd']}'
+                       AND CUST_GRP_CD ='{kwargs['cust_grp_cd']}'
                   ) PRED
              GROUP BY DATA_VRSN_CD
                     , DIVISION_CD
                     , YYMMDD
                     , WEEK
+                    , CUST_GRP_CD
                     , ITEM_ATTR01_CD
                     , ITEM_ATTR02_CD
                     , ITEM_ATTR03_CD
@@ -457,6 +461,7 @@ class SqlConfig(object):
                             SELECT *
                               FROM M4S_I002175
                              WHERE DIVISION_CD = '{kwargs['division_cd']}'
+                               AND CUST_GRP_CD = '{kwargs['cust_grp_cd']}'
                                AND ITEM_CD = '{kwargs['item_cd']}'
                            ) SALES
                       LEFT OUTER JOIN (
@@ -499,7 +504,7 @@ class SqlConfig(object):
                  , ITEM_CD
                  , CREATE_USER_CD
               FROM M4S_I110520
-             WHERE EXEC_YN = 'N'
+             WHERE EXEC_YN = 'P'
         """
         return sql
 
@@ -513,6 +518,7 @@ class SqlConfig(object):
                  , DTL.SALES_MGMT_CD
                  , DTL.ITEM_CD
                  , DTL.YY
+                 , DTL.YYMM
                  , DTL.WEEK
                  , DISCOUNT / 100 AS DISCOUNT
                  , DTL.CREATE_USER_CD
@@ -520,7 +526,7 @@ class SqlConfig(object):
              INNER JOIN (
                          SELECT *
                            FROM M4S_I110520
-                          WHERE EXEC_YN = 'N'
+                          WHERE EXEC_YN = 'P'
                         ) MST
                 ON DTL.DATA_VRSN_CD = MST.DATA_VRSN_CD
                AND DTL.DIVISION_CD = MST.DIVISION_CD
@@ -676,6 +682,8 @@ class SqlConfig(object):
                AND WI_VRSN_SEQ = '{kwargs['wi_vrsn_seq']}'
                AND SALES_MGMT_CD = '{kwargs['sales_mgmt_cd']}'
                AND ITEM_CD = '{kwargs['item_cd']}'
+               AND YY = '{kwargs['yy']}'
+               AND WEEK = '{kwargs['week']}'
                AND CREATE_USER_CD = '{kwargs['create_user_cd']}'
         """
         return sql
