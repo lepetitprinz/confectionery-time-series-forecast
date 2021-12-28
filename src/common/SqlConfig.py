@@ -289,46 +289,70 @@ class SqlConfig(object):
     def sql_sell_out_week(**kwargs):
         sql = f""" 
            SELECT DIVISION_CD
-                , CUST_CD
-                , BIZ_CD
-                , LINE_CD
-                , BRAND_CD
-                , ITEM_CD
-                , SALES.SKU_CD AS SKU_CD 
+                , CUST_GRP_CD
+                , ITEM_ATTR01_CD AS BIZ_CD
+                , ITEM_ATTR02_CD AS LINE_CD
+                , ITEM_ATTR03_CD AS BRAND_CD
+                , ITEM_ATTR04_CD AS ITEM_CD
+                , ITEM_CD AS SKU_CD 
                 , YYMMDD
                 , SEQ
                 , DISCOUNT
                 , WEEK
                 , QTY
                 , CREATE_DATE
-             FROM (
-                   SELECT PROJECT_CD
-                        , DIVISION_CD
-                        , SOLD_CUST_GRP_CD AS CUST_CD
-                        , ITEM_CD AS SKU_CD
-                        , YYMMDD
-                        , SEQ
-                        , DISCOUNT
-                        , WEEK
-                        , RST_SALES_QTY AS QTY
-                        , CREATE_DATE
-                     FROM M4S_I002173
-                    WHERE 1=1
-                      AND RST_SALES_QTY <> 0
-                   -- WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']} # Todo: Exception
-                  ) SALES
-            INNER JOIN (
-                        SELECT ITEM_CD AS SKU_CD
-                             , ITEM_ATTR01_CD AS BIZ_CD
-                             , ITEM_ATTR02_CD AS LINE_CD
-                             , ITEM_ATTR03_CD AS BRAND_CD
-                             , ITEM_ATTR04_CD AS ITEM_CD
-                          FROM VIEW_I002040
-                         WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                       ) ITEM
-               ON SALES.SKU_CD = ITEM.SKU_CD
+             FROM M4S_I002177
+            WHERE QTY <> 0
+              AND CUST_GRP_CD <> '1173'
+              AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                """
         return sql
+
+    # # SELL-OUT
+    # @staticmethod
+    # def sql_sell_out_week(**kwargs):
+    #     sql = f"""
+    #        SELECT DIVISION_CD
+    #             , CUST_CD
+    #             , BIZ_CD
+    #             , LINE_CD
+    #             , BRAND_CD
+    #             , ITEM_CD
+    #             , SALES.SKU_CD AS SKU_CD
+    #             , YYMMDD
+    #             , SEQ
+    #             , DISCOUNT
+    #             , WEEK
+    #             , QTY
+    #             , CREATE_DATE
+    #          FROM (
+    #                SELECT PROJECT_CD
+    #                     , DIVISION_CD
+    #                     , SOLD_CUST_GRP_CD AS CUST_CD
+    #                     , ITEM_CD AS SKU_CD
+    #                     , YYMMDD
+    #                     , SEQ
+    #                     , DISCOUNT
+    #                     , WEEK
+    #                     , RST_SALES_QTY AS QTY
+    #                     , CREATE_DATE
+    #                  FROM M4S_I002173
+    #                 WHERE 1=1
+    #                   AND RST_SALES_QTY <> 0
+    #                -- WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']} # Todo: Exception
+    #               ) SALES
+    #         INNER JOIN (
+    #                     SELECT ITEM_CD AS SKU_CD
+    #                          , ITEM_ATTR01_CD AS BIZ_CD
+    #                          , ITEM_ATTR02_CD AS LINE_CD
+    #                          , ITEM_ATTR03_CD AS BRAND_CD
+    #                          , ITEM_ATTR04_CD AS ITEM_CD
+    #                       FROM VIEW_I002040
+    #                      WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+    #                    ) ITEM
+    #            ON SALES.SKU_CD = ITEM.SKU_CD
+    #            """
+    #     return sql
 
     @staticmethod
     def sql_unit_map():
@@ -689,11 +713,10 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def del_pred_recent(**kwargs):
+    def del_pred_recent():
         sql = f"""
             DELETE
               FROM M4S_O111600
-             WHERE DIVISION_CD = '{kwargs['division_cd']}'
         """
         return sql
 

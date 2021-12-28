@@ -1,5 +1,7 @@
+import common.util as util
 import common.config as config
 
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 
@@ -23,10 +25,14 @@ class MiddleOut(object):
                          common['db_hrchy_item_nm'].split(',')
 
         # Middle-out Configuration
+        self.err_val = 10 ** 5 - 1
         self.target_col = 'sales'
         self.item_mst = item_mst
         self.ratio_lvl = ratio_lvl
         self.split_lvl = self.hrchy['lvl']['item']
+
+        # After processing Configuration
+        self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def prep_ratio(self, data: pd.DataFrame):
         item_temp = deepcopy(self.item_mst)
@@ -46,7 +52,7 @@ class MiddleOut(object):
         return data
 
     def middle_out(self, data_split, data_ratio):
-        # acyclic iteration
+        # Acyclic iteration
         count = self.ratio_lvl - self.hrchy['lvl']['item']
         ratio = self.ratio_iter(df_ratio=data_ratio)
         result = self.split_iter(dict_ratio=ratio, split=data_split)
@@ -68,6 +74,14 @@ class MiddleOut(object):
         )
         # Add db information
         result = self.add_db_information(data=merged)
+
+        # Remove Special Character
+        for col in self.rm_special_char_list:
+            if col in list(result.columns):
+                result = util.remove_special_character(data=result, feature=col)
+
+        # convert 'inf' or '-inf' to zero
+        result['result_sales'] = np.nan_to_num(result['result_sales'].values, posinf=0, neginf=0)
 
         return result
 
@@ -110,6 +124,10 @@ class MiddleOut(object):
     def calc_ratio(self, df_upper, df_lower):
         result = self.merge_df(left=df_upper, right=df_lower)
         result['ratio'] = result[self.target_col + '_' + 'lower'] / result[self.target_col + '_' + 'upper']
+
+        # Convert inf or -inf to zeros
+        result['ratio'] = np.nan_to_num(result['ratio'].values, posinf=0, neginf=0)
+
         result = self.drop_qty(df=result)
 
         return result
@@ -170,6 +188,11 @@ class MiddleOut(object):
         on = self.hrchy_cust_cd_list + self.hrchy_item_cd_list[:lvl]
         split = pd.merge(upper, lower, on=on)
         split[self.target_col] = round(split[self.target_col] * split['ratio'], 2)
+
+        # clip & round results
+        split[self.target_col] = np.clip(split[self.target_col].values, 0, self.err_val)
+        split[self.target_col] = np.round(split[self.target_col].values, 2)
+
         split = split.drop(columns='ratio')
 
         return split

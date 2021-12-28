@@ -42,9 +42,14 @@ class Predict(object):
         self.fixed_n_test = 4
 
         # Algorithms
+        self.err_val = float(10 ** 5 - 1)
         self.param_grid = mst_info['param_grid']
         self.model_info = mst_info['model_mst']
         self.cand_models = list(self.model_info.keys())
+
+        # After processing Configuration
+        self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
+        self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def forecast(self, df):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -82,10 +87,14 @@ class Predict(object):
                         cfg=self.param_grid[model],
                         pred_step=n_test
                     )
+
+                    prediction = np.clip(prediction, 0, self.err_val).tolist()  # Clip results
+                    prediction = np.round(prediction, 3)  # Round results
+
                 except ValueError:
-                    prediction = [10**10-1] * n_test
+                    prediction = [self.err_val] * n_test
             else:
-                prediction = [10 ** 10 - 1] * n_test
+                prediction = [self.err_val] * n_test
             models.append(hrchy + [model.upper(), prediction])
 
         return models
@@ -114,10 +123,8 @@ class Predict(object):
         lvl = self.hrchy['lvl']['item'] - 1
         for i, pred in enumerate(df):
             for j, prediction in enumerate(pred[-1]):
-                # ToDo: Exception
-                prediction = np.where(prediction < 0, 0, prediction)    # Convert minus values to 0
-                prediction = np.round(prediction, 3)    # Round values
-                prediction = np.clip(prediction, a_min=None, a_max=10**10-1)    # Data clipping
+                # prediction = np.round(prediction, 3)    # Round values
+                # prediction = np.clip(prediction, a_min=0, a_max=self.err_val)    # Data clipping
 
                 # Add data level information
                 if hrchy_key[:2] == 'C1':
@@ -165,11 +172,21 @@ class Predict(object):
 
             result_pred = result_pred.fillna('-')
         calendar = self.cal_mst[['yymmdd', 'week']]
+
+        # Merge calendar data
         result_pred = pd.merge(result_pred, calendar, on='yymmdd', how='left')
+
+        # Fill na
+        result_pred = util.fill_na(data=result_pred, chk_list=self.fill_na_chk_list)
 
         # Rename columns
         result_pred = result_pred.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         result_pred = result_pred.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
+
+        # Remove Special Character
+        for col in self.rm_special_char_list:
+            if col in list(result_pred.columns):
+                result_pred = util.remove_special_character(data=result_pred, feature=col)
 
         # Prediction information
         pred_info = {
@@ -186,7 +203,8 @@ class Predict(object):
         best = pd.merge(
             pred,
             score,
-            on=['project_cd', 'data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
+            # on=['project_cd', 'data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
+            on=['data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
             how='inner',
             suffixes=('', '_DROP')
         ).filter(regex='^(?!.*_DROP)')

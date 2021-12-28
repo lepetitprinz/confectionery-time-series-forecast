@@ -1,33 +1,38 @@
 import os
 import sys
 import time
-# sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineReal import PipelineReal
+
+
+# Root path
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
+item_lvl = 3 # 3: brand
 
-test_vrsn_cd = 'TEST001_1223_SELL_IN_1YEAR_ITEM'
+test_vrsn_cd = 'TEST_1228_SELL_IN_2YEAR_BRAND'
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': True,
+    'cls_load': False,
     'cls_cns': True,
     'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,
     'clss_mdout': True,
-    'cls_rpt': True
+    'cls_rpt': False
 }
 
 # Configuration
 exec_cfg = {
     'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': False,             #
+    'save_db_yn': True,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling
@@ -44,20 +49,21 @@ data_cfg = {
     'division': division,
     'in_out': in_out,
     'cycle': cycle,
+    'item_lvl': item_lvl,
     'test_vrsn_cd': test_vrsn_cd,
     'date': {
-            'history': {
-                'from': '20200706',
-                'to': '20210704'
-            },
-            'middle_out': {
-                'from': '20210405',
-                'to': '20210704'
-            },
-            'evaluation': {
-                'from': '20210705',
-                'to': '20211003'
-            }   
+        'history': {
+            'from': '20191223', # 20191223 for two years / 20201228 for one year
+            'to': '20211226'
+        },
+        'middle_out': {
+            'from': '20210927',
+            'to': '20211226'
+        },
+        'evaluation': {
+            'from': '20211227',
+            'to': '20220327'
+        }
     }
 }
 
@@ -81,16 +87,13 @@ pipeline = PipelineReal(
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg
+    unit_cfg=unit_cfg,
+    path_root=path_root
 )
 
-
-# Execute Baseline Forecast
-
-print(test_vrsn_cd)
-
 start_time = time.time()
-
+print(test_vrsn_cd)
+# Execute Baseline Forecast
 pipeline.run()
 
 end_time = time.time()

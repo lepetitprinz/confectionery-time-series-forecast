@@ -158,16 +158,16 @@ class DataPrep(object):
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
         # df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
         # Convert unit code
-        if self.data_cfg['division'] == 'SELL_OUT':
-            conditions = [df['unit_cd'] == 'EA',
-                          df['unit_cd'] == 'BOL',
-                          df['unit_cd'] == 'BOX']
-
-            values = [df['box_ea'], df['box_bol'], 1]
-            unit_map = np.select(conditions, values)
-            df['qty'] = df['qty'].to_numpy() / unit_map
-
-            df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
+        # if self.data_cfg['division'] == 'SELL_OUT':
+        #     conditions = [df['unit_cd'] == 'EA',
+        #                   df['unit_cd'] == 'BOL',
+        #                   df['unit_cd'] == 'BOX']
+        #
+        #     values = [df['box_ea'], df['box_bol'], 1]
+        #     unit_map = np.select(conditions, values)
+        #     df['qty'] = df['qty'].to_numpy() / unit_map
+        #
+        #     df = df.drop(columns=['box_ea', 'box_bol'], errors='ignore')
 
         # convert to datetime
         df[self.common['date_col']] = pd.to_datetime(df[self.common['date_col']], format='%Y%m%d')
@@ -398,7 +398,7 @@ class DataPrep(object):
         df['data_vrsn_cd'] = self.date['history']['from'] + '-' + self.date['history']['to']
         df['division_cd'] = self.data_cfg['division']
         df['hrchy_lvl_cd'] = self.hrchy['key'][:-1]
-        df['seq'] = [str(i+1).zfill(7) for i in range(len(df))]
+        df['seq'] = [str(i+1).zfill(10) for i in range(len(df))]
         df['create_user_cd'] = 'SYSTEM'
         df = df[['project_cd', 'data_vrsn_cd', 'division_cd', 'hrchy_lvl_cd', 'seq'] + cols + ['create_user_cd']]
 

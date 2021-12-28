@@ -9,6 +9,20 @@ data_cfg = {
     'division': 'SELL_IN',
     'in_out': 'out',
     'cycle': 'w',
+    'date': {
+        'history': {
+            'from': '20201228',
+            'to': '20211226'
+        },
+        'middle_out': {
+            'from': '20210927',
+            'to': '20211226'
+        },
+        'evaluation': {
+            'from': '20211227',
+            'to': '20220327'
+        }
+    }
 }
 
 # Execute Configuration
@@ -24,7 +38,7 @@ exec_cfg = {
 }
 
 # Load result configuration
-exec_rslt_cfg = {'decompose': True}
+exec_rslt_cfg = {'decompose': False}
 
 # Brand Level
 pipeline_brand = PipelineDecompose(

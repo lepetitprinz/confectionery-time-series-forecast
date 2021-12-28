@@ -59,10 +59,14 @@ class Train(object):
 
         # Training Configuration
         self.fixed_n_test = 4
-        self.err_val = float(10**10 - 1)
+        self.err_val = float(10 ** 5 - 1)
         self.validation_method = 'train_test'
         self.grid_search_yn = exec_cfg['grid_search_yn']
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
+
+        # After processing Configuration
+        self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
+        self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def train(self, df) -> dict:
         scores = util.hrchy_recursion(
@@ -230,14 +234,16 @@ class Train(object):
                     err = 0
                     if self.model_info[model]['variate'] == 'univ':
                         err = round(mean_squared_error(test, yhat, squared=False), 2)
-                        acc = self.calc_accuracy(test=test, pred=yhat)
+                        # acc = round(self.calc_accuracy(test=test, pred=yhat), 2)
+                        acc = 0
 
                     elif self.model_info[model]['variate'] == 'multi':
                         err = round(mean_squared_error(test['endog'], yhat, squared=False), 2)
-                        acc = self.calc_accuracy(test=test['endog'], pred=yhat)
+                        # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), 2)
+                        acc = 0
 
                     # Exception 처리
-                    if err > 10 ** 10:
+                    if err > self.err_val:
                         err = self.err_val
                 else:
                     err = self.err_val    # Not solvable problem
@@ -403,9 +409,17 @@ class Train(object):
                               how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
             # result = result.fillna('-')
 
-        # Customer Names
+        # Fill na
+        result = util.fill_na(data=result, chk_list=self.fill_na_chk_list)
+
+        # Rename columns
         result = result.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         result = result.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
+
+        # Remove Special Character
+        for col in self.rm_special_char_list:
+            if col in list(result.columns):
+                result = util.remove_special_character(data=result, feature=col)
 
         # set score_info
         score_info = {
@@ -416,6 +430,13 @@ class Train(object):
         }
 
         return result, score_info
+
+    def fill_na(self, data) -> pd.DataFrame:
+        for col in self.fill_na_chk_list:
+            if col in list(data.columns):
+                data[col] = data[col].fillna('')
+
+        return data
 
     @staticmethod
     def score_to_df(hrchy: list, data) -> List[list]:

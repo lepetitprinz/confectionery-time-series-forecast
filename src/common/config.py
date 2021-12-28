@@ -1,6 +1,14 @@
 import numpy as np
 
-# Database Configuration
+# # Database Configuration (Operation)
+# RDMS = 'mssql+pymssql'
+# HOST = '10.109.2.143'    # Database IP adress
+# DATABASE = 'BISCM'      # Database name
+# PORT = '1433'
+# USER = 'matrix'    # User name
+# PASSWORD = 'Diam0nd123!'     # User password
+
+# Database Configuration (Development)
 RDMS = 'mssql+pymssql'
 HOST = '10.109.2.135'    # Database IP adress
 DATABASE = 'BISCM'      # Database name
@@ -10,27 +18,6 @@ PASSWORD = 'Diam0nd123!'     # User password
 
 # Data filtering threshold
 threshold = 4
-
-#
-day_map = {
-    'SELL_IN': {
-        'week': {
-            'rst_from': 'rst_start_day',
-            'rst_to': 'rst_end_day'
-        },
-    },
-    'SELL_OUT': {
-        'week': {
-            'rst_from': 'rst_start_day_sell_out',
-            'rst_to': 'rst_end_day_sell_out'
-        },
-        'month': {
-            'rst_from': 'rst_start_day_sell_out_month',
-            'rst_to': 'rst_end_day_sell_out_out_month'
-        }
-    }
-}
-
 
 # Model Hyper-parameters
 # 1.Time Series Forecast
@@ -223,7 +210,6 @@ EXG_MAP = {
     '1228': '131',    # 충청 -> 청주
     '1229': '156'     # 호남 빙과 -> 광주
 }
-
 # Date Backup
 
 # data_cfg = {

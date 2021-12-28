@@ -167,8 +167,8 @@ class PipelineReal(object):
             if self.exec_cfg['rm_not_exist_lvl_yn']:
                 sales_recent = self.io.get_df_from_db(
                     sql=self.sql_conf.sql_sell_in_week_grp_test(
-                        **{'date_from': self.date['evaulation']['from'],
-                           'date_to': self.date['evaulation']['to']}))
+                        **{'date_from': self.date['middle_out']['from'],
+                           'date_to': self.date['middle_out']['to']}))
                 preprocess.sales_recent = sales_recent
 
             # Preprocessing the dataset
@@ -238,11 +238,6 @@ class PipelineReal(object):
             scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
             scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
 
-            # Remove Special Character
-            if 'item_nm' in list(scores_db.columns):
-                scores_db = util.remove_special_character(data=scores_db, feature='item_nm')
-                scores_best = util.remove_special_character(data=scores_best, feature='item_nm')
-
             # Save best scores
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
@@ -304,11 +299,6 @@ class PipelineReal(object):
             pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
             pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
 
-            # Remove Special Character
-            if 'item_nm' in list(pred_all.columns):
-                pred_all = util.remove_special_character(data=pred_all, feature='item_nm')
-                pred_best = util.remove_special_character(data=pred_best, feature='item_nm')
-
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=pred_best, file_path=self.path['pred_best'], data_type='binary')
 
@@ -334,6 +324,7 @@ class PipelineReal(object):
         # 6. Middle Out
         # ================================================================================================= #
         if self.step_cfg['clss_mdout']:
+            print("Step 6: Middle Out\n")
             # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
@@ -356,7 +347,6 @@ class PipelineReal(object):
             if self.division == 'SELL_IN':
                 if self.data_cfg['in_out'] == 'out':
                     sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
-                    # sql = self.sql_conf.sql_sell_in_week_grp_test(**date_recent))
                 elif self.data_cfg['in_out'] == 'in':
                     sales_recent = self.io.get_df_from_db(
                         sql=self.sql_conf.sql_sell_in_week_grp_test_inqty(**date_recent))
@@ -365,8 +355,10 @@ class PipelineReal(object):
                 if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
                     sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
                     # sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp_test(**date_recent))
-                elif self.data_cfg['cycle'] == 'm':  # Monthly Prediction
-                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent))
+                # elif self.data_cfg['cycle'] == 'm':  # Monthly Prediction
+                #     sales_recent = self.io.get_df_from_db(
+                #         sql=self.sql_conf.sql_sell_out_month_grp_test(**date_recent)
+                #     )
 
             if not self.step_cfg['cls_pred']:
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
@@ -385,15 +377,17 @@ class PipelineReal(object):
                         data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
             else:
                 middle_out_db = self.io.load_object(file_path=self.path['middle_out_db'], data_type='csv')
+
+            if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()
+                print("Save middle-out results on all result table")
+                self.io.delete_from_db(sql=self.sql_conf.del_prediction(**middle_info))
+                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
 
-                if self.exec_cfg['save_db_yn']:
-                    print("Save middle-out results on DB")
-                    self.io.delete_from_db(sql=self.sql_conf.del_prediction(**middle_info))
-                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
-
+                if self.division == 'SELL_IN':
+                    print("Save middle-out results on recent result table")
                     # Save prediction of best algorithm to recent prediction table
-                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**({'division_cd': self.division})))
+                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent())
                     self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 
             print("Middle-out is finished\n")
@@ -401,7 +395,7 @@ class PipelineReal(object):
         # 7. Report result
         # ================================================================================================= #
         if self.step_cfg['cls_rpt']:
-            print("Step 6: Report result\n")
+            print("Step 7: Report result\n")
             test_vrsn_cd = self.test_vrsn_cd
 
             if self.level['middle_out']:

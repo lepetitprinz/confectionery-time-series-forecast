@@ -166,8 +166,8 @@ class PipelineCycle(object):
             if self.exec_cfg['rm_not_exist_lvl_yn']:
                 sales_recent = self.io.get_df_from_db(
                     sql=self.sql_conf.sql_sell_in_week_grp_test(
-                        **{'date_from': self.date['evaulation']['from'],
-                           'date_to': self.date['evaulation']['to']}))
+                        **{'date_from': self.date['middle_out']['from'],
+                           'date_to': self.date['middle_out']['to']}))
                 preprocess.sales_recent = sales_recent
 
             # Preprocessing the dataset
@@ -334,6 +334,7 @@ class PipelineCycle(object):
         # 6. Middle Out
         # ================================================================================================= #
         if self.step_cfg['clss_mdout']:
+            print("Step 6: Middle Out\n")
             # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
@@ -386,15 +387,16 @@ class PipelineCycle(object):
                         data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
             else:
                 middle_out_db = self.io.load_object(file_path=self.path['middle_out_db'], data_type='csv')
+
+            if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()
+                print("Save middle-out results on DB")
+                self.io.delete_from_db(sql=self.sql_conf.del_prediction(**middle_info))
+                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
 
-                if self.exec_cfg['save_db_yn']:
-                    print("Save middle-out results on DB")
-                    self.io.delete_from_db(sql=self.sql_conf.del_prediction(**middle_info))
-                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
-
+                if self.division == 'SELL_IN':
                     # Save prediction of best algorithm to recent prediction table
-                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**({'division_cd': self.division})))
+                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent())
                     self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 
             print("Middle-out is finished\n")

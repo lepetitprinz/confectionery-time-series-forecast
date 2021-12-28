@@ -3,25 +3,6 @@ from operation.Cycle import Cycle
 
 
 class Init(object):
-    day_map = {
-        'SELL_IN': {
-            'w': {
-                'rst_from': 'rst_start_day',
-                'rst_to': 'rst_end_day'
-            },
-        },
-        'SELL_OUT': {
-            'w': {
-                'rst_from': 'rst_start_day_sell_out',
-                'rst_to': 'rst_end_day_sell_out'
-            },
-            'm': {
-                'rst_from': 'rst_start_day_sell_out_month',
-                'rst_to': 'rst_end_day_sell_out_out_month'
-            }
-        }
-    }
-
     def __init__(self, data_cfg: dict, exec_cfg: dict, common: dict, division: str, path_root: str):
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg

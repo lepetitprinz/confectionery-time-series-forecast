@@ -36,9 +36,10 @@ class ConsistencyCheck(object):
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
         normal = self.check_prod_level(df=df)
-        if self.division == 'SELL_OUT':
-            normal = self.check_unit_code(df=normal)
-            normal = self.check_unit_code_map(df=normal)
+
+        # if self.division == 'SELL_OUT':
+        #     normal = self.check_unit_code(df=normal)
+        #     normal = self.check_unit_code_map(df=normal)
 
         return normal
 
@@ -53,11 +54,13 @@ class ConsistencyCheck(object):
         # save the error data
         err_cd = 'err001'
         err = self.make_err_format(df=err, err_cd=err_cd)
+
+        # Save results
         if self.exec_cfg['save_step_yn']:
-            path = os.path.join(
-                self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
-                err_cd + '.csv')
+            path = os.path.join(self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' +
+                                '-' + err_cd + '.csv')
             err.to_csv(path, index=False, encoding='cp949')
+
         if len(err) > 0 and self.exec_cfg['save_db_yn']:
             info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
             self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
@@ -124,10 +127,10 @@ class ConsistencyCheck(object):
     def make_err_format(self, df: pd.DataFrame, err_cd: str):
         df['project_cd'] = self.common['project_cd']
         df['data_vrsn_cd'] = self.data_vrsn_cd
+        df['division_cd'] = self.division
         df['err_grp_cd'] = self.err_grp_map[err_cd]
         df['err_cd'] = err_cd.upper()
-        if self.division == 'SELL_OUT':
-            df['from_dc_cd'] = ''
+        df['from_dc_cd'] = ''
         df['create_user_cd'] = 'SYSTEM'
 
         # Merge SP1 information
@@ -142,10 +145,19 @@ class ConsistencyCheck(object):
         df['sku_cd'] = df['sku_cd'].astype(str)
         df = pd.merge(df, item_mst, on='sku_cd', how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
+        # Fill na
+        df['qty'] = df['qty'].fillna(0)
         df = df.fillna('')
+
+        # Rename columns
         df = df.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         df = df.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
 
-        df['seq'] = df['seq'] + '-' + df['cust_grp_cd'] + '-' + df['item_cd']
+        number = [str(i+1).zfill(10) for i in range(len(df))]
+        df['number'] = number
+        # df['seq'] = df['seq'] + '-' + df['cust_grp_cd'] + '-' + df['item_cd'] + '-' + df['number']
+        df['seq'] = df['seq'] + '-' + df['number']
+
+        df = df.drop(columns=['number', 'create_date'], errors='ignore')
 
         return df

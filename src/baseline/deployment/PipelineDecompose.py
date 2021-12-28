@@ -41,20 +41,7 @@ class PipelineDecompose(object):
         self.hrchy = {}
         self.level = {}
         self.path = {}
-        self.date = {    # Todo : Test Exception
-            'history': {
-                'from': '20201102',
-                'to': '20211031'
-            },
-            'middle_out': {
-                'from': '20210802',
-                'to': '20211031'
-            },
-            'evaluation': {
-                'from': '20211101',
-                'to': '20220130'
-            }
-        }
+        self.date = {}
 
     def run(self):
         # ================================================================================================= #
@@ -69,6 +56,7 @@ class PipelineDecompose(object):
         init.run(cust_lvl=self.cust_lvl, item_lvl=self.item_lvl)    # Todo : Exception
 
         # Set initialized object
+        self.date = init.date
         self.data_vrsn_cd = init.data_vrsn_cd
         self.level = init.level
         self.hrchy = init.hrchy

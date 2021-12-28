@@ -40,12 +40,11 @@ class DataLoad(object):
                 if self.data_cfg['in_out'] == 'out':
                     sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
                 elif self.data_cfg['in_out'] == 'in':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date['history']))  # Temp
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date['history']))
 
             elif self.division == 'SELL_OUT':
                 if self.data_cfg['cycle'] == 'w':
-                    # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_test(**self.date))
+                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date['history']))
                 elif self.data_cfg['cycle'] == 'm':
                     sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_test(**self.date))
 

@@ -271,16 +271,50 @@ def make_data_version(data_version: str) -> pd.DataFrame:
     return df
 
 
+def fill_na(data: pd.DataFrame, chk_list: list) -> pd.DataFrame:
+    for col in chk_list:
+        if col in list(data.columns):
+            data[col] = data[col].fillna('')
+
+    return data
+
+
 def remove_special_character(data: pd.DataFrame, feature: str):
     feat = deepcopy(data[feature])
+    # Chinese characters
+    # feat = feat.str.replace('愛', '애')
+    # feat = feat.str.replace('入', '인')
+    # feat = feat.str.replace('月', '월')
+
+    # Special characters
     feat = feat.str.replace('ℓ', 'l')
     feat = feat.str.replace('㎖', 'ml')
-    feat = feat.str.replace('入', '인')
-    feat = feat.str.replace('月', '월')
-    feat = feat.str.replace('%', 'PCT')
-    feat = feat.str.replace('&', ' ')
+    # feat = feat.str.replace('%', 'PCT')
+    # feat = feat.str.replace('&', ' ')
     feat = feat.str.replace('*', ' ')
     feat = feat.str.replace('+', ' ')
+    feat = feat.str.replace('-', ' ')
+    feat = feat.str.replace('_', ' ')
+    feat = feat.str.replace('=', ' ')
+    feat = feat.str.replace(',', ' ')
+    feat = feat.str.replace('#', ' ')
+    feat = feat.str.replace('/', ' ')
+    feat = feat.str.replace('\\', ' ')
+    feat = feat.str.replace('?', ' ')
+    feat = feat.str.replace(':', ' ')
+    feat = feat.str.replace('^', ' ')
+    feat = feat.str.replace('$', ' ')
+    feat = feat.str.replace('.', ' ')
+    feat = feat.str.replace('@', ' ')
+    feat = feat.str.replace('※', ' ')
+    feat = feat.str.replace('~', ' ')
+    feat = feat.str.replace('ㆍ', ' ')
+    feat = feat.str.replace('!', ' ')
+    feat = feat.str.replace('』', ' ')
+    feat = feat.str.replace('‘', ' ')
+    feat = feat.str.replace('|', ' ')
+    feat = feat.str.replace('<', ' ')
+    feat = feat.str.replace('>', ' ')
 
     data[feature] = feat
 
