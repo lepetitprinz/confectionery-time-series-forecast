@@ -25,8 +25,7 @@ class Train(object):
         'hw': Algorithm.hw,
         'var': Algorithm.var,
         'varmax': Algorithm.varmax,
-        'sarima': Algorithm.sarimax,
-        # 'prophet': Algorithm.prophet
+        'sarima': Algorithm.sarimax
     }
 
     def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,

@@ -3,10 +3,11 @@ from operation.Cycle import Cycle
 
 
 class Init(object):
-    def __init__(self, cycle: str, common: dict, division: str):
-        self.cycle = cycle
-        self.common = common
+    def __init__(self, common: dict, division: str, path_root: str):
         self.division = division
+        self.common = common
+        self.path_root = path_root
+        self.cycle = 'w'
         self.date = {}
         self.data_vrsn_cd = ''
         self.hrchy = {}
@@ -40,23 +41,21 @@ class Init(object):
         self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
 
     def set_hrchy(self) -> None:
-        hrchy = {
+        self.hrchy = {
             'cnt_all': 0,
             'cnt_filtered': 0,
             'lvl': 6,
             'list': self.common['hrchy_cust'].split(',') + self.common['hrchy_item'].split(',')
         }
-        self.hrchy = hrchy
 
     def set_path(self) -> None:
-        path = {
+        self.path = {
             'load': util.make_path_sim(
-                path=self.common['path_dev'], module='load', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='load', division=self.division, data_vrsn=self.data_vrsn_cd,
                 step='load', extension='csv'
             ),
             'prep': util.make_path_sim(
-                path=self.common['path_dev'], module='prep', division=self.division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='prep', division=self.division, data_vrsn=self.data_vrsn_cd,
                 step='prep', extension='pickle'
             )
         }
-        self.path = path

@@ -6,16 +6,14 @@ from simulation.simulation.SimulateDB import SimulateDB
 
 # simulation configuration
 lag = 'w1'
-path = os.path.join('/', 'opt', 'DF', 'fcst', 'simulation', 'model')
+path_root = os.path.join('/', 'opt', 'DF', 'fcst', 'simulation', 'model')
 
-exec_cfg = {
-    'save_db_yn': True,
-}
+exec_cfg = {'save_db_yn': True}
 
 sim = SimulateDB(
     exec_cfg=exec_cfg,
-    lag=lag,
-    path=path
+    path_root=path_root,
+    lag=lag
 )
 
 result = sim.run()

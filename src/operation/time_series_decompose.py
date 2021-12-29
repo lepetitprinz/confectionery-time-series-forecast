@@ -9,21 +9,30 @@ path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 # Data Configuration
 data_cfg = {
     'division': 'SELL_IN',
-    'in_out': 'out',
     'cycle': 'w',
 }
 
 # Execute Configuration
 exec_cfg = {
-    'cycle': True,
-    'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': True,              # Save DB
     'decompose_yn': True,            # Decomposition
+    'cycle': True,                   # Weekly cycle
+    'save_step_yn': True,            # Save each step result to object or csv
+    'save_db_yn': True,              # Save result on DB
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,
     'rm_not_exist_lvl_yn': False
 }
+
+# Line Level
+pipeline_line = PipelineDecompCycle(
+    data_cfg=data_cfg,
+    exec_cfg=exec_cfg,
+    item_lvl=2,
+    path_root=path_root
+)
+pipeline_line.run()
+print("Time Series Decomposition(Line Level) is finished.\n")
 
 # Brand Level
 pipeline_brand = PipelineDecompCycle(
@@ -33,6 +42,7 @@ pipeline_brand = PipelineDecompCycle(
     path_root=path_root
 )
 pipeline_brand.run()
+print("Time Series Decomposition(Brand Level) is finished.\n")
 
 # Item Level
 pipeline_item = PipelineDecompCycle(
@@ -42,3 +52,4 @@ pipeline_item = PipelineDecompCycle(
     path_root=path_root
 )
 pipeline_item.run()
+print("Time Series Decomposition(Item Level) is finished.\n")

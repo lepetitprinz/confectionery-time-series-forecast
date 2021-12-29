@@ -16,8 +16,7 @@ class Predict(object):
         'hw': Algorithm.hw,
         'var': Algorithm.var,
         'varmax': Algorithm.varmax,
-        'sarima': Algorithm.sarimax,
-        # 'prophet': Algorithm.prophet
+        'sarima': Algorithm.sarimax
     }
 
     def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
@@ -42,7 +41,8 @@ class Predict(object):
         self.fixed_n_test = 4
 
         # Algorithms
-        self.err_val = float(10 ** 5 - 1)
+        self.err_val = 0
+        self.max_val = float(10 ** 5 - 1)
         self.param_grid = mst_info['param_grid']
         self.model_info = mst_info['model_mst']
         self.cand_models = list(self.model_info.keys())
@@ -88,7 +88,7 @@ class Predict(object):
                         pred_step=n_test
                     )
 
-                    prediction = np.clip(prediction, 0, self.err_val).tolist()  # Clip results
+                    prediction = np.clip(prediction, 0, self.max_val).tolist()  # Clip results
                     prediction = np.round(prediction, 3)  # Round results
 
                 except ValueError:
@@ -119,12 +119,9 @@ class Predict(object):
         end_date -= timedelta(days=6)    # Week start day
 
         result_pred = []
-        # fkey = [hrchy_key + str(i+1).zfill(5) for i in range(len(df))]
         lvl = self.hrchy['lvl']['item'] - 1
         for i, pred in enumerate(df):
             for j, prediction in enumerate(pred[-1]):
-                # prediction = np.round(prediction, 3)    # Round values
-                # prediction = np.clip(prediction, a_min=0, a_max=self.err_val)    # Data clipping
 
                 # Add data level information
                 if hrchy_key[:2] == 'C1':
@@ -171,6 +168,7 @@ class Predict(object):
             ).filter(regex='^(?!.*_DROP)')
 
             result_pred = result_pred.fillna('-')
+
         calendar = self.cal_mst[['yymmdd', 'week']]
 
         # Merge calendar data
@@ -199,16 +197,19 @@ class Predict(object):
         return result_pred, pred_info
 
     @staticmethod
-    def make_db_format_pred_best(pred, score):
+    def make_db_format_pred_best(pred: pd.DataFrame, score: pd.DataFrame) -> pd.DataFrame:
+        pred.columns = [col.lower() for col in list(pred.columns)]
+        score.columns = [col.lower() for col in list(score.columns)]
+
         best = pd.merge(
             pred,
             score,
-            # on=['project_cd', 'data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
-            on=['data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
             how='inner',
+            on=['data_vrsn_cd', 'division_cd', 'fkey', 'stat_cd'],
             suffixes=('', '_DROP')
         ).filter(regex='^(?!.*_DROP)')
+
         best = best.rename(columns={'create_user': 'create_user_cd'})
-        best = best.drop(columns=['rmse', 'accuracy'])
+        best = best.drop(columns=['rmse', 'accuracy'], errors='ignore')
 
         return best

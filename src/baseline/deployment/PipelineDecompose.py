@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 
 class PipelineDecompose(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, exec_rslt_cfg: dict, item_lvl: int):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, exec_rslt_cfg: dict, item_lvl: int, path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
@@ -36,6 +36,7 @@ class PipelineDecompose(object):
         )
 
         # Data Configuration
+        self.path_root = path_root
         self.division = 'SELL_IN'
         self.data_vrsn_cd = ''
         self.hrchy = {}
@@ -48,6 +49,7 @@ class PipelineDecompose(object):
         # 1. Initiate basic setting
         # ================================================================================================= #
         init = Init(
+            path_root=self.path_root,
             data_cfg=self.data_cfg,
             exec_cfg=self.exec_cfg,
             common=self.common,
@@ -98,6 +100,7 @@ class PipelineDecompose(object):
             self.io.save_object(data=result, file_path=self.path['decompose_db'], data_type='csv')
 
         if self.exec_cfg['save_db_yn']:
+            print("Save the result \n")
             info = {
                 'project_cd': self.common['project_cd'],
                 'data_vrsn_cd': self.data_vrsn_cd,

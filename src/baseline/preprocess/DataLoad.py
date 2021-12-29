@@ -37,27 +37,15 @@ class DataLoad(object):
             sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
         else:
             if self.division == 'SELL_IN':
-                if self.data_cfg['in_out'] == 'out':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
-                elif self.data_cfg['in_out'] == 'in':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test_inqty(**self.date['history']))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
 
             elif self.division == 'SELL_OUT':
-                if self.data_cfg['cycle'] == 'w':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date['history']))
-                elif self.data_cfg['cycle'] == 'm':
-                    sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_month_test(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date['history']))
 
         return sales
 
     def load_mst(self):
-        cust_grp = None
-        if self.data_cfg['in_out'] == 'out':
-            cust_grp = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
-        elif self.data_cfg['in_out'] == 'in':
-            cust_grp = pd.read_csv(os.path.join('..', '..', 'data', 'sell_in_inqty_cust_grp_map.csv')) # Todo: exception
-            cust_grp.columns = [col.lower() for col in cust_grp.columns]
-            # cust_grp = self.io.get_df_from_db(sql=SqlConfig.sql_cust_grp_info_inqty())
+        cust_grp = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
 
         item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())

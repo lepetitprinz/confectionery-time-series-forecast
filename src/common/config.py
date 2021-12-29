@@ -1,20 +1,20 @@
 import numpy as np
 
 # # Database Configuration (Operation)
-# RDMS = 'mssql+pymssql'
-# HOST = '10.109.2.143'    # Database IP adress
-# DATABASE = 'BISCM'      # Database name
-# PORT = '1433'
-# USER = 'matrix'    # User name
-# PASSWORD = 'Diam0nd123!'     # User password
-
-# Database Configuration (Development)
 RDMS = 'mssql+pymssql'
-HOST = '10.109.2.135'    # Database IP adress
+HOST = '10.109.2.143'    # Database IP adress
 DATABASE = 'BISCM'      # Database name
 PORT = '1433'
 USER = 'matrix'    # User name
 PASSWORD = 'Diam0nd123!'     # User password
+
+# Database Configuration (Development)
+# RDMS = 'mssql+pymssql'
+# HOST = '10.109.2.135'    # Database IP adress
+# DATABASE = 'BISCM'      # Database name
+# PORT = '1433'
+# USER = 'matrix'    # User name
+# PASSWORD = 'Diam0nd123!'     # User password
 
 # Data filtering threshold
 threshold = 4

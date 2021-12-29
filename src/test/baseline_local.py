@@ -11,21 +11,21 @@ from baseline.deployment.PipelineReal import PipelineReal
 path_root = os.path.join('..', '..')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
-item_lvl = 4
+item_lvl = 3
 
 test_vrsn_cd = '-'
 
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
-    'cls_cns': True,
+    'cls_cns': False,
     'cls_prep': False,
     'cls_train': False,
     'cls_pred': False,
-    'clss_mdout': False,
+    'cls_mdout': True,
     'cls_rpt': False
 }
 
@@ -75,20 +75,11 @@ exec_rslt_cfg = {
     'middle_out': False
 }
 
-# Unit Test Option
-unit_cfg = {
-    'unit_test_yn': False,
-    'cust_grp_cd': '1202',
-    'item_cd': '5100000'
-}
-
-
 pipeline = PipelineReal(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg,
     path_root=path_root
 )
 

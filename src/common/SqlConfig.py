@@ -76,19 +76,9 @@ class SqlConfig(object):
                    , LINK_SALES_MGMT_NM AS CUST_GRP_NM
                 FROM M4S_I204020
                WHERE PROJECT_CD = 'ENT001'
+                 AND SALES_MGMT_TYPE_CD = 'SP1'
                  AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
                  AND USE_YN = 'Y'
-        """
-        return sql
-
-    @staticmethod
-    def sql_cust_grp_info_inqty():
-        sql = """
-            SELECT 창고코드 AS CUST_GRP_CD
-                 , 창고명 AS CUST_GRP_NM
-              FROM TEST_NEW.dbo.SELLIN_PAST_INQTY
-             GROUP BY 창고코드
-                    , 창고명
         """
         return sql
 
@@ -125,11 +115,11 @@ class SqlConfig(object):
               FROM M4S_I103011
             """
         return sql
+
     ######################################
     # Sales dataset
     ######################################
     # SELL-IN Table
-
     @staticmethod
     def sql_sell_in(**kwargs):
         sql = f"""
@@ -153,93 +143,6 @@ class SqlConfig(object):
             WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
         """
         return sql
-
-    # @staticmethod
-    # def sql_sell_in(**kwargs):
-    #     sql = f"""
-    #         SELECT 'SELL_IN' AS DIVISION_CD
-    #              , CUST_GRP_CD
-    #              , BIZ_CD
-    #              , LINE_CD
-    #              , BRAND_CD
-    #              , ITEM.ITEM_CD
-    #              , SALES.SKU_CD
-    #              , YYMMDD
-    #              , SEQ
-    #              , FROM_DC_CD
-    #              , UNIT_PRICE
-    #              , UNIT_CD
-    #              , CASE WHEN FAC_PRICE IS NULL THEN 0
-    #                     WHEN 1- (RST_SALES_PRICE * 100 / (QTY * FAC_PRICE)) < 0 THEN 0
-    #                     ELSE 1- (RST_SALES_PRICE * 100 / (QTY * FAC_PRICE))
-    #                      END AS DISCOUNT
-    #              , WEEK
-    #              , QTY
-    #              , CREATE_DATE
-    #           FROM (
-    #                 SELECT PROJECT_CD
-    #                      , DIVISION_CD
-    #                      , SOLD_CUST_GRP_CD AS CUST_CD
-    #                      , ITEM_CD AS SKU_CD
-    #                      , YYMMDD
-    #                      , SEQ
-    #                      , FROM_DC_CD
-    #                      , UNIT_PRICE
-    #                      , UNIT_CD
-    #                      , DISCOUNT
-    #                      , WEEK
-    #                      , RST_SALES_QTY AS QTY
-    #                      , RST_SALES_PRICE
-    #                      , CREATE_DATE
-    #                   FROM M4S_I002170
-    #                  WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-    #                    AND RST_SALES_QTY <> 0
-    #                ) SALES
-    #          INNER JOIN (
-    #                      SELECT ITEM_CD AS SKU_CD
-    #                           , ITEM_ATTR01_CD AS BIZ_CD
-    #                           , ITEM_ATTR02_CD AS LINE_CD
-    #                           , ITEM_ATTR03_CD AS BRAND_CD
-    #                           , ITEM_ATTR04_CD AS ITEM_CD
-    #                        FROM VIEW_I002040
-    #                       WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-    #                         AND USE_YN = 'Y'
-    #                         AND NEW_ITEM_YN = 'N'
-    #                     ) ITEM
-    #             ON SALES.SKU_CD = ITEM.SKU_CD
-    #           LEFT OUTER JOIN (
-    #                            SELECT CUST_CD
-    #                                 , CUST_GRP_CD
-    #                              FROM M4S_I002060
-    #                           ) CUST
-    #             ON SALES.CUST_CD = CUST.CUST_CD
-    #           LEFT OUTER JOIN (
-    #                            SELECT SKU_CD
-    #                                 , FAC_PRICE
-    #                              FROM (
-    #                                    SELECT SKU_CD
-    #                                         , PRICE_START_YYMMDD
-    #                                         , FAC_PRICE
-    #                                         , ROW_NUMBER() over (PARTITION BY SKU_CD ORDER BY PRICE_START_YYMMDD DESC) AS SEQ
-    #                                      FROM (
-    #                                            SELECT ITEM_CD AS SKU_CD
-    #                                                 , PRICE_START_YYMMDD
-    #                                                 , FAC_PRICE
-    #                                              FROM (
-    #                                                    SELECT *
-    #                                                      FROM M4S_I002041
-    #                                                     WHERE PRICE_QTY_UNIT_CD = 'BOX'
-    #                                                   ) PRICE
-    #                                             GROUP BY ITEM_CD
-    #                                                    , PRICE_START_YYMMDD
-    #                                                    , FAC_PRICE
-    #                                            ) RLST
-    #                                   ) RLST
-    #                             WHERE SEQ = 1
-    #                           ) PRICE
-    #             ON SALES.SKU_CD = PRICE.SKU_CD
-    #            """
-    #     return sql
 
     @staticmethod
     def sql_sell_in_week_grp(**kwargs):
@@ -297,6 +200,8 @@ class SqlConfig(object):
                 , ITEM_CD AS SKU_CD 
                 , YYMMDD
                 , SEQ
+                , UNIT_PRICE
+                , UNIT_CD
                 , DISCOUNT
                 , WEEK
                 , QTY
@@ -307,52 +212,6 @@ class SqlConfig(object):
               AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                """
         return sql
-
-    # # SELL-OUT
-    # @staticmethod
-    # def sql_sell_out_week(**kwargs):
-    #     sql = f"""
-    #        SELECT DIVISION_CD
-    #             , CUST_CD
-    #             , BIZ_CD
-    #             , LINE_CD
-    #             , BRAND_CD
-    #             , ITEM_CD
-    #             , SALES.SKU_CD AS SKU_CD
-    #             , YYMMDD
-    #             , SEQ
-    #             , DISCOUNT
-    #             , WEEK
-    #             , QTY
-    #             , CREATE_DATE
-    #          FROM (
-    #                SELECT PROJECT_CD
-    #                     , DIVISION_CD
-    #                     , SOLD_CUST_GRP_CD AS CUST_CD
-    #                     , ITEM_CD AS SKU_CD
-    #                     , YYMMDD
-    #                     , SEQ
-    #                     , DISCOUNT
-    #                     , WEEK
-    #                     , RST_SALES_QTY AS QTY
-    #                     , CREATE_DATE
-    #                  FROM M4S_I002173
-    #                 WHERE 1=1
-    #                   AND RST_SALES_QTY <> 0
-    #                -- WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']} # Todo: Exception
-    #               ) SALES
-    #         INNER JOIN (
-    #                     SELECT ITEM_CD AS SKU_CD
-    #                          , ITEM_ATTR01_CD AS BIZ_CD
-    #                          , ITEM_ATTR02_CD AS LINE_CD
-    #                          , ITEM_ATTR03_CD AS BRAND_CD
-    #                          , ITEM_ATTR04_CD AS ITEM_CD
-    #                       FROM VIEW_I002040
-    #                      WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-    #                    ) ITEM
-    #            ON SALES.SKU_CD = ITEM.SKU_CD
-    #            """
-    #     return sql
 
     @staticmethod
     def sql_unit_map():
@@ -457,7 +316,7 @@ class SqlConfig(object):
                       FROM M4S_O110600
                      WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                        AND DIVISION_CD = '{kwargs['division_cd']}'
-                       AND FKEY LIKE '%{kwargs['fkey']}%'
+                       AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
                        AND ITEM_CD ='{kwargs['item_cd']}'
                        AND CUST_GRP_CD ='{kwargs['cust_grp_cd']}'
                   ) PRED
@@ -634,7 +493,7 @@ class SqlConfig(object):
              WHERE PROJECT_CD = '{kwargs['project_cd']}'
                AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
-               AND FKEY LIKE '%{kwargs['fkey']}%'
+               AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
         """
         return sql
 
@@ -649,14 +508,26 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def del_prediction(**kwargs):
+    def del_pred_all(**kwargs):
         sql = f"""
             DELETE
               FROM M4S_I110400
              WHERE PROJECT_CD = '{kwargs['project_cd']}'
                AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
-               AND FKEY LIKE '%{kwargs['fkey']}%'
+               AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
+        """
+        return sql
+
+    @staticmethod
+    def del_pred_best(**kwargs):
+        sql = f"""
+            DELETE
+              FROM M4S_O110600
+             WHERE PROJECT_CD = '{kwargs['project_cd']}'
+               AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
         """
         return sql
 
@@ -679,8 +550,9 @@ class SqlConfig(object):
              WHERE PROJECT_CD = '{kwargs['project_cd']}'
                AND DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
                AND DIVISION_CD = '{kwargs['division_cd']}'
-               and HRCHY_LVL_CD LIKE '{kwargs['hrchy_lvl_cd']}%'
+               and HRCHY_LVL_CD = '{kwargs['hrchy_lvl_cd']}'
         """
+        return sql
 
     @staticmethod
     def del_compare_result(**kwargs):
@@ -717,198 +589,6 @@ class SqlConfig(object):
         sql = f"""
             DELETE
               FROM M4S_O111600
-        """
-        return sql
-
-    ###################
-    # Temp & Test Query
-    ###################
-    # SELL-OUT Table
-    # SELL-IN Table
-    @staticmethod
-    def sql_sell_in_test(**kwargs):
-        sql = f""" 
-            SELECT DIVISION_CD
-                 , CUST_GRP_CD
-                 , BIZ_CD
-                 , LINE_CD
-                 , BRAND_CD
-                 , ITEM_CD
-                 , SALES.SKU_CD 
-                 , YYMMDD
-                 , SEQ
-                 , FROM_DC_CD
-                 , UNIT_PRICE
-                 , UNIT_CD
-                 , DISCOUNT
-                 , WEEK
-                 , QTY
-                 , CREATE_DATE
-              FROM (
-                    SELECT DIVISION_CD
-                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                         , ITEM_CD AS SKU_CD
-                         , YYMMDD
-                         , SEQ
-                         , FROM_DC_CD
-                         , UNIT_PRICE
-                         , RTRIM(UNIT_CD) AS UNIT_CD
-                         , DISCOUNT
-                         , WEEK
-                         , RST_SALES_QTY AS QTY
-                         , CREATE_DATE
-                      FROM M4S_I002170_TEST
-                     WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-                    ) SALES
-             INNER JOIN (
-                         SELECT ITEM_CD AS SKU_CD
-                              , ITEM_ATTR01_CD AS BIZ_CD
-                              , ITEM_ATTR02_CD AS LINE_CD
-                              , ITEM_ATTR03_CD AS BRAND_CD
-                              , ITEM_ATTR04_CD AS ITEM_CD
-                           FROM VIEW_I002040
-                          WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                        ) ITEM
-                ON SALES.SKU_CD = ITEM.SKU_CD
-               """
-
-        return sql
-
-    @staticmethod
-    def sql_sell_in_test_inqty(**kwargs):
-        sql = f"""
-            SELECT DIVISION_CD
-                 , CUST_GRP_CD
-                 , BIZ_CD
-                 , LINE_CD
-                 , BRAND_CD
-                 , ITEM_CD
-                 , SALES.SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , FROM_DC_CD
-                 , UNIT_PRICE
-                 , UNIT_CD
-                 , DISCOUNT
-                 , WEEK
-                 , QTY
-                 , CREATE_DATE
-              FROM (
-                    SELECT DIVISION_CD
-                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                         , ITEM_CD          AS SKU_CD
-                         , YYMMDD
-                         , SEQ
-                         , FROM_DC_CD
-                         , UNIT_PRICE
-                         , RTRIM(UNIT_CD)   AS UNIT_CD
-                         , DISCOUNT
-                         , WEEK
-                         , RST_SALES_QTY    AS QTY
-                         , CREATE_DATE
-                      FROM M4S_I002170_INQTY
-                     WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-                   ) SALES
-             INNER JOIN (
-                         SELECT ITEM_CD        AS SKU_CD
-                              , ITEM_ATTR01_CD AS BIZ_CD
-                              , ITEM_ATTR02_CD AS LINE_CD
-                              , ITEM_ATTR03_CD AS BRAND_CD
-                              , ITEM_ATTR04_CD AS ITEM_CD
-                           FROM VIEW_I002040
-                          WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                        ) ITEM
-                ON SALES.SKU_CD = ITEM.SKU_CD
-        """
-        return sql
-
-    @staticmethod
-    def sql_sell_in_week_grp_test_inqty(**kwargs):
-        sql = f"""
-            SELECT DIVISION_CD
-                 , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                 , SKU_CD
-                 , YY
-                 , WEEK
-                 , SUM(RST_SALES_QTY) AS SALES
-              FROM (
-                    SELECT DIVISION_CD
-                         , SOLD_CUST_GRP_CD
-                         , SKU_CD
-                         , YY
-                         , WEEK
-                         , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
-                                WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
-                                WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
-                                ELSE 0
-                                 END AS RST_SALES_QTY
-                      FROM (
-                            SELECT DIVISION_CD
-                                 , SOLD_CUST_GRP_CD
-                                 , SALES.SKU_CD
-                                 , YY
-                                 , WEEK
-                                 , UNIT_CD
-                                 , BOX_BOL
-                                 , BOX_EA
-                                 , RST_SALES_QTY
-                              FROM (
-                                    SELECT DIVISION_CD
-                                         , SOLD_CUST_GRP_CD
-                                         , ITEM_CD as SKU_CD
-                                         , YY
-                                         , WEEK
-                                         , UNIT_CD
-                                         , RST_SALES_QTY
-                                      FROM M4S_I002170_INQTY
-                                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-                                   ) SALES
-              LEFT OUTER JOIN (
-                               SELECT BOX.ITEM_CD                                 AS SKU_CD
-                                    , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
-                                    , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE)  AS BOX_EA
-                                 FROM (
-                                       SELECT PROJECT_CD
-                                            , ITEM_CD
-                                            , PRICE_START_YYMMDD
-                                            , FAC_PRICE
-                                         FROM M4S_I002041
-                                        WHERE PRICE_QTY_UNIT_CD = 'BOX'
-                                          AND FAC_PRICE <> 0
-                                      ) BOX
-                                 LEFT OUTER JOIN (
-                                                  SELECT PROJECT_CD
-                                                       , ITEM_CD
-                                                       , PRICE_START_YYMMDD
-                                                       , FAC_PRICE
-                                                    FROM M4S_I002041
-                                                   WHERE PRICE_QTY_UNIT_CD = 'BOL'
-                                                     AND FAC_PRICE <> 0
-                                                 ) BOL
-                                   ON BOX.PROJECT_CD = BOL.PROJECT_CD
-                                  AND BOX.ITEM_CD = BOL.ITEM_CD
-                                  AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
-                                 LEFT OUTER JOIN (
-                                                  SELECT PROJECT_CD
-                                                       , ITEM_CD
-                                                       , PRICE_START_YYMMDD
-                                                       , FAC_PRICE
-                                                    FROM M4S_I002041
-                                                   WHERE PRICE_QTY_UNIT_CD = 'EA'
-                                                     AND FAC_PRICE <> 0
-                                                 ) EA
-                                  ON BOX.PROJECT_CD = EA.PROJECT_CD
-                                 AND BOX.ITEM_CD = EA.ITEM_CD
-                                 AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
-                              ) UNIT
-                ON SALES.SKU_CD = UNIT.SKU_CD
-                         ) SALES
-                 ) SALES
-             GROUP BY DIVISION_CD
-                    , SOLD_CUST_GRP_CD
-                    , SKU_CD
-                    , YY
-                    , WEEK
         """
         return sql
 
@@ -967,116 +647,31 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_sell_in_week_grp_test(**kwargs):
-        sql = f""" 
-               SELECT DIVISION_CD
-                    , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                    , SKU_CD
+    def sql_sell_out_week_grp(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , ITEM_CD AS SKU_CD
+                 , YY
+                 , WEEK
+                 , ISNULL(SUM(QTY), 0) AS SALES
+              FROM (
+                    SELECT DIVISION_CD
+                         , CUST_GRP_CD
+                         , ITEM_CD
+                         , SUBSTRING(YYMMDD, 1, 4) AS YY
+                         , WEEK
+                         , QTY
+                      FROM M4S_I002177
+                     WHERE CUST_GRP_CD <> '1173'
+                       AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                   ) SALES
+             GROUP BY DIVISION_CD
+                    , CUST_GRP_CD
+                    , ITEM_CD
                     , YY
                     , WEEK
-                    , SUM(RST_SALES_QTY) AS SALES
-                 FROM (
-                       SELECT DIVISION_CD
-                            , SOLD_CUST_GRP_CD
-                            , SKU_CD
-                            , YY
-                            , WEEK
-                            , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
-                                   WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
-                                   WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
-                                   ELSE 0
-                                    END AS RST_SALES_QTY
-                         FROM (
-                               SELECT DIVISION_CD
-                                    , SOLD_CUST_GRP_CD
-                                    , SALES.SKU_CD
-                                    , YY
-                                    , WEEK
-                                    , UNIT_CD
-                                    , BOX_BOL
-                                    , BOX_EA
-                                    , RST_SALES_QTY
-                                 FROM (
-                                       SELECT DIVISION_CD
-                                            , SOLD_CUST_GRP_CD
-                                            , ITEM_CD as SKU_CD
-                                            , YY
-                                            , WEEK
-                                            , UNIT_CD
-                                            , RST_SALES_QTY
-                                        FROM  M4S_I002170_TEST
-                                       WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-                                         AND RST_SALES_QTY > 0    -- Remove minus quantity
-                                         --AND SOLD_CUST_GRP_CD = '1033' -- exception
-                                     ) SALES
-                         LEFT OUTER JOIN (
-                                          SELECT BOX.ITEM_CD                                 AS SKU_CD
-                                               , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
-                                               , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE)  AS BOX_EA
-                                            FROM (
-                                                  SELECT PROJECT_CD
-                                                       , ITEM_CD
-                                                       , PRICE_START_YYMMDD
-                                                       , FAC_PRICE
-                                                    FROM M4S_I002041
-                                                   WHERE PRICE_QTY_UNIT_CD = 'BOX'
-                                                     AND FAC_PRICE <> 0
-                                                 ) BOX
-                                            LEFT OUTER JOIN (
-                                                             SELECT PROJECT_CD
-                                                                  , ITEM_CD
-                                                                  , PRICE_START_YYMMDD
-                                                                  , FAC_PRICE
-                                                               FROM M4S_I002041
-                                                              WHERE PRICE_QTY_UNIT_CD = 'BOL'
-                                                                AND FAC_PRICE <> 0
-                                                            ) BOL
-                                              ON BOX.PROJECT_CD = BOL.PROJECT_CD
-                                             AND BOX.ITEM_CD = BOL.ITEM_CD
-                                             AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
-                                            LEFT OUTER JOIN (
-                                                             SELECT PROJECT_CD
-                                                                  , ITEM_CD
-                                                                  , PRICE_START_YYMMDD
-                                                                  , FAC_PRICE
-                                                               FROM M4S_I002041
-                                                              WHERE PRICE_QTY_UNIT_CD = 'EA'
-                                                                AND FAC_PRICE <> 0
-                                                            ) EA
-                                              ON BOX.PROJECT_CD = EA.PROJECT_CD
-                                             AND BOX.ITEM_CD = EA.ITEM_CD
-                                             AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
-                                         ) UNIT
-                           ON SALES.SKU_CD = UNIT.SKU_CD
-                           ) SALES
-                      ) SALES
-                 GROUP BY DIVISION_CD
-                        , SOLD_CUST_GRP_CD
-                        , SKU_CD
-                        , YY
-                        , WEEK
-                """
-        return sql
-
-    @staticmethod
-    def sql_item_mst_sell_out_temp():
-        sql = """
-              SELECT SKU_CD
-                   , SKU_NM
-                FROM (
-                      SELECT SKU_CD
-                           , SKU_NM
-                           , ROW_NUMBER() over (PARTITION BY SKU_CD ORDER BY SKU_NM) AS DUP
-                        FROM (
-                              SELECT SELL_BARCD AS SKU_CD
-                                   , PROD_NM    AS SKU_NM
-                                FROM TEST_NEW.dbo.SELLOUT_PAST_HOME_MASTER
-                               GROUP BY SELL_BARCD
-                                      , PROD_NM
-                             ) ITEM_MST
-                     ) ITEM_MST
-              WHERE DUP = 1  
-            """
+        """
         return sql
 
     @staticmethod
@@ -1106,101 +701,451 @@ class SqlConfig(object):
         """
         return sql
 
-    @staticmethod
-    def sql_sell_out_week_test(**kwargs):
-        sql = f"""
-            SELECT DIVISION_CD
-                 , CUST_GRP_CD
-                 , ITEM_ATTR01_CD AS BIZ_CD
-                 , ITEM_ATTR02_CD AS LINE_CD
-                 , ITEM_ATTR03_CD AS BRAND_CD
-                 , ITEM_ATTR04_CD AS ITEM_CD
-                 , MAP.ITEM_CD AS SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , DISCOUNT
-                 , WEEK
-                 , QTY
-                 , SELL.CREATE_DATE
-              FROM (
-                    SELECT DIVISION_CD
-                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                         , ITEM_CD AS SKU_CD
-                         , YYMMDD
-                         , SEQ
-                         , DISCOUNT
-                         , WEEK
-                         , RST_SALES_QTY AS QTY
-                         , CREATE_DATE
-                      FROM M4S_I002173_SELL_OUT
-                     WHERE SOLD_CUST_GRP_CD <> '1173'
-                       AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-                  ) SELL
-             INNER JOIN M4S_I002179 MAP
-                ON SELL.SKU_CD = MAP.BAR_CD
-        """
-        return sql
-
-    @staticmethod
-    def sql_sell_out_week_grp_test(**kwargs):
-        sql = f"""
-            SELECT DIVISION_CD
-                 , CUST_GRP_CD
-                 , SKU_CD
-                 , YY
-                 , WEEK
-                 , SUM(RST_SALES_QTY) AS SALES
-              FROM (
-                    SELECT DIVISION_CD
-                         , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                         , MAP.ITEM_CD          as SKU_CD
-                         , YY
-                         , WEEK
-                         , RST_SALES_QTY
-                      FROM (
-                            SELECT *
-                             FROM M4S_I002173_SELL_OUT
-                            WHERE 1 = 1
-                              AND SOLD_CUST_GRP_CD <> '1173'
-                              AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-                           ) SALES
-                     INNER JOIN (
-                                 SELECT BAR_CD
-                                      , ITEM_CD
-                                   FROM M4S_I002179
-                                ) MAP
-                        ON SALES.ITEM_CD = MAP.BAR_CD
-                   ) SALES
-            GROUP BY DIVISION_CD
-                   , CUST_GRP_CD
-                   , SKU_CD
-                   , YY
-                   , WEEK
-        """
-        return sql
-
-    # Sell-Out Monthly (7-11)
-    @staticmethod
-    def sql_sell_out_month_test(**kwargs):
-        sql = f"""
-            SELECT DIVISION_CD
-                 , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                 , ITEM.SAP_CD AS SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , DISCOUNT
-                 , WEEK
-                 , RST_SALES_QTY AS QTY
-                 , CREATE_DATE
-              FROM M4S_I002173_SELL_OUT SALES
-             INNER JOIN TEST_NEW.dbo.SELLOUT_PAST_K7_MASTER ITEM
-                ON SALES.ITEM_CD = ITEM.K7_CD
-             WHERE SALES.SOLD_CUST_GRP_CD = '1173'
-               AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-        """
-        return sql
-
     # Sell-Out Monthly Group
     @staticmethod
     def sql_sell_out_month_grp_test(**kwargs):
         pass
+
+    ###################
+    # Temp & Test Query
+    ###################
+    # @staticmethod
+    # def sql_sell_in_test(**kwargs):
+    #     sql = f"""
+    #         SELECT DIVISION_CD
+    #              , CUST_GRP_CD
+    #              , BIZ_CD
+    #              , LINE_CD
+    #              , BRAND_CD
+    #              , ITEM_CD
+    #              , SALES.SKU_CD
+    #              , YYMMDD
+    #              , SEQ
+    #              , FROM_DC_CD
+    #              , UNIT_PRICE
+    #              , UNIT_CD
+    #              , DISCOUNT
+    #              , WEEK
+    #              , QTY
+    #              , CREATE_DATE
+    #           FROM (
+    #                 SELECT DIVISION_CD
+    #                      , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+    #                      , ITEM_CD AS SKU_CD
+    #                      , YYMMDD
+    #                      , SEQ
+    #                      , FROM_DC_CD
+    #                      , UNIT_PRICE
+    #                      , RTRIM(UNIT_CD) AS UNIT_CD
+    #                      , DISCOUNT
+    #                      , WEEK
+    #                      , RST_SALES_QTY AS QTY
+    #                      , CREATE_DATE
+    #                   FROM M4S_I002170_TEST
+    #                  WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
+    #                 ) SALES
+    #          INNER JOIN (
+    #                      SELECT ITEM_CD AS SKU_CD
+    #                           , ITEM_ATTR01_CD AS BIZ_CD
+    #                           , ITEM_ATTR02_CD AS LINE_CD
+    #                           , ITEM_ATTR03_CD AS BRAND_CD
+    #                           , ITEM_ATTR04_CD AS ITEM_CD
+    #                        FROM VIEW_I002040
+    #                       WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+    #                     ) ITEM
+    #             ON SALES.SKU_CD = ITEM.SKU_CD
+    #            """
+    #
+    #     return sql
+
+    # @staticmethod
+    # def sql_sell_in_week_grp_test_inqty(**kwargs):
+    #     sql = f"""
+    #         SELECT DIVISION_CD
+    #              , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+    #              , SKU_CD
+    #              , YY
+    #              , WEEK
+    #              , SUM(RST_SALES_QTY) AS SALES
+    #           FROM (
+    #                 SELECT DIVISION_CD
+    #                      , SOLD_CUST_GRP_CD
+    #                      , SKU_CD
+    #                      , YY
+    #                      , WEEK
+    #                      , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
+    #                             WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
+    #                             WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
+    #                             ELSE 0
+    #                              END AS RST_SALES_QTY
+    #                   FROM (
+    #                         SELECT DIVISION_CD
+    #                              , SOLD_CUST_GRP_CD
+    #                              , SALES.SKU_CD
+    #                              , YY
+    #                              , WEEK
+    #                              , UNIT_CD
+    #                              , BOX_BOL
+    #                              , BOX_EA
+    #                              , RST_SALES_QTY
+    #                           FROM (
+    #                                 SELECT DIVISION_CD
+    #                                      , SOLD_CUST_GRP_CD
+    #                                      , ITEM_CD as SKU_CD
+    #                                      , YY
+    #                                      , WEEK
+    #                                      , UNIT_CD
+    #                                      , RST_SALES_QTY
+    #                                   FROM M4S_I002170_INQTY
+    #                                  WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+    #                                ) SALES
+    #           LEFT OUTER JOIN (
+    #                            SELECT BOX.ITEM_CD                                 AS SKU_CD
+    #                                 , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
+    #                                 , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE)  AS BOX_EA
+    #                              FROM (
+    #                                    SELECT PROJECT_CD
+    #                                         , ITEM_CD
+    #                                         , PRICE_START_YYMMDD
+    #                                         , FAC_PRICE
+    #                                      FROM M4S_I002041
+    #                                     WHERE PRICE_QTY_UNIT_CD = 'BOX'
+    #                                       AND FAC_PRICE <> 0
+    #                                   ) BOX
+    #                              LEFT OUTER JOIN (
+    #                                               SELECT PROJECT_CD
+    #                                                    , ITEM_CD
+    #                                                    , PRICE_START_YYMMDD
+    #                                                    , FAC_PRICE
+    #                                                 FROM M4S_I002041
+    #                                                WHERE PRICE_QTY_UNIT_CD = 'BOL'
+    #                                                  AND FAC_PRICE <> 0
+    #                                              ) BOL
+    #                                ON BOX.PROJECT_CD = BOL.PROJECT_CD
+    #                               AND BOX.ITEM_CD = BOL.ITEM_CD
+    #                               AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
+    #                              LEFT OUTER JOIN (
+    #                                               SELECT PROJECT_CD
+    #                                                    , ITEM_CD
+    #                                                    , PRICE_START_YYMMDD
+    #                                                    , FAC_PRICE
+    #                                                 FROM M4S_I002041
+    #                                                WHERE PRICE_QTY_UNIT_CD = 'EA'
+    #                                                  AND FAC_PRICE <> 0
+    #                                              ) EA
+    #                               ON BOX.PROJECT_CD = EA.PROJECT_CD
+    #                              AND BOX.ITEM_CD = EA.ITEM_CD
+    #                              AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
+    #                           ) UNIT
+    #             ON SALES.SKU_CD = UNIT.SKU_CD
+    #                      ) SALES
+    #              ) SALES
+    #          GROUP BY DIVISION_CD
+    #                 , SOLD_CUST_GRP_CD
+    #                 , SKU_CD
+    #                 , YY
+    #                 , WEEK
+    #     """
+    #     return sql
+
+    # @staticmethod
+    # def sql_sell_in_week_grp_test(**kwargs):
+    #     sql = f"""
+    #            SELECT DIVISION_CD
+    #                 , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+    #                 , SKU_CD
+    #                 , YY
+    #                 , WEEK
+    #                 , SUM(RST_SALES_QTY) AS SALES
+    #              FROM (
+    #                    SELECT DIVISION_CD
+    #                         , SOLD_CUST_GRP_CD
+    #                         , SKU_CD
+    #                         , YY
+    #                         , WEEK
+    #                         , CASE WHEN UNIT_CD = 'BOX' THEN RST_SALES_QTY
+    #                                WHEN UNIT_CD = 'EA' THEN ROUND(RST_SALES_QTY / BOX_EA, 2)
+    #                                WHEN UNIT_CD = 'BOL' THEN ROUND(RST_SALES_QTY / BOX_BOL, 2)
+    #                                ELSE 0
+    #                                 END AS RST_SALES_QTY
+    #                      FROM (
+    #                            SELECT DIVISION_CD
+    #                                 , SOLD_CUST_GRP_CD
+    #                                 , SALES.SKU_CD
+    #                                 , YY
+    #                                 , WEEK
+    #                                 , UNIT_CD
+    #                                 , BOX_BOL
+    #                                 , BOX_EA
+    #                                 , RST_SALES_QTY
+    #                              FROM (
+    #                                    SELECT DIVISION_CD
+    #                                         , SOLD_CUST_GRP_CD
+    #                                         , ITEM_CD as SKU_CD
+    #                                         , YY
+    #                                         , WEEK
+    #                                         , UNIT_CD
+    #                                         , RST_SALES_QTY
+    #                                     FROM  M4S_I002170_TEST
+    #                                    WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+    #                                      AND RST_SALES_QTY > 0    -- Remove minus quantity
+    #                                      --AND SOLD_CUST_GRP_CD = '1033' -- exception
+    #                                  ) SALES
+    #                      LEFT OUTER JOIN (
+    #                                       SELECT BOX.ITEM_CD                                 AS SKU_CD
+    #                                            , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
+    #                                            , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE)  AS BOX_EA
+    #                                         FROM (
+    #                                               SELECT PROJECT_CD
+    #                                                    , ITEM_CD
+    #                                                    , PRICE_START_YYMMDD
+    #                                                    , FAC_PRICE
+    #                                                 FROM M4S_I002041
+    #                                                WHERE PRICE_QTY_UNIT_CD = 'BOX'
+    #                                                  AND FAC_PRICE <> 0
+    #                                              ) BOX
+    #                                         LEFT OUTER JOIN (
+    #                                                          SELECT PROJECT_CD
+    #                                                               , ITEM_CD
+    #                                                               , PRICE_START_YYMMDD
+    #                                                               , FAC_PRICE
+    #                                                            FROM M4S_I002041
+    #                                                           WHERE PRICE_QTY_UNIT_CD = 'BOL'
+    #                                                             AND FAC_PRICE <> 0
+    #                                                         ) BOL
+    #                                           ON BOX.PROJECT_CD = BOL.PROJECT_CD
+    #                                          AND BOX.ITEM_CD = BOL.ITEM_CD
+    #                                          AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
+    #                                         LEFT OUTER JOIN (
+    #                                                          SELECT PROJECT_CD
+    #                                                               , ITEM_CD
+    #                                                               , PRICE_START_YYMMDD
+    #                                                               , FAC_PRICE
+    #                                                            FROM M4S_I002041
+    #                                                           WHERE PRICE_QTY_UNIT_CD = 'EA'
+    #                                                             AND FAC_PRICE <> 0
+    #                                                         ) EA
+    #                                           ON BOX.PROJECT_CD = EA.PROJECT_CD
+    #                                          AND BOX.ITEM_CD = EA.ITEM_CD
+    #                                          AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
+    #                                      ) UNIT
+    #                        ON SALES.SKU_CD = UNIT.SKU_CD
+    #                        ) SALES
+    #                   ) SALES
+    #              GROUP BY DIVISION_CD
+    #                     , SOLD_CUST_GRP_CD
+    #                     , SKU_CD
+    #                     , YY
+    #                     , WEEK
+    #             """
+    #     return sql
+
+    # @staticmethod
+    # def sql_sell_out_week_test(**kwargs):
+    #     sql = f"""
+    #         SELECT DIVISION_CD
+    #              , CUST_GRP_CD
+    #              , ITEM_ATTR01_CD AS BIZ_CD
+    #              , ITEM_ATTR02_CD AS LINE_CD
+    #              , ITEM_ATTR03_CD AS BRAND_CD
+    #              , ITEM_ATTR04_CD AS ITEM_CD
+    #              , MAP.ITEM_CD AS SKU_CD
+    #              , YYMMDD
+    #              , SEQ
+    #              , DISCOUNT
+    #              , WEEK
+    #              , QTY
+    #              , SELL.CREATE_DATE
+    #           FROM (
+    #                 SELECT DIVISION_CD
+    #                      , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+    #                      , ITEM_CD AS SKU_CD
+    #                      , YYMMDD
+    #                      , SEQ
+    #                      , DISCOUNT
+    #                      , WEEK
+    #                      , RST_SALES_QTY AS QTY
+    #                      , CREATE_DATE
+    #                   FROM M4S_I002173_SELL_OUT
+    #                  WHERE SOLD_CUST_GRP_CD <> '1173'
+    #                    AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
+    #               ) SELL
+    #          INNER JOIN M4S_I002179 MAP
+    #             ON SELL.SKU_CD = MAP.BAR_CD
+    #     """
+    #     return sql
+
+    # @staticmethod
+    # def sql_sell_out_week_grp_test(**kwargs):
+    #     sql = f"""
+    #         SELECT DIVISION_CD
+    #              , CUST_GRP_CD
+    #              , SKU_CD
+    #              , YY
+    #              , WEEK
+    #              , SUM(RST_SALES_QTY) AS SALES
+    #           FROM (
+    #                 SELECT DIVISION_CD
+    #                      , SOLD_CUST_GRP_CD AS CUST_GRP_CD
+    #                      , MAP.ITEM_CD          as SKU_CD
+    #                      , YY
+    #                      , WEEK
+    #                      , RST_SALES_QTY
+    #                   FROM (
+    #                         SELECT *
+    #                          FROM M4S_I002173_SELL_OUT
+    #                         WHERE 1 = 1
+    #                           AND SOLD_CUST_GRP_CD <> '1173'
+    #                           AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+    #                        ) SALES
+    #                  INNER JOIN (
+    #                              SELECT BAR_CD
+    #                                   , ITEM_CD
+    #                                FROM M4S_I002179
+    #                             ) MAP
+    #                     ON SALES.ITEM_CD = MAP.BAR_CD
+    #                ) SALES
+    #         GROUP BY DIVISION_CD
+    #                , CUST_GRP_CD
+    #                , SKU_CD
+    #                , YY
+    #                , WEEK
+    #     """
+    #     return sql
+
+    ##################
+    # Previous Query
+    ##################
+    # SELL-OUT
+    # @staticmethod
+    # def sql_sell_out_week(**kwargs):
+    #     sql = f"""
+    #        SELECT DIVISION_CD
+    #             , CUST_CD
+    #             , BIZ_CD
+    #             , LINE_CD
+    #             , BRAND_CD
+    #             , ITEM_CD
+    #             , SALES.SKU_CD AS SKU_CD
+    #             , YYMMDD
+    #             , SEQ
+    #             , DISCOUNT
+    #             , WEEK
+    #             , QTY
+    #             , CREATE_DATE
+    #          FROM (
+    #                SELECT PROJECT_CD
+    #                     , DIVISION_CD
+    #                     , SOLD_CUST_GRP_CD AS CUST_CD
+    #                     , ITEM_CD AS SKU_CD
+    #                     , YYMMDD
+    #                     , SEQ
+    #                     , DISCOUNT
+    #                     , WEEK
+    #                     , RST_SALES_QTY AS QTY
+    #                     , CREATE_DATE
+    #                  FROM M4S_I002173
+    #                 WHERE 1=1
+    #                   AND RST_SALES_QTY <> 0
+    #                -- WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']} # Todo: Exception
+    #               ) SALES
+    #         INNER JOIN (
+    #                     SELECT ITEM_CD AS SKU_CD
+    #                          , ITEM_ATTR01_CD AS BIZ_CD
+    #                          , ITEM_ATTR02_CD AS LINE_CD
+    #                          , ITEM_ATTR03_CD AS BRAND_CD
+    #                          , ITEM_ATTR04_CD AS ITEM_CD
+    #                       FROM VIEW_I002040
+    #                      WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+    #                    ) ITEM
+    #            ON SALES.SKU_CD = ITEM.SKU_CD
+    #            """
+    #     return sql
+
+   # @staticmethod
+    # def sql_sell_in(**kwargs):
+    #     sql = f"""
+    #         SELECT 'SELL_IN' AS DIVISION_CD
+    #              , CUST_GRP_CD
+    #              , BIZ_CD
+    #              , LINE_CD
+    #              , BRAND_CD
+    #              , ITEM.ITEM_CD
+    #              , SALES.SKU_CD
+    #              , YYMMDD
+    #              , SEQ
+    #              , FROM_DC_CD
+    #              , UNIT_PRICE
+    #              , UNIT_CD
+    #              , CASE WHEN FAC_PRICE IS NULL THEN 0
+    #                     WHEN 1- (RST_SALES_PRICE * 100 / (QTY * FAC_PRICE)) < 0 THEN 0
+    #                     ELSE 1- (RST_SALES_PRICE * 100 / (QTY * FAC_PRICE))
+    #                      END AS DISCOUNT
+    #              , WEEK
+    #              , QTY
+    #              , CREATE_DATE
+    #           FROM (
+    #                 SELECT PROJECT_CD
+    #                      , DIVISION_CD
+    #                      , SOLD_CUST_GRP_CD AS CUST_CD
+    #                      , ITEM_CD AS SKU_CD
+    #                      , YYMMDD
+    #                      , SEQ
+    #                      , FROM_DC_CD
+    #                      , UNIT_PRICE
+    #                      , UNIT_CD
+    #                      , DISCOUNT
+    #                      , WEEK
+    #                      , RST_SALES_QTY AS QTY
+    #                      , RST_SALES_PRICE
+    #                      , CREATE_DATE
+    #                   FROM M4S_I002170
+    #                  WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
+    #                    AND RST_SALES_QTY <> 0
+    #                ) SALES
+    #          INNER JOIN (
+    #                      SELECT ITEM_CD AS SKU_CD
+    #                           , ITEM_ATTR01_CD AS BIZ_CD
+    #                           , ITEM_ATTR02_CD AS LINE_CD
+    #                           , ITEM_ATTR03_CD AS BRAND_CD
+    #                           , ITEM_ATTR04_CD AS ITEM_CD
+    #                        FROM VIEW_I002040
+    #                       WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+    #                         AND USE_YN = 'Y'
+    #                         AND NEW_ITEM_YN = 'N'
+    #                     ) ITEM
+    #             ON SALES.SKU_CD = ITEM.SKU_CD
+    #           LEFT OUTER JOIN (
+    #                            SELECT CUST_CD
+    #                                 , CUST_GRP_CD
+    #                              FROM M4S_I002060
+    #                           ) CUST
+    #             ON SALES.CUST_CD = CUST.CUST_CD
+    #           LEFT OUTER JOIN (
+    #                            SELECT SKU_CD
+    #                                 , FAC_PRICE
+    #                              FROM (
+    #                                    SELECT SKU_CD
+    #                                         , PRICE_START_YYMMDD
+    #                                         , FAC_PRICE
+    #                                         , ROW_NUMBER() over (PARTITION BY SKU_CD
+#   #                                           ORDER BY PRICE_START_YYMMDD DESC) AS SEQ
+    #                                      FROM (
+    #                                            SELECT ITEM_CD AS SKU_CD
+    #                                                 , PRICE_START_YYMMDD
+    #                                                 , FAC_PRICE
+    #                                              FROM (
+    #                                                    SELECT *
+    #                                                      FROM M4S_I002041
+    #                                                     WHERE PRICE_QTY_UNIT_CD = 'BOX'
+    #                                                   ) PRICE
+    #                                             GROUP BY ITEM_CD
+    #                                                    , PRICE_START_YYMMDD
+    #                                                    , FAC_PRICE
+    #                                            ) RLST
+    #                                   ) RLST
+    #                             WHERE SEQ = 1
+    #                           ) PRICE
+    #             ON SALES.SKU_CD = PRICE.SKU_CD
+    #            """
+    #     return sql

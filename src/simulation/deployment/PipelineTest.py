@@ -4,7 +4,6 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 
 # Simulation Class
-from simulation.preprocess.DataLoad import DataLoad
 from simulation.preprocess.DataPrep import DataPrep
 from simulation.model.Train import Train
 
@@ -58,8 +57,7 @@ class PipelineTest(object):
         sales = None
         if self.step_cfg['cls_sim_load']:
             if self.division == 'SELL_IN':
-                # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))    # Todo: Temp data
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
             elif self.division == 'SELL_OUT':
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))    # Todo: Temp data

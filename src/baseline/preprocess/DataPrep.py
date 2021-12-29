@@ -399,6 +399,7 @@ class DataPrep(object):
         df['division_cd'] = self.data_cfg['division']
         df['hrchy_lvl_cd'] = self.hrchy['key'][:-1]
         df['seq'] = [str(i+1).zfill(10) for i in range(len(df))]
+        df['seq'] = df['yymmdd'] + '-' + df['seq']
         df['create_user_cd'] = 'SYSTEM'
         df = df[['project_cd', 'data_vrsn_cd', 'division_cd', 'hrchy_lvl_cd', 'seq'] + cols + ['create_user_cd']]
 

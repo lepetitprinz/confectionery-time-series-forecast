@@ -16,7 +16,7 @@ from sklearn.ensemble import ExtraTreesRegressor
 
 class SimulateDB(object):
     week_standard = 'start'    # start / end
-    fkey_map = {3: 'C0-P3', 4: 'C0-P4', 5: 'C0-P5', 6: 'C1-P5'}
+    fkey_map = {4: 'C1-P3', 5: 'C1-P4', 6: 'C1-P5'}
     lag_option = {'w1': 1, 'w2': 2}
     estimators = {
         'rf': RandomForestRegressor,
@@ -32,14 +32,14 @@ class SimulateDB(object):
     }
     hrchy_sku_to_db_sku_map = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 
-    def __init__(self, lag: str, exec_cfg: dict, path: str):
+    def __init__(self, lag: str, exec_cfg: dict, path_root: str):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
         # Execute Configuration
         self.exec_cfg = exec_cfg
-        self.path_root = path
+        self.path_root = path_root
 
         # Data Configuration
         self.date_range = []

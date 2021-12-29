@@ -9,14 +9,16 @@ from simulation.model.Train import Train
 
 
 class PipelineReal(object):
-    def __init__(self, division: str, lag: str, step_cfg: dict, exec_cfg: dict):
+    def __init__(self, lag: str, date: dict, path_root: str, step_cfg: dict, exec_cfg: dict):
+        # Class Configuration
+        self.io = DataIO()
+        self.sql_conf = SqlConfig()
+
         # I/O & Execution Configuration
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
 
-        # Class Configuration
-        self.io = DataIO()
-        self.sql_conf = SqlConfig()
+        # Data configuration
         self.common = self.io.get_dict_from_db(
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
@@ -24,10 +26,10 @@ class PipelineReal(object):
         )
 
         # Data Configuration
-        self.division = division
-        # self.date = {'date_from': self.common['rst_start_day'], 'date_to': self.common['rst_end_day']}
-        self.date = {'from': '20201102', 'to': '20211031'}
+        self.division = 'SELL_IN'
+        self.date = date
         self.data_vrsn_cd = self.date['from'] + '-' + self.date['to']
+        self.path_root = path_root
         self.threshold = 10
 
         # Data Level Configuration
@@ -42,11 +44,11 @@ class PipelineReal(object):
         # Path Configuration
         self.path = {
             'load': util.make_path_sim(
-                path=self.common['path_local'], module='load', division=division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='load', division=self.division, data_vrsn=self.data_vrsn_cd,
                 step='load', extension='csv'
             ),
             'prep': util.make_path_sim(
-                path=self.common['path_local'], module='prep', division=division, data_vrsn=self.data_vrsn_cd,
+                path=self.path_root, module='prep', division=self.division, data_vrsn=self.data_vrsn_cd,
                 step='prep', extension='pickle'
             )
         }
@@ -62,7 +64,7 @@ class PipelineReal(object):
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
             elif self.division == 'SELL_OUT':
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))    # Todo: Temp data
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:
@@ -130,7 +132,8 @@ class PipelineReal(object):
                 hrchy=self.hrchy,
                 common=self.common,
                 algorithms=algorithms,
-                exec_cfg=self.exec_cfg
+                exec_cfg=self.exec_cfg,
+                path_root=self.path_root
             )
             train.prep_params(best_params)
             train.train(data=data_prep)

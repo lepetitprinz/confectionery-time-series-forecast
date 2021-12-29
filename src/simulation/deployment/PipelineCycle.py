@@ -9,7 +9,7 @@ from simulation.model.Train import Train
 
 
 class PipelineCycle(object):
-    def __init__(self, cycle: str, step_cfg: dict, exec_cfg: dict):
+    def __init__(self, step_cfg: dict, exec_cfg: dict, path_root: str,):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
@@ -24,8 +24,8 @@ class PipelineCycle(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
+        self.path_root = path_root
         self.division = 'SELL_IN'
-        self.cycle = cycle
         self.date = {}
         self.path = {}
         self.data_vrsn_cd = ''
@@ -39,7 +39,7 @@ class PipelineCycle(object):
         # ================================================================================================= #
         # 1. initiate basic setting
         # ================================================================================================= #
-        init = Init(cycle=self.cycle, common=self.common, division=self.division)
+        init = Init(common=self.common, division=self.division, path_root=self.path_root)
         init.run()
 
         # Set initialized object
@@ -125,8 +125,11 @@ class PipelineCycle(object):
                 division=self.division,
                 hrchy=self.hrchy,
                 common=self.common,
+                exec_cfg=self.exec_cfg,
                 algorithms=algorithms,
-                exec_cfg=self.exec_cfg
+                path_root=self.path_root
             )
             train.prep_params(best_params)
+
+            # Train what-if models
             train.train(data=data_prep)

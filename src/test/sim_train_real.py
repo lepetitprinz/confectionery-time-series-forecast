@@ -4,7 +4,9 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from simulation.deployment.PipelineReal import PipelineReal
 
-division = 'SELL_IN'
+# Root path
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+date = {'from': '20201228', 'to': '20211226'}
 lag = 'w1'
 
 # Configuration
@@ -18,14 +20,15 @@ exec_cfg = {
 
 # Step Configuration
 step_cfg = {
-    'cls_sim_load': False,    # Data Load
-    'cls_sim_prep': False,     # Data Preprocessing
+    'cls_sim_load': True,    # Data Load
+    'cls_sim_prep': True,     # Data Preprocessing
     'cls_sim_train': True     # Training
 }
 
 pipeline = PipelineReal(
-    division=division,
     lag=lag,
+    date=date,
+    path_root=path_root,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg
 )

@@ -25,7 +25,8 @@ class MiddleOut(object):
                          common['db_hrchy_item_nm'].split(',')
 
         # Middle-out Configuration
-        self.err_val = 10 ** 5 - 1
+        self.err_val = 0
+        self.max_val = 10 ** 5 - 1
         self.target_col = 'sales'
         self.item_mst = item_mst
         self.ratio_lvl = ratio_lvl
@@ -33,6 +34,17 @@ class MiddleOut(object):
 
         # After processing Configuration
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
+
+    def run_middle_out(self, sales: pd.DataFrame, pred: pd.DataFrame) -> pd.DataFrame:
+        sales = self.col_to_lower(data=sales)
+        pred = self.col_to_lower(data=pred)
+
+        data_split = self.prep_split(data=pred)
+        data_ratio = self.prep_ratio(data=sales)
+        middle_out = self.middle_out(data_split=data_split, data_ratio=data_ratio)
+        middle_out_db = self.after_processing(data=middle_out)
+
+        return middle_out_db
 
     def prep_ratio(self, data: pd.DataFrame):
         item_temp = deepcopy(self.item_mst)
@@ -86,6 +98,12 @@ class MiddleOut(object):
         return result
 
     @staticmethod
+    def col_to_lower(data: pd.DataFrame):
+        data.columns = [col.lower() for col in list(data.columns)]
+
+        return data
+
+    @staticmethod
     def agg_by_data_level(data_ratio: pd.DataFrame, item_col: list):
         agg_col = ['cust_grp_cd'] + item_col
         data_agg = data_ratio.groupby(by=agg_col).mean()
@@ -107,7 +125,7 @@ class MiddleOut(object):
             'project_cd': self.common['project_cd'],
             'data_vrsn_cd': self.data_vrsn_cd,
             'division_cd': self.division_cd,
-            'fkey': 'C1-P5-MIDDLE-OUT'
+            'fkey': 'C1-P5'
         }
 
         return info
@@ -190,7 +208,7 @@ class MiddleOut(object):
         split[self.target_col] = round(split[self.target_col] * split['ratio'], 2)
 
         # clip & round results
-        split[self.target_col] = np.clip(split[self.target_col].values, 0, self.err_val)
+        split[self.target_col] = np.clip(split[self.target_col].values, 0, self.max_val)
         split[self.target_col] = np.round(split[self.target_col].values, 2)
 
         split = split.drop(columns='ratio')

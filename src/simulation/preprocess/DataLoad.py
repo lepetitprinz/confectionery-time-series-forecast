@@ -1,5 +1,6 @@
 import common.util as util
 import common.config as config
+from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 
 
@@ -7,7 +8,7 @@ class DataLoad(object):
     def __init__(self, division: str, hrchy_lvl: int, lag: str, exec_cfg: dict):
         # initiate class
         self.sql_conf = SqlConfig()
-
+        self.io = DataIO()
         self.exec_cfg = exec_cfg
 
         # data option
@@ -35,11 +36,10 @@ class DataLoad(object):
         self.target_col = self.common['target_col']
 
     def load(self, io):
-        if not self.load_obj_yn:
+        if not self.exec_cfg['']:
             # Sales Dataset
             if self.division == 'SELL_IN':
-                # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
-                self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_in_test(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
             elif self.division == 'SELL_OUT':
                 self.sales = io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
 

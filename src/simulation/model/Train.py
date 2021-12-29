@@ -24,7 +24,7 @@ class Train(object):
     }
 
     def __init__(self, data_version: str, division: str, hrchy: dict, common, exec_cfg: dict,
-                 algorithms: pd.DataFrame):
+                 algorithms: pd.DataFrame, path_root: str):
 
         # Data Configuration
         self.common = common
@@ -33,9 +33,10 @@ class Train(object):
         self.target_col = common['target_col']
         self.hrchy = hrchy
         self.exec_cfg = exec_cfg
-        self.cnt = 0
+        self.path_root = path_root
 
         # Train Option configuration
+        self.cnt = 0
         self.cv = 5
         self.scoring = 'neg_root_mean_squared_error'
         self.verbose = False
@@ -44,9 +45,6 @@ class Train(object):
         self.algorithms = algorithms['model'].to_list()
         self.best_params = {}
         self.param_grids = config.PARAM_GRIDS_SIM
-
-        # Path Configuration
-        self.path_root = os.path.join('..', '..', 'simulation')
 
     def init(self):
         self.prep_params(best_params={})
@@ -186,12 +184,6 @@ class Train(object):
         f = open(os.path.join(self.path_root, module, self.division + '_' + self.data_vrsn_cd + '_' +
                               hrchy_code + '.pickle'), 'wb')
         pickle.dump(result, f)
-        f.close()
-
-    def save_best_model(self, estimator, hrchy_code: str):
-        f = open(os.path.join(self.path_root, 'model', self.division + '_' + self.data_vrsn_cd + '_' +
-                              hrchy_code + '.pickle'), 'wb')
-        pickle.dump(estimator, f)
         f.close()
 
     def save_scaler(self, scaler, hrchy_code: str):

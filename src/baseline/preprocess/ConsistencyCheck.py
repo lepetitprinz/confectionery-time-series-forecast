@@ -23,6 +23,7 @@ class ConsistencyCheck(object):
         self.mst_info = mst_info
         self.err_grp_map = err_grp_map
         self.unit_cd = common['unit_cd'].split(',')
+        self.col_numeric = ['unit_price', 'discount', 'qty']
 
         # Save and Load Configuration
         self.save_path = os.path.join(self.common['path_local'], 'result')
@@ -118,11 +119,11 @@ class ConsistencyCheck(object):
 
         return normal
 
-    def check_data_type(self, df: pd.DataFrame):
-        pass
-
-    def check_discount(self, df: pd.DataFrame, col_nm: str):
-        pass
+    def fill_numeric_na(self, data: pd.DataFrame) -> pd.DataFrame:
+        for col in self.col_numeric:
+            data[col] = data[col].fillna(0)    # fill na to zero
+            data[col] = data[col].replace('', 0)    # replace empty string to zero
+        return data
 
     def make_err_format(self, df: pd.DataFrame, err_cd: str):
         df['project_cd'] = self.common['project_cd']
@@ -146,7 +147,7 @@ class ConsistencyCheck(object):
         df = pd.merge(df, item_mst, on='sku_cd', how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
         # Fill na
-        df['qty'] = df['qty'].fillna(0)
+        df = self.fill_numeric_na(data=df)
         df = df.fillna('')
 
         # Rename columns
@@ -155,7 +156,6 @@ class ConsistencyCheck(object):
 
         number = [str(i+1).zfill(10) for i in range(len(df))]
         df['number'] = number
-        # df['seq'] = df['seq'] + '-' + df['cust_grp_cd'] + '-' + df['item_cd'] + '-' + df['number']
         df['seq'] = df['seq'] + '-' + df['number']
 
         df = df.drop(columns=['number', 'create_date'], errors='ignore')

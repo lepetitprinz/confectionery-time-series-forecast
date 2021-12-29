@@ -38,7 +38,7 @@ exec_cfg = {
 }
 
 # Load result configuration
-exec_rslt_cfg = {'decompose': False}
+exec_rslt_cfg = {'decompose': True}
 
 # Brand Level
 pipeline_brand = PipelineDecompose(
