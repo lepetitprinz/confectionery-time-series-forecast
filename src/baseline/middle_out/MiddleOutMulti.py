@@ -7,13 +7,14 @@ from copy import deepcopy
 
 
 class MiddleOutMulti(object):
-    def __init__(self, common: dict, division: str, data_vrsn: str, test_vrsn: str, hrchy: dict,
-                 ratio_lvl, item_mst: pd.DataFrame):
+    def __init__(self, common: dict, division: str, data_vrsn: str, hrchy: dict,
+                 mst_info: dict, item_mst: pd.DataFrame, ratio_lvl):
         # Data Information Configuration
         self.common = common
         self.division_cd = division
         self.data_vrsn_cd = data_vrsn
-        self.test_vrsn_cd = test_vrsn
+        # self.mst_info = mst_info
+        self.model_list = [col.upper() for col in list(mst_info['model_mst'].keys())]
 
         # Data Level Configuration
         self.hrchy = hrchy
@@ -26,7 +27,7 @@ class MiddleOutMulti(object):
 
         # Middle-out Configuration
         self.err_val = 0
-        # self.err_val = 10 ** 5 - 1
+        self.max_val = 10 ** 5 - 1
         self.target_col = 'sales'
         self.item_mst = item_mst
         self.ratio_lvl = ratio_lvl
@@ -35,10 +36,44 @@ class MiddleOutMulti(object):
         # After processing Configuration
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
-    def split_pred_by_model(self, data: pd.DataFrame):
-        pass
+    def run_on_all_result(self, sales: pd.DataFrame, pred: pd.DataFrame):
+        pred_dict = self.split_pred_by_model(data=pred)
 
-    def run_middle_out(self, sales: pd.DataFrame, pred: pd.DataFrame):
+        result = pd.DataFrame()
+        for pred in pred_dict.values():
+            md_out = self.exec_middle_out(sales=sales, pred=pred)
+            result = pd.concat([result, md_out], axis=0)
+
+        return result
+
+    def filter_best_result(self, result: pd.DataFrame, score: pd.DataFrame):
+        # convert columns to lower case
+        result = util.conv_col_lower(data=result)
+        score = util.conv_col_lower(data=score)
+
+        # Drop unnecessary columns
+        score = score.drop(columns=['rmse', 'accuracy', 'create_user_cd'], errors='ignore')
+
+        merge_col = ['data_vrsn_cd', 'division_cd', 'stat_cd'] + \
+                    [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in self.hrchy['apply']]
+        best_result = pd.merge(
+            result,
+            score,
+            how='inner',
+            on=merge_col,
+            suffixes=('', '_DROP')
+        ).filter(regex='^(?!.*_DROP)')
+
+        return best_result
+
+    def split_pred_by_model(self, data: pd.DataFrame) -> dict:
+        data_split = {}
+        for model in self.model_list:
+            data_split[model] = data[data['stat_cd'] == model]
+
+        return data_split
+
+    def exec_middle_out(self, sales: pd.DataFrame, pred: pd.DataFrame) -> pd.DataFrame:
         data_split = self.prep_split(data=pred)
         data_ratio = self.prep_ratio(data=sales)
         middle_out = self.middle_out(data_split=data_split, data_ratio=data_ratio)
@@ -46,7 +81,7 @@ class MiddleOutMulti(object):
 
         return middle_out_db
 
-    def prep_ratio(self, data: pd.DataFrame):
+    def prep_ratio(self, data: pd.DataFrame) -> pd.DataFrame:
         item_temp = deepcopy(self.item_mst)
         item_col = [col for col in item_temp.columns if 'nm' not in col]
         item_temp = item_temp[item_col]
@@ -57,7 +92,7 @@ class MiddleOutMulti(object):
 
         return ratio
 
-    def prep_split(self, data: pd.DataFrame):
+    def prep_split(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data.drop(columns=self.drop_col, errors='ignore')
         data = data.rename(columns={'result_sales': 'sales'})
 
@@ -71,7 +106,7 @@ class MiddleOutMulti(object):
 
         return result
 
-    def after_processing(self, data: pd.DataFrame):
+    def after_processing(self, data: pd.DataFrame) -> pd.DataFrame:
         item_mst = self.item_mst
         item_mst.columns = [self.hrchy_cd_to_db_cd.get(col, col) for col in item_mst.columns]
         item_mst = item_mst.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
@@ -98,7 +133,7 @@ class MiddleOutMulti(object):
         return result
 
     @staticmethod
-    def agg_by_data_level(data_ratio: pd.DataFrame, item_col: list):
+    def agg_by_data_level(data_ratio: pd.DataFrame, item_col: list) -> pd.DataFrame:
         agg_col = ['cust_grp_cd'] + item_col
         data_agg = data_ratio.groupby(by=agg_col).mean()
         data_agg = data_agg.reset_index()
@@ -202,7 +237,7 @@ class MiddleOutMulti(object):
         split[self.target_col] = round(split[self.target_col] * split['ratio'], 2)
 
         # clip & round results
-        split[self.target_col] = np.clip(split[self.target_col].values, 0, self.err_val)
+        split[self.target_col] = np.clip(split[self.target_col].values, 0, self.max_val)
         split[self.target_col] = np.round(split[self.target_col].values, 2)
 
         split = split.drop(columns='ratio')

@@ -319,3 +319,9 @@ def remove_special_character(data: pd.DataFrame, feature: str):
     data[feature] = feat
 
     return data
+
+
+def conv_col_lower(data: pd.DataFrame) -> pd.DataFrame:
+    data.columns = [col.lower() for col in list(data.columns)]
+
+    return data

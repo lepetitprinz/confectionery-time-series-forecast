@@ -3,7 +3,7 @@ import sys
 import time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineReal import PipelineReal
+from baseline.deployment.PipelineMiddleOutTest import PipelineMiddleOutTest
 
 
 # Root path
@@ -67,7 +67,7 @@ exec_rslt_cfg = {
     'middle_out': False
 }
 
-pipeline = PipelineReal(
+pipeline = PipelineMiddleOutTest(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,

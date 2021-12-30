@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-/opt/DF/venv/bin/python /opt/DF/fcst/src/operation/openapi_weather.py
+python3.8 /opt/DF/fcst/src/operation/openapi_weather.py

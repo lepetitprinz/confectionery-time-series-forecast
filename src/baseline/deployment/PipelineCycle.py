@@ -164,8 +164,8 @@ class PipelineCycle(object):
             if self.exec_cfg['rm_not_exist_lvl_yn']:
                 sales_recent = self.io.get_df_from_db(
                     sql=self.sql_conf.sql_sell_in_week_grp(
-                        **{'date_from': self.date['middle_out']['from'],
-                           'date_to': self.date['middle_out']['to']})
+                        **{'from': self.date['middle_out']['from'],
+                           'to': self.date['middle_out']['to']})
                 )
                 preprocess.sales_recent = sales_recent
 
@@ -338,8 +338,8 @@ class PipelineCycle(object):
             )
             # Load compare dataset
             date_recent = {
-                'date_from': self.date['middle_out']['from'],
-                'date_to': self.date['middle_out']['to']
+                'from': self.date['middle_out']['from'],
+                'to': self.date['middle_out']['to']
             }
 
             # Load sales dataset
@@ -395,12 +395,12 @@ class PipelineCycle(object):
         #
         #     # Load compare dataset
         #     date_compare = {
-        #         'date_from': self.date['evaluation']['from'],
-        #         'date_to': self.date['evaluation']['to']
+        #         'from': self.date['evaluation']['from'],
+        #         'to': self.date['evaluation']['to']
         #     }
         #     date_recent = {
-        #         'date_from': self.date['middle_out']['from'],
-        #         'date_to': self.date['middle_out']['to']
+        #         'from': self.date['middle_out']['from'],
+        #         'to': self.date['middle_out']['to']
         #     }
         #
         #     sales_comp = None

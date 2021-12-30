@@ -96,6 +96,9 @@ class Init(object):
             'pred': util.make_path_baseline(
                 path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
+            'pred_all': util.make_path_baseline(
+                path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
+                hrchy_lvl=self.hrchy['key'], step='pred_all', extension='pickle'),
             'pred_best': util.make_path_baseline(
                 path=self.path_root, module='result', division=self.division, data_vrsn=self.data_vrsn_cd,
                 hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
@@ -114,6 +117,12 @@ class Init(object):
             'middle_out': util.make_path_baseline(
                 path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out', extension='csv'),
+            'middle_out_all': util.make_path_baseline(
+                path=self.path_root, module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_all', extension='csv'),
+            'middle_out_best': util.make_path_baseline(
+                path=self.path_root, module='prediction', division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_best', extension='csv'),
             'middle_out_db': util.make_path_baseline(
                 path=self.path_root, module='prediction', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),

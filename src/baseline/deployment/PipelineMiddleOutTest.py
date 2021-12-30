@@ -12,26 +12,22 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-class PipelineTest(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, unit_cfg: dict,
-                 path_root: str):
+class PipelineMiddleOutTest(object):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
         :param step_cfg: Execute Configuration
         """
         # Hierarchy Level
-        self.item_lvl = data_cfg['item_lvl']
-
-        # Test version code
-        self.test_vrsn_cd = data_cfg['test_vrsn_cd']
+        self.item_lvl = 3
 
         # I/O & Execution Configuration
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
+        self.unit_cfg = {'unit_test_yn': False}
         self.exec_rslt_cfg = exec_rslt_cfg
-        self.unit_cfg = unit_cfg
         self.path_root = path_root
 
         # Class Configuration
@@ -256,9 +252,11 @@ class PipelineTest(object):
                 self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
 
             print("Training is finished\n")
+
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
+        pred_all = None
         pred_best = None
         if self.step_cfg['cls_pred']:
             print("Step 5: Forecast\n")
@@ -298,6 +296,7 @@ class PipelineTest(object):
             pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
 
             if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=pred_all, file_path=self.path['pred_all'], data_type='binary')
                 self.io.save_object(data=pred_best, file_path=self.path['pred_best'], data_type='binary')
 
             # Save the forecast results on the db table
@@ -321,7 +320,7 @@ class PipelineTest(object):
         # ================================================================================================= #
         # 6. Middle Out
         # ================================================================================================= #
-        if self.step_cfg['clss_mdout']:
+        if self.step_cfg['cls_mdout']:
             print("Step 6: Middle Out\n")
             # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
@@ -330,10 +329,10 @@ class PipelineTest(object):
                 common=self.common,
                 division=self.division,
                 data_vrsn=self.data_vrsn_cd,
-                test_vrsn=self.test_vrsn_cd,
                 hrchy=self.hrchy,
-                ratio_lvl=5,
-                item_mst=item_mst
+                mst_info=mst_info,
+                item_mst=item_mst,
+                ratio_lvl=5
             )
             # Load compare dataset
             date_recent = {
@@ -345,37 +344,41 @@ class PipelineTest(object):
             if self.division == 'SELL_IN':    # Sell-In Dataset
                 sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
             elif self.division == 'SELL_OUT':    # Sell-Out Dataset
-                if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
-                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
 
             if not self.step_cfg['cls_pred']:
-                pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
+                pred_all = self.io.load_object(file_path=self.path['pred_all'], data_type='binary')
+
+            if not self.step_cfg['cls_train']:
+                scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
 
             # Run middle-out
             if not self.exec_rslt_cfg['predict']:
-                data_ratio = md_out.prep_ratio(data=sales_recent)
-                data_split = md_out.prep_split(data=pred_best)
-                middle_out = md_out.middle_out(data_split=data_split, data_ratio=data_ratio)
-                middle_out_db = md_out.after_processing(data=middle_out)
+                middle_out_all = md_out.run_on_all_result(sales=sales_recent, pred=pred_all)
+                middle_out_best = md_out.filter_best_result(result=middle_out_all, score=scores_best)
 
                 if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(
-                        data=middle_out, file_path=self.path['middle_out'], data_type='csv')
-                    self.io.save_object(
-                        data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
+                    self.io.save_object(data=middle_out_all, file_path=self.path['middle_out_all'], data_type='csv')
+                    self.io.save_object(data=middle_out_best, file_path=self.path['middle_out_best'], data_type='csv')
+
             else:
-                middle_out_db = self.io.load_object(file_path=self.path['middle_out_db'], data_type='csv')
+                middle_out_all = self.io.load_object(file_path=self.path['middle_out_all'], data_type='csv')
+                middle_out_best = self.io.load_object(file_path=self.path['middle_out_best'], data_type='csv')
 
             if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()
-                print("Save middle-out results on all result table")
+                print("Save middle-out all results on result table")
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_all(**middle_info))
-                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
+                self.io.insert_to_db(df=middle_out_all, tb_name='M4S_I110400')
+
+                print("Save middle-out best results on result table")
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_all(**middle_info))
+                self.io.insert_to_db(df=middle_out_best, tb_name='M4S_O110600')
 
                 if self.division == 'SELL_IN':
                     print("Save middle-out results on recent result table")
                     # Save prediction of best algorithm to recent prediction table
                     self.io.delete_from_db(sql=self.sql_conf.del_pred_recent())
-                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
+                    self.io.insert_to_db(df=middle_out_best, tb_name='M4S_O111600')
 
             print("Middle-out is finished\n")

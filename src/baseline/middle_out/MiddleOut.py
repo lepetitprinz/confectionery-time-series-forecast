@@ -46,7 +46,7 @@ class MiddleOut(object):
 
         return middle_out_db
 
-    def prep_ratio(self, data: pd.DataFrame):
+    def prep_ratio(self, data: pd.DataFrame) -> pd.DataFrame:
         item_temp = deepcopy(self.item_mst)
         item_col = [col for col in item_temp.columns if 'nm' not in col]
         item_temp = item_temp[item_col]
@@ -57,13 +57,13 @@ class MiddleOut(object):
 
         return ratio
 
-    def prep_split(self, data: pd.DataFrame):
+    def prep_split(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data.drop(columns=self.drop_col, errors='ignore')
         data = data.rename(columns={'result_sales': 'sales'})
 
         return data
 
-    def middle_out(self, data_split, data_ratio):
+    def middle_out(self, data_split: pd.DataFrame, data_ratio: pd.DataFrame):
         # Acyclic iteration
         count = self.ratio_lvl - self.hrchy['lvl']['item']
         ratio = self.ratio_iter(df_ratio=data_ratio)
@@ -71,7 +71,7 @@ class MiddleOut(object):
 
         return result
 
-    def after_processing(self, data: pd.DataFrame):
+    def after_processing(self, data: pd.DataFrame) -> pd.DataFrame:
         item_mst = self.item_mst
         item_mst.columns = [self.hrchy_cd_to_db_cd.get(col, col) for col in item_mst.columns]
         item_mst = item_mst.rename(columns={'sku_cd': 'item_cd', 'sku_nm': 'item_nm'})
@@ -98,13 +98,13 @@ class MiddleOut(object):
         return result
 
     @staticmethod
-    def col_to_lower(data: pd.DataFrame):
+    def col_to_lower(data: pd.DataFrame) -> pd.DataFrame:
         data.columns = [col.lower() for col in list(data.columns)]
 
         return data
 
     @staticmethod
-    def agg_by_data_level(data_ratio: pd.DataFrame, item_col: list):
+    def agg_by_data_level(data_ratio: pd.DataFrame, item_col: list) -> pd.DataFrame:
         agg_col = ['cust_grp_cd'] + item_col
         data_agg = data_ratio.groupby(by=agg_col).mean()
         data_agg = data_agg.reset_index()
@@ -131,7 +131,7 @@ class MiddleOut(object):
         return info
 
     # Step 1. Group by lower level quantity
-    def group_by_agg(self, df: pd.DataFrame, group_lvl: int):
+    def group_by_agg(self, df: pd.DataFrame, group_lvl: int) -> pd.DataFrame:
         col_group = self.hrchy_cust_cd_list + self.hrchy_item_cd_list[:group_lvl]
         df_agg = df.groupby(by=col_group).sum()
         df_agg = df_agg.reset_index()
@@ -139,7 +139,7 @@ class MiddleOut(object):
         return df_agg
 
     # Step2. Calculate ratio
-    def calc_ratio(self, df_upper, df_lower):
+    def calc_ratio(self, df_upper: pd.DataFrame, df_lower: pd.DataFrame) -> pd.DataFrame:
         result = self.merge_df(left=df_upper, right=df_lower)
         result['ratio'] = result[self.target_col + '_' + 'lower'] / result[self.target_col + '_' + 'upper']
 
@@ -188,21 +188,22 @@ class MiddleOut(object):
 
         return split_qty
 
-    def merge_df(self, left, right):
+    def merge_df(self, left: pd.DataFrame, right: pd.DataFrame) -> pd.DataFrame:
         on = list(left.columns)
         on.remove(self.target_col + '_' + 'upper')
         merged = pd.merge(left, right, on=on)
 
         return merged
 
-    def rename_col(self, df: pd.DataFrame, lvl: str):
+    def rename_col(self, df: pd.DataFrame, lvl: str) -> pd.DataFrame:
         df = df.rename(columns={self.target_col: self.target_col + '_' + lvl})
+
         return df
 
-    def drop_qty(self, df):
+    def drop_qty(self, df: pd.DataFrame) -> pd.DataFrame:
         return df.drop(columns=[self.target_col + '_' + 'lower', self.target_col + '_' + 'upper'])
 
-    def split_qty(self, upper: pd.DataFrame, lower: pd.DataFrame, lvl: int):
+    def split_qty(self, upper: pd.DataFrame, lower: pd.DataFrame, lvl: int) -> pd.DataFrame:
         on = self.hrchy_cust_cd_list + self.hrchy_item_cd_list[:lvl]
         split = pd.merge(upper, lower, on=on)
         split[self.target_col] = round(split[self.target_col] * split['ratio'], 2)

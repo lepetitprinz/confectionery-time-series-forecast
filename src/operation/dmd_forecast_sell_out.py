@@ -21,13 +21,15 @@ exec_cfg = {
     'cycle': True,
     'save_step_yn': True,            # Save each step result to object or csv
     'save_db_yn': True,              # Save each step result to Database
+    'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'decompose_yn': False,           # Decomposition
-    'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'scaling_yn': False,             # Data scaling
     'feature_selection_yn': False,   # Feature Selection
-    'grid_search_yn': False          # Grid Search
+    'grid_search_yn': False,         # Grid Search
+    'filter_threshold_week_yn': False,
+    'rm_fwd_zero_sales_yn': True
 }
 
 # Execute Configuration
