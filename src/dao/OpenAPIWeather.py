@@ -23,14 +23,14 @@ class OpenAPIWeather(object):
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum', 'rain_sum']
 
     def set_date_range(self):
-        today = datetime.date.today()
-        prev_monday = today - datetime.timedelta(days=today.weekday()+7)
-        prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
+        # today = datetime.date.today()
+        # prev_monday = today - datetime.timedelta(days=today.weekday()+7)
+        # prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
+        #
+        # prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
+        # prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
 
-        prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
-        prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
-
-        self.date = {'from': prev_monday, 'to': prev_sunday}
+        self.date = {'from': '20211006', 'to': '20211130'}
 
     def get_api_info(self) -> None:
         self.info = self.io.get_dict_from_db(
@@ -91,7 +91,7 @@ class OpenAPIWeather(object):
         rows = []
         for node in xml_tree[1][1]:
             date = node.find("tm").text           # Date
-            location = node.find("stnId").text    # Location
+            loc_cd = node.find("stnId").text    # Location
             temp_min = node.find("minTa").text    # Minimum Temperature
             temp_max = node.find("maxTa").text    # Maximum Temperature
             temp_avg = node.find("avgTa").text    # Average Temperature
@@ -101,7 +101,7 @@ class OpenAPIWeather(object):
             rain_sum = node.find("sumRn").text    # Total Rain
 
             rows.append({
-                "location": location, "date": date, "temp_min": temp_min, "temp_max": temp_max, "temp_avg": temp_avg,
+                "loc_cd": loc_cd, "date": date, "temp_min": temp_min, "temp_max": temp_max, "temp_avg": temp_avg,
                 "rhm_min": rhm_min, "rhm_avg": rhm_avg, "gsr_sum": gsr_sum, "rain_sum": rain_sum
             })
 

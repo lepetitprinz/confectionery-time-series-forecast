@@ -55,8 +55,8 @@ class PipelineCycle(object):
         if self.step_cfg['cls_sim_load']:
             print("Step 2: Load Dataset\n")
             date = {
-                'date_from': self.date['history']['from'],
-                'date_to': self.date['history']['to']
+                'from': self.date['history']['from'],
+                'to': self.date['history']['to']
             }
             if self.division == 'SELL_IN':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**date))

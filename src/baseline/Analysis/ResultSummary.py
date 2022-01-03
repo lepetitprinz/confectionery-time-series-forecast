@@ -58,6 +58,11 @@ class ResultSummary(object):
         return raw_all
 
     def make_raw_result(self, sales_comp, sales_recent, pred):
+        # convert lower
+        sales_comp = util.conv_col_lower(data=sales_comp)
+        sales_recent = util.conv_col_lower(data=sales_recent)
+        pred = util.conv_col_lower(data=pred)
+
         # rename columns
         sales_comp = self.rename_cols(data=sales_comp)
         sales_recent = self.rename_cols(data=sales_recent)

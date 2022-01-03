@@ -128,7 +128,8 @@ class PipelineReal(object):
                 hrchy=self.hrchy,
                 mst_info=mst_info,
                 exec_cfg=self.exec_cfg,
-                err_grp_map=err_grp_map
+                err_grp_map=err_grp_map,
+                path_root=self.path_root
             )
 
             # Execute Consistency check

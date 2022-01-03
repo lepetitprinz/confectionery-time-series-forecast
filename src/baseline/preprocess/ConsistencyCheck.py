@@ -9,7 +9,7 @@ from copy import deepcopy
 
 class ConsistencyCheck(object):
     def __init__(self, data_vrsn_cd: str, division: str, common: dict, hrchy: dict,
-                 mst_info: dict, exec_cfg: dict, err_grp_map: dict):
+                 mst_info: dict, exec_cfg: dict, err_grp_map: dict, path_root: str):
         # Class Configuration
         self.io = DataIO()
         self.sql_config = SqlConfig()
@@ -26,7 +26,7 @@ class ConsistencyCheck(object):
         self.col_numeric = ['unit_price', 'discount', 'qty']
 
         # Save and Load Configuration
-        self.save_path = os.path.join(self.common['path_local'], 'result')
+        self.save_path = os.path.join(path_root, 'result')
         self.tb_name = 'M4S_I002174'
 
     def check(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -70,54 +70,54 @@ class ConsistencyCheck(object):
         return normal
 
     # Error 2
-    def check_unit_code(self, df: pd.DataFrame):
-        err = df[~df['unit_cd'].isin(self.unit_cd)]
-        normal = df[df['unit_cd'].isin(self.unit_cd)]
-
-        err_cd = 'err002'
-        err = self.make_err_format(df=err, err_cd=err_cd)
-
-        if self.exec_cfg['save_step_yn']:
-            path = os.path.join(
-                self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
-                err_cd + '.csv')
-            err.to_csv(path, index=False, encoding='cp949')
-
-        if len(err) > 0 and self.exec_cfg['save_db_yn']:
-            info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
-            self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
-            self.io.insert_to_db(df=err, tb_name=self.tb_name)
-
-        return normal
+    # def check_unit_code(self, df: pd.DataFrame):
+    #     err = df[~df['unit_cd'].isin(self.unit_cd)]
+    #     normal = df[df['unit_cd'].isin(self.unit_cd)]
+    #
+    #     err_cd = 'err002'
+    #     err = self.make_err_format(df=err, err_cd=err_cd)
+    #
+    #     if self.exec_cfg['save_step_yn']:
+    #         path = os.path.join(
+    #             self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
+    #             err_cd + '.csv')
+    #         err.to_csv(path, index=False, encoding='cp949')
+    #
+    #     if len(err) > 0 and self.exec_cfg['save_db_yn']:
+    #         info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
+    #         self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
+    #         self.io.insert_to_db(df=err, tb_name=self.tb_name)
+    #
+    #     return normal
 
     # Error 3
-    def check_unit_code_map(self, df: pd.DataFrame):
-        unit_code_map = self.io.get_df_from_db(sql=self.sql_config.sql_unit_map())
-        unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
-        df['sku_cd'] = df['sku_cd'].astype(str)
-
-        # Merge unit code map
-        merged = pd.merge(df, unit_code_map, how='left', on='sku_cd')
-        err = merged[merged['box_bol'].isna()]
-        normal = merged[~merged['box_bol'].isna()]
-
-        # Save Error
-        err_cd = 'err003'
-        err = self.make_err_format(df=err, err_cd=err_cd)
-
-        # Save result
-        if self.exec_cfg['save_step_yn']:
-            path = os.path.join(
-                self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
-                err_cd + '.csv')
-            err.to_csv(path, index=False, encoding='cp949')
-
-        if len(err) > 0 and self.exec_cfg['save_db_yn']:
-            info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
-            self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
-            self.io.insert_to_db(df=err, tb_name=self.tb_name)
-
-        return normal
+    # def check_unit_code_map(self, df: pd.DataFrame):
+    #     unit_code_map = self.io.get_df_from_db(sql=self.sql_config.sql_unit_map())
+    #     unit_code_map.columns = [col.lower() for col in unit_code_map.columns]
+    #     df['sku_cd'] = df['sku_cd'].astype(str)
+    #
+    #     # Merge unit code map
+    #     merged = pd.merge(df, unit_code_map, how='left', on='sku_cd')
+    #     err = merged[merged['box_bol'].isna()]
+    #     normal = merged[~merged['box_bol'].isna()]
+    #
+    #     # Save Error
+    #     err_cd = 'err003'
+    #     err = self.make_err_format(df=err, err_cd=err_cd)
+    #
+    #     # Save result
+    #     if self.exec_cfg['save_step_yn']:
+    #         path = os.path.join(
+    #             self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' + '-' +
+    #             err_cd + '.csv')
+    #         err.to_csv(path, index=False, encoding='cp949')
+    #
+    #     if len(err) > 0 and self.exec_cfg['save_db_yn']:
+    #         info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
+    #         self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
+    #         self.io.insert_to_db(df=err, tb_name=self.tb_name)
+    #
+    #     return normal
 
     def fill_numeric_na(self, data: pd.DataFrame) -> pd.DataFrame:
         for col in self.col_numeric:

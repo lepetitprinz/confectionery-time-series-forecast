@@ -181,13 +181,13 @@ class Train(object):
         return score, param_grid
 
     def save_object(self, result, module: str, hrchy_code: str):
-        f = open(os.path.join(self.path_root, module, self.division + '_' + self.data_vrsn_cd + '_' +
+        f = open(os.path.join(self.path_root, 'simulation', module, self.division + '_' + self.data_vrsn_cd + '_' +
                               hrchy_code + '.pickle'), 'wb')
         pickle.dump(result, f)
         f.close()
 
     def save_scaler(self, scaler, hrchy_code: str):
-        f = open(os.path.join(self.path_root, 'scaler', self.division + '_' + self.data_vrsn_cd + '_' +
+        f = open(os.path.join(self.path_root, 'simulation', 'scaler', self.division + '_' + self.data_vrsn_cd + '_' +
                               hrchy_code + '.pickle'), 'wb')
         pickle.dump(scaler, f)
         f.close()

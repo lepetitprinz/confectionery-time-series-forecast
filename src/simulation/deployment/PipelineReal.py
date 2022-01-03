@@ -60,11 +60,15 @@ class PipelineReal(object):
         sales = None
         if self.step_cfg['cls_sim_load']:
             print("Step 1: Load the dataset\n")
+            date = {
+                'from': self.date['history']['from'],
+                'to': self.date['history']['to']
+            }
             if self.division == 'SELL_IN':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**date))
             elif self.division == 'SELL_OUT':
                 # sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out(**self.date))
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date))
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**date))
 
             # Save Step result
             if self.exec_cfg['save_step_yn']:

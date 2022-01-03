@@ -123,13 +123,13 @@ class SqlConfig(object):
     @staticmethod
     def sql_sell_in(**kwargs):
         sql = f"""
-            SELECT DIVISION_CD
-                 , CUST_GRP_CD
+             SELECT DIVISION_CD
+                 , SALES.CUST_GRP_CD
                  , ITEM_ATTR01_CD AS BIZ_CD
                  , ITEM_ATTR02_CD AS LINE_CD
                  , ITEM_ATTR03_CD AS BRAND_CD
                  , ITEM_ATTR04_CD AS ITEM_CD
-                 , ITEM_CD AS SKU_CD
+                 , SALES.ITEM_CD AS SKU_CD
                  , YYMMDD
                  , SEQ
                  , FROM_DC_CD
@@ -139,8 +139,20 @@ class SqlConfig(object):
                  , WEEK
                  , QTY
                  , CREATE_DATE
-             FROM M4S_I002176
-            WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+              FROM (
+                    SELECT *
+                      FROM M4S_I002176
+                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                   ) SALES
+             INNER JOIN (
+                         SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                              , ITEM_CD
+                           FROM M4S_I204050
+                          WHERE USE_YN = 'Y'
+                            AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
+                        ) MAP
+                ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+               AND SALES.ITEM_CD = MAP.ITEM_CD
         """
         return sql
 
@@ -148,42 +160,31 @@ class SqlConfig(object):
     def sql_sell_in_week_grp(**kwargs):
         sql = f""" 
             SELECT DIVISION_CD
-                 , CUST_GRP_CD
-                 , SKU_CD
-                 , YY
+                 , SALES.CUST_GRP_CD
+                 , SALES.ITEM_CD AS SKU_CD
+                 , YYMMDD AS YY
                  , WEEK
-                 , SUM(RST_SALES_QTY) AS SALES
-              FROM (
-                    SELECT DIVISION_CD
-                         , CUST.CUST_GRP_CD
-                         , SKU_CD
-                         , YY
-                         , WEEK
-                         , RST_SALES_QTY
-                      FROM (
-                            SELECT DIVISION_CD
-                                 , SOLD_CUST_GRP_CD AS CUST_CD
-                                 , ITEM_CD          as SKU_CD
-                                 , YY
-                                 , WEEK
-                                 , RST_SALES_QTY
-                              FROM M4S_I002170
-                             WHERE 1 = 1
-                               AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-                               AND RST_SALES_QTY <> 0 -- Remove 0 quantity
-                           ) SALES
-                     INNER JOIN (
-                                 SELECT CUST_CD
-                                      , CUST_GRP_CD
-                                   FROM M4S_I002060
-                                ) CUST
-                        ON SALES.CUST_CD = CUST.CUST_CD
-                   ) SALES--      
-             GROUP BY DIVISION_CD
-                    , CUST_GRP_CD
-                    , SKU_CD
-                    , YY
-                    , WEEK
+                 , RST_SALES_QTY AS SALES
+            FROM (
+                  SELECT *
+                    FROM M4S_I002175
+                   WHERE RST_SALES_QTY <> 0
+                     AND DIVISION_CD = 'SELL_IN'
+                     AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                 ) SALES
+           INNER JOIN (
+                       SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                            , ITEM_CD
+                         FROM M4S_I204050
+                        WHERE USE_YN = 'Y'
+                          AND SALES_MGMT_VRSN_ID = (
+                                                    SELECT SALES_MGMT_VRSN_ID 
+                                                      FROM M4S_I204010 
+                                                     WHERE USE_YN = 'Y'
+                                                   )
+                      ) MAP
+              ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+             AND SALES.ITEM_CD = MAP.ITEM_CD
              """
         return sql
 
