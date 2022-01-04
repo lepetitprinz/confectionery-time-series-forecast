@@ -35,7 +35,7 @@ class MiddleOut(object):
         # After processing Configuration
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
-    def run_middle_out(self, sales: pd.DataFrame, pred: pd.DataFrame) -> pd.DataFrame:
+    def run_middle_out(self, sales: pd.DataFrame, pred: pd.DataFrame) -> tuple:
         sales = self.col_to_lower(data=sales)
         pred = self.col_to_lower(data=pred)
 
@@ -44,7 +44,7 @@ class MiddleOut(object):
         middle_out = self.middle_out(data_split=data_split, data_ratio=data_ratio)
         middle_out_db = self.after_processing(data=middle_out)
 
-        return middle_out_db
+        return middle_out_db, middle_out
 
     def prep_ratio(self, data: pd.DataFrame) -> pd.DataFrame:
         item_temp = deepcopy(self.item_mst)

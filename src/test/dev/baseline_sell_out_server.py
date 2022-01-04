@@ -14,11 +14,11 @@ cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
-    'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': False,
-    'cls_pred': False,
+    'cls_load': True,
+    'cls_cns': True,
+    'cls_prep': True,
+    'cls_train': True,
+    'cls_pred': True,
     'cls_mdout': True,
     'cls_rpt': False
 }
@@ -27,7 +27,7 @@ step_cfg = {
 exec_cfg = {
     'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': True,             #
+    'save_db_yn': False,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling

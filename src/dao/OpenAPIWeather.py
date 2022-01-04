@@ -23,14 +23,15 @@ class OpenAPIWeather(object):
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum', 'rain_sum']
 
     def set_date_range(self):
-        # today = datetime.date.today()
-        # prev_monday = today - datetime.timedelta(days=today.weekday()+7)
-        # prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
-        #
-        # prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
-        # prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
+        today = datetime.date.today()
+        prev_monday = today - datetime.timedelta(days=today.weekday()+7)
+        prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
 
-        self.date = {'from': '20211006', 'to': '20211130'}
+        prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
+        prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
+
+        self.date = {'from': prev_monday, 'to': prev_sunday}
+        # self.date = {'from': '20211006', 'to': '20211130'}
 
     def get_api_info(self) -> None:
         self.info = self.io.get_dict_from_db(
@@ -91,7 +92,8 @@ class OpenAPIWeather(object):
         rows = []
         for node in xml_tree[1][1]:
             date = node.find("tm").text           # Date
-            loc_cd = node.find("stnId").text    # Location
+            loc_cd = node.find("stnId").text      # Location Code
+            loc_nm = node.find("stnNm").text      # Location Name
             temp_min = node.find("minTa").text    # Minimum Temperature
             temp_max = node.find("maxTa").text    # Maximum Temperature
             temp_avg = node.find("avgTa").text    # Average Temperature
@@ -101,8 +103,8 @@ class OpenAPIWeather(object):
             rain_sum = node.find("sumRn").text    # Total Rain
 
             rows.append({
-                "loc_cd": loc_cd, "date": date, "temp_min": temp_min, "temp_max": temp_max, "temp_avg": temp_avg,
-                "rhm_min": rhm_min, "rhm_avg": rhm_avg, "gsr_sum": gsr_sum, "rain_sum": rain_sum
+                "loc_cd": loc_cd, "loc_nm": loc_nm, "date": date, "temp_min": temp_min, "temp_max": temp_max,
+                "temp_avg": temp_avg, "rhm_min": rhm_min, "rhm_avg": rhm_avg, "gsr_sum": gsr_sum, "rain_sum": rain_sum
             })
 
         return pd.DataFrame(rows)
@@ -115,17 +117,20 @@ class OpenAPIWeather(object):
         return len(dates)
 
     def conv_data_to_db(self, data: pd.DataFrame) -> list:
+        # fill na
         data = data.fillna(0)
 
         converted_list = []
         for exg in self.exg_list:
-            data_exg = data[['date', 'location', exg]]
+            data_exg = data[['date', 'loc_cd', 'loc_nm', exg]]
             data_exg['date'] = pd.to_datetime(data_exg['date']).dt.strftime('%Y%m%d')
             data_exg['project_cd'] = 'ENT001'
             data_exg['idx_cd'] = exg.upper()
             data_exg['create_user_cd'] = 'SYSTEM'
             data_exg['create_date'] = datetime.datetime.now()
-            data_exg = data_exg.rename(columns={'date': 'yymm', exg: 'ref_val', 'location': 'idx_dtl_cd'})
+            data_exg = data_exg.rename(columns={
+                'date': 'yymm', exg: 'ref_val', 'loc_cd': 'idx_dtl_cd', 'loc_nm': 'idx_dtl_nm'
+            })
             converted_list.append((data_exg, exg.upper()))
 
         return converted_list

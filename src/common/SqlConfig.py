@@ -170,7 +170,7 @@ class SqlConfig(object):
                     FROM M4S_I002175
                    WHERE RST_SALES_QTY <> 0
                      AND DIVISION_CD = 'SELL_IN'
-                     AND YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                     AND START_WEEK_DAY BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
                  ) SALES
            INNER JOIN (
                        SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD

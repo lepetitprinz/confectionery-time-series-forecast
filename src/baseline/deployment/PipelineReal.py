@@ -358,9 +358,11 @@ class PipelineReal(object):
 
             # Run middle-out
             if not self.exec_rslt_cfg['predict']:
-                middle_out_db = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
+                middle_out_db, middle_out = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
 
                 if self.exec_cfg['save_step_yn']:
+                    self.io.save_object(
+                        data=middle_out, file_path=self.path['middle_out'], data_type='csv')
                     self.io.save_object(
                         data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
             else:
