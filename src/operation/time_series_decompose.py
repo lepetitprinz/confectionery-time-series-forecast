@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineDecompCycle import PipelineDecompCycle
@@ -23,6 +24,9 @@ exec_cfg = {
     'feature_selection_yn': False,
     'rm_not_exist_lvl_yn': False
 }
+
+# Check start time
+print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 # Line Level
 pipeline_line = PipelineDecompCycle(
@@ -53,3 +57,10 @@ pipeline_item = PipelineDecompCycle(
 )
 pipeline_item.run()
 print("Time Series Decomposition(Item Level) is finished.\n")
+
+# Check end time
+print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+print("Time Series Decomposition is finished.\n")
+
+

@@ -7,13 +7,12 @@ from copy import deepcopy
 
 
 class MiddleOut(object):
-    def __init__(self, common: dict, division: str, data_vrsn: str, test_vrsn: str, hrchy: dict,
+    def __init__(self, common: dict, division: str, data_vrsn: str, hrchy: dict,
                  ratio_lvl, item_mst: pd.DataFrame):
         # Data Information Configuration
         self.common = common
         self.division_cd = division
         self.data_vrsn_cd = data_vrsn
-        self.test_vrsn_cd = test_vrsn
 
         # Data Level Configuration
         self.hrchy = hrchy

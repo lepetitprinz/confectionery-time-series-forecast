@@ -28,7 +28,7 @@ class PipelineReal(object):
         # Data Configuration
         self.division = 'SELL_IN'
         self.date = date
-        self.data_vrsn_cd = self.date['from'] + '-' + self.date['to']
+        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
         self.path_root = path_root
         self.threshold = 10
 

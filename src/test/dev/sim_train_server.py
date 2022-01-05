@@ -6,7 +6,10 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from simulation.deployment.PipelineReal import PipelineReal
 
 lag = 'w1'
-date = {'from': '20201228', 'to': '20211226'}
+date = {'history': {
+    'from': '20201228',
+    'to': '20211226'}
+}
 
 # Root path
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')

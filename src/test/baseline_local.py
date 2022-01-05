@@ -5,7 +5,6 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineReal import PipelineReal
 
-
 # Root path
 path_root = os.path.join('..', '..')
 
@@ -20,15 +19,15 @@ step_cfg = {
     'cls_prep': False,
     'cls_train': False,
     'cls_pred': False,
-    'cls_mdout': True,
-    'cls_rpt': False
+    'cls_mdout': False,
+    'cls_rpt': True
 }
 
 # Configuration
 exec_cfg = {
     'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': False,             #
+    'save_db_yn': True,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling

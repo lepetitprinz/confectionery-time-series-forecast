@@ -1,4 +1,4 @@
-import common.util as util
+import datetime
 
-dv = '123-456'
-df = util.make_data_version(data_version=dv)
+# Execute Baseline Forecast
+print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

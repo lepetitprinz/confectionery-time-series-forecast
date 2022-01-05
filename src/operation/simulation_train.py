@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from simulation.deployment.PipelineCycle import PipelineCycle
@@ -28,4 +29,11 @@ pipeline = PipelineCycle(
     step_cfg=step_cfg,
 )
 
+# Check start time
+print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 pipeline.run()
+
+# Check end time
+print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+

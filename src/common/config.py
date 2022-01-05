@@ -2,19 +2,12 @@ import numpy as np
 
 # # Database Configuration (Operation)
 RDMS = 'mssql+pymssql'
-HOST = '10.109.2.143'    # Database IP adress
-DATABASE = 'BISCM'      # Database name
+# HOST = '10.109.2.143'    # Ops Database IP address
+HOST = '10.109.2.135'      # Dev Database IP address
+DATABASE = 'BISCM'         # Database name
 PORT = '1433'
-USER = 'matrix'    # User name
-PASSWORD = 'Diam0nd123!'     # User password
-
-# Database Configuration (Development)
-# RDMS = 'mssql+pymssql'
-# HOST = '10.109.2.135'    # Database IP adress
-# DATABASE = 'BISCM'      # Database name
-# PORT = '1433'
-# USER = 'matrix'    # User name
-# PASSWORD = 'Diam0nd123!'     # User password
+USER = 'matrix'            # User name
+PASSWORD = 'Diam0nd123!'   # User password
 
 # Data filtering threshold
 threshold = 4
@@ -210,21 +203,3 @@ EXG_MAP = {
     '1228': '131',    # 충청 -> 청주
     '1229': '156'     # 호남 빙과 -> 광주
 }
-# Date Backup
-
-# data_cfg = {
-#     'date': {
-#         'history': {
-#             'from': '20201102',
-#             'to': '20211031'
-#         },
-#         'middle_out': {
-#             'from': '20210802',
-#             'to': '20211031'
-#         },
-#         'evaluation': {
-#             'from': '20211101',
-#             'to': '20220130'
-#         }
-#     }
-# }

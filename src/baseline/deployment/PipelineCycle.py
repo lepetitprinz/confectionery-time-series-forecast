@@ -332,7 +332,6 @@ class PipelineCycle(object):
                 common=self.common,
                 division=self.division,
                 data_vrsn=self.data_vrsn_cd,
-                test_vrsn=self.test_vrsn_cd,
                 hrchy=self.hrchy,
                 ratio_lvl=5,
                 item_mst=item_mst

@@ -24,7 +24,7 @@ class PipelineReal(object):
         self.item_lvl = 3    # Fixed
 
         # Test version code
-        self.test_vrsn_cd = ''
+        self.test_vrsn_cd = 'TEST_220105'
 
         # I/O & Execution Configuration
         self.data_cfg = data_cfg
@@ -334,7 +334,6 @@ class PipelineReal(object):
                 common=self.common,
                 division=self.division,
                 data_vrsn=self.data_vrsn_cd,
-                test_vrsn=self.test_vrsn_cd,
                 hrchy=self.hrchy,
                 ratio_lvl=5,
                 item_mst=item_mst
