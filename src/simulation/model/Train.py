@@ -1,10 +1,9 @@
-import pandas as pd
-
 import common.util as util
 import common.config as config
 
 import os
 import pickle
+import pandas as pd
 
 # Algorithm
 from sklearn.ensemble import RandomForestRegressor
@@ -46,8 +45,16 @@ class Train(object):
         self.best_params = {}
         self.param_grids = config.PARAM_GRIDS_SIM
 
-    def init(self):
-        self.prep_params(best_params={})
+    def init(self, params: dict):
+        self.make_dir()    # Make directory
+        self.prep_params(best_params=params)    # Prepare parameters
+
+    def make_dir(self):
+        path = os.path.join(self.path_root, 'simulation', 'model', self.data_vrsn_cd)
+        os.makedirs(name=path, exist_ok=True)
+
+        path = os.path.join(self.path_root, 'simulation', 'scaler', self.data_vrsn_cd)
+        os.makedirs(name=path, exist_ok=True)
 
     def prep_params(self, best_params):
         # convert string type int to int type
@@ -169,6 +176,7 @@ class Train(object):
     def cross_validation(data: dict, estimator, param_grid: dict, scoring: str, cv: int, verbose: bool):
         regr = estimator()
         regr.set_params(**param_grid)
+        score = 0
         if len(data['y_train']) >= cv:
             scores = cross_val_score(regr, data['x_train'], data['y_train'], scoring=scoring, cv=cv)
             score = sum(scores) / len(scores)
@@ -181,13 +189,14 @@ class Train(object):
         return score, param_grid
 
     def save_object(self, result, module: str, hrchy_code: str):
-        f = open(os.path.join(self.path_root, 'simulation', module, self.division + '_' + self.data_vrsn_cd + '_' +
-                              hrchy_code + '.pickle'), 'wb')
+        f = open(os.path.join(self.path_root, 'simulation', module, self.data_vrsn_cd,
+                              self.division + '_' + self.data_vrsn_cd + '_' + hrchy_code + '.pickle'), 'wb')
         pickle.dump(result, f)
         f.close()
 
     def save_scaler(self, scaler, hrchy_code: str):
-        f = open(os.path.join(self.path_root, 'simulation', 'scaler', self.division + '_' + self.data_vrsn_cd + '_' +
+        f = open(os.path.join(self.path_root, 'simulation', 'scaler', self.data_vrsn_cd,
+                              self.division + '_' + self.data_vrsn_cd + '_' +
                               hrchy_code + '.pickle'), 'wb')
         pickle.dump(scaler, f)
         f.close()

@@ -23,17 +23,21 @@ step_cfg = {
     'cls_sim_train': True
 }
 
+print('------------------------------------------------')
+print('What-If Simulation Training')
+print('------------------------------------------------')
+
+# Check start time
+print("Training Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 pipeline = PipelineCycle(
     path_root=path_root,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
 )
 
-# Check start time
-print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
 pipeline.run()
 
 # Check end time
-print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("Training End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 

@@ -46,9 +46,9 @@ class DataLoad(object):
 
     def load_mst(self):
         cust_grp = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
-
         item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
+        sales_matrix = self.io.get_df_from_db(sql=self.sql_conf.sql_sales_matrix())
 
         # Load Algorithm & Hyper-parameter Information
         model_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_algorithm(**{'division': 'FCST'}))
@@ -63,14 +63,15 @@ class DataLoad(object):
             'cust_grp': cust_grp,
             'item_mst': item_mst,
             'cal_mst': cal_mst,
+            'sales_matrix': sales_matrix,
             'model_mst': model_mst,
             'param_grid': param_grid
         }
 
         return mst_info
 
-    def load_exog(self):
-        exog = self.io.get_df_from_db(sql=self.sql_conf.sql_exg_data(partial_yn='N'))
+    def load_exog(self, info: dict):
+        exog = self.io.get_df_from_db(sql=self.sql_conf.sql_exg_data(**info))
 
         return exog
 

@@ -159,8 +159,8 @@ class SimulateDB(object):
         return result
 
     def load_best_estimator(self, sim: dict):
-        path = os.path.join(self.path_root, sim['division_cd'] + '_' +
-                            sim['data_vrsn_cd'] + '_' + sim['sales_mgmt_cd'][-4:] + '-' + sim['item_cd'] + '.pickle')
+        path = os.path.join(self.path_root, sim['data_vrsn_cd'], sim['division_cd'] + '_' +sim['data_vrsn_cd'] +
+                            '_' + sim['sales_mgmt_cd'][-4:] + '-' + sim['item_cd'] + '.pickle')
         f = open(path, 'rb')
         estimator = pickle.load(f)
 

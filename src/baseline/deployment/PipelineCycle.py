@@ -145,8 +145,15 @@ class PipelineCycle(object):
         # ================================================================================================= #
         data_prep = None
         exg_list = None
+
+        exg_info = {
+            'partial_yn': 'N',
+            'from': self.date['history']['from'],
+            'to': self.date['history']['to']
+        }
+
         # Exogenous dataset
-        exg = load.load_exog()
+        exg = load.load_exog(info=exg_info)
 
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
@@ -354,7 +361,7 @@ class PipelineCycle(object):
 
             # Run middle-out
             if not self.exec_rslt_cfg['predict']:
-                middle_out_db = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
+                middle_out_db, _ = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
 
                 if self.exec_cfg['save_step_yn']:
                     self.io.save_object(

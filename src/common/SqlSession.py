@@ -21,10 +21,9 @@ class SqlSession(object):
         """
         Initialize Data Source, Connection object
         """
-        print("Connect the DB")
         self.engine = self.create_engine()
         self._connection = self.get_connection()
-        print("Connected")
+        # print("DB Connected\n")
 
     def set_data(self, data_source):
         self._data = data_source
@@ -68,7 +67,7 @@ class SqlSession(object):
         get query
         """
         if self._connection is None:
-            raise ConnectionError('Session is not initialized')
+            raise ConnectionError('Session is not initialized\n')
 
         try:
             data = pd.read_sql_query(sql, self._connection)
@@ -103,13 +102,3 @@ class SqlSession(object):
         table = Table(tb_name, metadata, autoload=True, autoload_with=self.engine)
 
         return table
-
-    # @compiles(Insert)
-    # def compile_upsert(self, insert_stmt, compiler, **kwargs):
-    #     pk = insert_stmt.table.primary_key
-    #     insert = compiler.visit_insert(insert_stmt, **kwargs)
-    #     ondup = f'ON CONFLICT ({",".join(c.name for c in pk)}) DO UPDATE SET'
-    #     updates = ', '.join(f"{c.name}=EXCLUDED.{c.name}" for c in insert_stmt.table.columns)
-    #     upsert = ' '.join((insert, ondup, updates))
-    #
-    #     return upsert

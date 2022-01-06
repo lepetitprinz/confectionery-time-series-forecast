@@ -20,7 +20,7 @@ data_cfg = {
 # Configuration
 exec_cfg = {
     'cycle': True,
-    'save_step_yn': True,            # Save each step result to object or csv
+    'save_step_yn': False,            # Save each step result to object or csv
     'save_db_yn': True,              # Save each step result to Database
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'impute_yn': True,               # Data Imputation
@@ -51,6 +51,12 @@ exec_rslt_cfg = {
     'middle_out': False
 }
 
+print('------------------------------------------------')
+print('Demand Forecast - SELL-OUT')
+print('------------------------------------------------')
+# Check start time
+print("Forecast Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 pipeline = PipelineCycle(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
@@ -59,11 +65,8 @@ pipeline = PipelineCycle(
     path_root=path_root
 )
 
-# Check start time
-print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
 # Execute Baseline Forecast
 pipeline.run()
 
 # Check end time
-print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("Forecast End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

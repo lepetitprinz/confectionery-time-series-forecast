@@ -66,7 +66,7 @@ class PipelineDecompCycle(object):
         # ================================================================================================= #
         # 2. Time series decomposition
         # ================================================================================================= #
-        print("Step 3: Time series decomposition\n")
+        # print("Step 3: Time series decomposition\n")
         # Initiate data preprocessing class
         preprocess = DataPrep(
             date=self.date,

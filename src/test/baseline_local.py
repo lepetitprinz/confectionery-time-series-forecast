@@ -15,26 +15,26 @@ cycle = 'w'    # SELL-OUT : w(week) / m(month)
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
-    'cls_cns': False,
+    'cls_cns': True,
     'cls_prep': False,
     'cls_train': False,
     'cls_pred': False,
     'cls_mdout': False,
-    'cls_rpt': True
+    'cls_rpt': False
 }
 
 # Configuration
 exec_cfg = {
     'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': True,             #
+    'save_db_yn': False,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
-    'grid_search_yn': False,          # Grid Search
+    'grid_search_yn': False,         # Grid Search
     'filter_threshold_week_yn': False,
     'rm_fwd_zero_sales_yn': True
 }
@@ -45,8 +45,8 @@ data_cfg = {
     'cycle': cycle,
     'date': {
         'history': {
-            'from': '20200928',
-            'to': '20210926'
+            'from': '20201228',  # 20200928
+            'to': '20211226'     # 20210926
         },
         'middle_out': {
             'from': '20210628',

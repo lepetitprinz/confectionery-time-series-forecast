@@ -116,6 +116,21 @@ class SqlConfig(object):
             """
         return sql
 
+    @staticmethod
+    def sql_sales_matrix():
+        sql = """
+             SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                  , ITEM_CD AS SKU_CD
+               FROM M4S_I204050
+              WHERE USE_YN = 'Y'
+                AND SALES_MGMT_VRSN_ID = (
+                                          SELECT SALES_MGMT_VRSN_ID 
+                                            FROM M4S_I204010
+                                           WHERE USE_YN = 'Y'
+                                         )
+        """
+        return sql
+
     ######################################
     # Sales dataset
     ######################################
@@ -124,12 +139,12 @@ class SqlConfig(object):
     def sql_sell_in(**kwargs):
         sql = f"""
              SELECT DIVISION_CD
-                 , SALES.CUST_GRP_CD
+                 , CUST_GRP_CD
                  , ITEM_ATTR01_CD AS BIZ_CD
                  , ITEM_ATTR02_CD AS LINE_CD
                  , ITEM_ATTR03_CD AS BRAND_CD
                  , ITEM_ATTR04_CD AS ITEM_CD
-                 , SALES.ITEM_CD AS SKU_CD
+                 , ITEM_CD AS SKU_CD
                  , YYMMDD
                  , SEQ
                  , FROM_DC_CD
@@ -139,22 +154,46 @@ class SqlConfig(object):
                  , WEEK
                  , QTY
                  , CREATE_DATE
-              FROM (
-                    SELECT *
-                      FROM M4S_I002176
-                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-                   ) SALES
-             INNER JOIN (
-                         SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
-                              , ITEM_CD
-                           FROM M4S_I204050
-                          WHERE USE_YN = 'Y'
-                            AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
-                        ) MAP
-                ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
-               AND SALES.ITEM_CD = MAP.ITEM_CD
+              FROM M4S_I002176
+             WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
         """
         return sql
+
+    # @staticmethod
+    # def sql_sell_in(**kwargs):
+    #     sql = f"""
+    #          SELECT DIVISION_CD
+    #              , SALES.CUST_GRP_CD
+    #              , ITEM_ATTR01_CD AS BIZ_CD
+    #              , ITEM_ATTR02_CD AS LINE_CD
+    #              , ITEM_ATTR03_CD AS BRAND_CD
+    #              , ITEM_ATTR04_CD AS ITEM_CD
+    #              , SALES.ITEM_CD AS SKU_CD
+    #              , YYMMDD
+    #              , SEQ
+    #              , FROM_DC_CD
+    #              , UNIT_PRICE
+    #              , UNIT_CD
+    #              , DISCOUNT
+    #              , WEEK
+    #              , QTY
+    #              , CREATE_DATE
+    #           FROM (
+    #                 SELECT *
+    #                   FROM M4S_I002176
+    #                  WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+    #                ) SALES
+    #          INNER JOIN (
+    #                      SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+    #                           , ITEM_CD
+    #                        FROM M4S_I204050
+    #                       WHERE USE_YN = 'Y'
+    #                         AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
+    #                     ) MAP
+    #             ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+    #            AND SALES.ITEM_CD = MAP.ITEM_CD
+    #     """
+    #     return sql
 
     @staticmethod
     def sql_sell_in_week_grp(**kwargs):
@@ -267,7 +306,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_exg_data(partial_yn: str):
+    def sql_exg_data(**kwargs):
         sql = f"""
             SELECT IDX_CD
                  , IDX_DTL_CD
@@ -282,9 +321,10 @@ class SqlConfig(object):
                                                 SELECT EXG_ID
                                                   FROM M4S_O110701
                                                  WHERE USE_YN = 'Y'
-                                                 AND PARTIAL_YN = '{partial_yn}'
+                                                 AND PARTIAL_YN = '{kwargs['partial_yn']}'
                                                )
                              )
+              AND YYMM BETWEEN {kwargs['from']} AND {kwargs['to']}
         """
         return sql
 
@@ -429,7 +469,7 @@ class SqlConfig(object):
               FROM M4S_I002040
              WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
                AND NEW_ITEM_YN = 'N'
-               AND ITEM_NM NOT LIKE '%삭제%'
+               AND ITEM_NM NOT LIKE N'%삭제%'
         """
         return sql
 
@@ -681,7 +721,7 @@ class SqlConfig(object):
             SELECT PROJECT_CD
                  , IDX_CD
                  , '999' AS IDX_DTL_CD
-                 , '전국' AS IDX_DTL_NM
+                 , N'전국' AS IDX_DTL_NM
                  , YYMM
                  , ROUND(AVG(REF_VAL), 2) AS REF_VAL
                  , 'SYSTEM' AS CREATE_USER_CD
@@ -1063,7 +1103,7 @@ class SqlConfig(object):
     #            """
     #     return sql
 
-   # @staticmethod
+    # @staticmethod
     # def sql_sell_in(**kwargs):
     #     sql = f"""
     #         SELECT 'SELL_IN' AS DIVISION_CD

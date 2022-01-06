@@ -25,7 +25,7 @@ def counting(hrchy_lvl, df=None, val=None, lvl=0, cnt=0):
     return cnt
 
 
-def group(data, hrchy, hrchy_lvl,  cd=None, lvl=0, cnt=0) -> tuple:
+def group(data, hrchy, hrchy_lvl, cd=None, lvl=0, cnt=0) -> tuple:
     grp = {}
     col = hrchy[lvl]
 

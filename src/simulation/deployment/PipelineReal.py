@@ -139,5 +139,5 @@ class PipelineReal(object):
                 exec_cfg=self.exec_cfg,
                 path_root=self.path_root
             )
-            train.prep_params(best_params)
+            train.init(params={})
             train.train(data=data_prep)

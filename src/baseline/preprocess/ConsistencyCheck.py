@@ -33,14 +33,13 @@ class ConsistencyCheck(object):
         # Code Mapping
         normal = self.check_code_map(df=df)
 
+        # Filter sales matrix
+        normal = self.merge_sales_matrix(df=normal)
+
         return normal
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
         normal = self.check_prod_level(df=df)
-
-        # if self.division == 'SELL_OUT':
-        #     normal = self.check_unit_code(df=normal)
-        #     normal = self.check_unit_code_map(df=normal)
 
         return normal
 
@@ -51,6 +50,11 @@ class ConsistencyCheck(object):
         na_rows = test_df.isna().sum(axis=1) > 0
         err = df[na_rows].fillna('')
         normal = df[~na_rows]
+
+        # Print result
+        print("---------------------------------------")
+        print(f"Normal data length: {len(normal)}")
+        print(f"Error data length: {len(err)}")
 
         # save the error data
         err_cd = 'err001'
@@ -68,6 +72,66 @@ class ConsistencyCheck(object):
             self.io.insert_to_db(df=err, tb_name=self.tb_name)
 
         return normal
+
+    def merge_sales_matrix(self, df: pd.DataFrame) -> pd.DataFrame:
+        sales_matrix = self.mst_info['sales_matrix']
+        df['sku_cd'] = df['sku_cd'].astype(str)
+
+        merged = pd.merge(
+            df,
+            self.mst_info['sales_matrix'],
+            on=['cust_grp_cd', 'sku_cd'],
+            how='inner',
+            suffixes=('', '_DROP')
+        ).filter(regex='^(?!.*_DROP)')
+
+        print(f"Sale matrix filtered data length: {len(merged)}\n")
+        print("---------------------------------------")
+
+        return merged
+
+    def fill_numeric_na(self, data: pd.DataFrame) -> pd.DataFrame:
+        for col in self.col_numeric:
+            data[col] = data[col].fillna(0)    # fill na to zero
+            data[col] = data[col].replace('', 0)    # replace empty string to zero
+        return data
+
+    def make_err_format(self, df: pd.DataFrame, err_cd: str):
+        df['project_cd'] = self.common['project_cd']
+        df['data_vrsn_cd'] = self.data_vrsn_cd
+        df['division_cd'] = self.division
+        df['err_grp_cd'] = self.err_grp_map[err_cd]
+        df['err_cd'] = err_cd.upper()
+        df['from_dc_cd'] = ''
+        df['create_user_cd'] = 'SYSTEM'
+
+        # Merge SP1 information
+        cust_grp = self.mst_info['cust_grp']
+        cust_grp['cust_grp_cd'] = cust_grp['cust_grp_cd'].astype(str)
+        df['cust_grp_cd'] = df['cust_grp_cd'].astype(str)
+        df = pd.merge(df, cust_grp, on='cust_grp_cd', how='left')
+
+        # Merge item master information
+        item_mst = self.mst_info['item_mst']
+        item_mst['sku_cd'] = item_mst['sku_cd'].astype(str)
+        df['sku_cd'] = df['sku_cd'].astype(str)
+        df = pd.merge(df, item_mst, on='sku_cd', how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+
+        # Fill na
+        df = self.fill_numeric_na(data=df)
+        df = df.fillna('')
+
+        # Rename columns
+        df = df.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
+        df = df.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
+
+        number = [str(i+1).zfill(10) for i in range(len(df))]
+        df['number'] = number
+        df['seq'] = df['seq'] + '-' + df['number']
+
+        df = df.drop(columns=['number', 'create_date'], errors='ignore')
+
+        return df
 
     # Error 2
     # def check_unit_code(self, df: pd.DataFrame):
@@ -118,46 +182,3 @@ class ConsistencyCheck(object):
     #         self.io.insert_to_db(df=err, tb_name=self.tb_name)
     #
     #     return normal
-
-    def fill_numeric_na(self, data: pd.DataFrame) -> pd.DataFrame:
-        for col in self.col_numeric:
-            data[col] = data[col].fillna(0)    # fill na to zero
-            data[col] = data[col].replace('', 0)    # replace empty string to zero
-        return data
-
-    def make_err_format(self, df: pd.DataFrame, err_cd: str):
-        df['project_cd'] = self.common['project_cd']
-        df['data_vrsn_cd'] = self.data_vrsn_cd
-        df['division_cd'] = self.division
-        df['err_grp_cd'] = self.err_grp_map[err_cd]
-        df['err_cd'] = err_cd.upper()
-        df['from_dc_cd'] = ''
-        df['create_user_cd'] = 'SYSTEM'
-
-        # Merge SP1 information
-        cust_grp = self.mst_info['cust_grp']
-        cust_grp['cust_grp_cd'] = cust_grp['cust_grp_cd'].astype(str)
-        df['cust_grp_cd'] = df['cust_grp_cd'].astype(str)
-        df = pd.merge(df, cust_grp, on='cust_grp_cd', how='left')
-
-        # Merge item master information
-        item_mst = self.mst_info['item_mst']
-        item_mst['sku_cd'] = item_mst['sku_cd'].astype(str)
-        df['sku_cd'] = df['sku_cd'].astype(str)
-        df = pd.merge(df, item_mst, on='sku_cd', how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
-
-        # Fill na
-        df = self.fill_numeric_na(data=df)
-        df = df.fillna('')
-
-        # Rename columns
-        df = df.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
-        df = df.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
-
-        number = [str(i+1).zfill(10) for i in range(len(df))]
-        df['number'] = number
-        df['seq'] = df['seq'] + '-' + df['number']
-
-        df = df.drop(columns=['number', 'create_date'], errors='ignore')
-
-        return df

@@ -14,6 +14,7 @@ class DataIO(object):
     def get_df_from_db(self, sql) -> pd.DataFrame:
         df = self.session.select(sql=sql)
         df.columns = [col.lower() for col in df.columns]
+
         return df
 
     def get_dict_from_db(self, sql, key, val) -> dict:
@@ -37,7 +38,7 @@ class DataIO(object):
         """
         :param data
         :param data_type: csv / binary
-        :pram file_path: file path
+        :param file_path: file path
         """
         if data_type == 'csv':
             data.to_csv(file_path, index=False)
@@ -46,7 +47,7 @@ class DataIO(object):
             with open(file_path, 'wb') as handle:
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        print("Data is saved")
+        print("Data is saved\n")
 
     @staticmethod
     def load_object(file_path: str, data_type: str):

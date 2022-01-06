@@ -9,10 +9,11 @@ from simulation.model.Train import Train
 
 
 class PipelineTest(object):
-    def __init__(self, division: str, lag: str, step_cfg: dict, exec_cfg: dict):
+    def __init__(self, division: str, lag: str, step_cfg: dict, exec_cfg: dict, path_root: str):
         # I/O & Execution Configuration
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
+        self.path_root = path_root
 
         # Class Configuration
         self.io = DataIO()
@@ -128,7 +129,8 @@ class PipelineTest(object):
                 hrchy=self.hrchy,
                 common=self.common,
                 algorithms=algorithms,
-                exec_cfg=self.exec_cfg
+                exec_cfg=self.exec_cfg,
+                path_root=self.path_root
             )
-            train.prep_params(best_params)
+            train.init(params={})
             train.train(data=data_prep)

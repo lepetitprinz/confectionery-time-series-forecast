@@ -17,7 +17,7 @@ data_cfg = {
 exec_cfg = {
     'decompose_yn': True,            # Decomposition
     'cycle': True,                   # Weekly cycle
-    'save_step_yn': True,            # Save each step result to object or csv
+    'save_step_yn': False,           # Save each step result to object or csv
     'save_db_yn': True,              # Save result on DB
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
@@ -25,8 +25,12 @@ exec_cfg = {
     'rm_not_exist_lvl_yn': False
 }
 
+print('------------------------------------------------')
+print('Time Series Decomposition')
+print('------------------------------------------------')
+
 # Check start time
-print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("Decomposition Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 # Line Level
 pipeline_line = PipelineDecompCycle(
@@ -59,8 +63,6 @@ pipeline_item.run()
 print("Time Series Decomposition(Item Level) is finished.\n")
 
 # Check end time
-print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-print("Time Series Decomposition is finished.\n")
+print("Decomposition End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 

@@ -143,7 +143,12 @@ class PipelineMiddleOutTest(object):
         data_prep = None
         exg_list = None
         # Exogenous dataset
-        exg = load.load_exog()
+        exg_info = {
+            'partial_yn': 'N',
+            'from': self.date['history']['from'],
+            'to': self.date['history']['to']
+        }
+        exg = load.load_exog(info=exg_info)
 
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
