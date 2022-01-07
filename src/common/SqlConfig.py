@@ -135,40 +135,16 @@ class SqlConfig(object):
     # Sales dataset
     ######################################
     # SELL-IN Table
-    @staticmethod
-    def sql_sell_in(**kwargs):
-        sql = f"""
-             SELECT DIVISION_CD
-                 , CUST_GRP_CD
-                 , ITEM_ATTR01_CD AS BIZ_CD
-                 , ITEM_ATTR02_CD AS LINE_CD
-                 , ITEM_ATTR03_CD AS BRAND_CD
-                 , ITEM_ATTR04_CD AS ITEM_CD
-                 , ITEM_CD AS SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , FROM_DC_CD
-                 , UNIT_PRICE
-                 , UNIT_CD
-                 , DISCOUNT
-                 , WEEK
-                 , QTY
-                 , CREATE_DATE
-              FROM M4S_I002176
-             WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-        """
-        return sql
-
     # @staticmethod
     # def sql_sell_in(**kwargs):
     #     sql = f"""
     #          SELECT DIVISION_CD
-    #              , SALES.CUST_GRP_CD
+    #              , CUST_GRP_CD
     #              , ITEM_ATTR01_CD AS BIZ_CD
     #              , ITEM_ATTR02_CD AS LINE_CD
     #              , ITEM_ATTR03_CD AS BRAND_CD
     #              , ITEM_ATTR04_CD AS ITEM_CD
-    #              , SALES.ITEM_CD AS SKU_CD
+    #              , ITEM_CD AS SKU_CD
     #              , YYMMDD
     #              , SEQ
     #              , FROM_DC_CD
@@ -178,22 +154,46 @@ class SqlConfig(object):
     #              , WEEK
     #              , QTY
     #              , CREATE_DATE
-    #           FROM (
-    #                 SELECT *
-    #                   FROM M4S_I002176
-    #                  WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-    #                ) SALES
-    #          INNER JOIN (
-    #                      SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
-    #                           , ITEM_CD
-    #                        FROM M4S_I204050
-    #                       WHERE USE_YN = 'Y'
-    #                         AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
-    #                     ) MAP
-    #             ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
-    #            AND SALES.ITEM_CD = MAP.ITEM_CD
+    #           FROM M4S_I002176
+    #          WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
     #     """
     #     return sql
+
+    @staticmethod
+    def sql_sell_in(**kwargs):
+        sql = f"""
+             SELECT DIVISION_CD
+                 , SALES.CUST_GRP_CD
+                 , ITEM_ATTR01_CD AS BIZ_CD
+                 , ITEM_ATTR02_CD AS LINE_CD
+                 , ITEM_ATTR03_CD AS BRAND_CD
+                 , ITEM_ATTR04_CD AS ITEM_CD
+                 , SALES.ITEM_CD AS SKU_CD
+                 , YYMMDD
+                 , SEQ
+                 , FROM_DC_CD
+                 , UNIT_PRICE
+                 , UNIT_CD
+                 , DISCOUNT
+                 , WEEK
+                 , QTY
+                 , CREATE_DATE
+              FROM (
+                    SELECT *
+                      FROM M4S_I002176
+                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                   ) SALES
+             INNER JOIN (
+                         SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                              , ITEM_CD
+                           FROM M4S_I204050
+                          WHERE USE_YN = 'Y'
+                            AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
+                        ) MAP
+                ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+               AND SALES.ITEM_CD = MAP.ITEM_CD
+        """
+        return sql
 
     @staticmethod
     def sql_sell_in_week_grp(**kwargs):
@@ -473,6 +473,59 @@ class SqlConfig(object):
         """
         return sql
 
+    @staticmethod
+    def sql_pred_best(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , CUST_GRP_NM
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR01_NM
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR02_NM
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR03_NM
+                 , ITEM_ATTR04_CD
+                 , ITEM_ATTR04_NM
+                 , ITEM_CD
+                 , ITEM_NM
+                 , STAT_CD
+                 , YYMMDD AS START_WEEK_DAY
+                 , WEEK
+                 , RESULT_SALES AS PRED
+            FROM M4S_O110600
+           WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+             AND DIVISION_CD = '{kwargs['division_cd']}'
+             AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
+             AND YYMMDD = '{kwargs['yymmdd']}'
+        """
+        return sql
+
+    @staticmethod
+    def sql_sell_week(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , CUST_GRP_NM
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR01_NM
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR02_NM
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR03_NM
+                 , ITEM_ATTR04_CD
+                 , ITEM_ATTR04_NM
+                 , ITEM_CD
+                 , ITEM_NM
+                 , START_WEEK_DAY
+                 , WEEK
+                 , IIF(RST_SALES_QTY < 0, 0, RST_SALES_QTY) AS SALES
+              FROM M4S_I002175
+             WHERE DIVISION_CD = '{kwargs['division_cd']}'
+               AND START_WEEK_DAY = '{kwargs['start_week_day']}'
+        """
+        return sql
+
     ######################################
     # Update Query
     ######################################
@@ -628,8 +681,7 @@ class SqlConfig(object):
     @staticmethod
     def del_pred_recent():
         sql = f"""
-            DELETE
-              FROM M4S_O111600
+            TRUNCATE TABLE M4S_O111600
         """
         return sql
 

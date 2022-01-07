@@ -34,7 +34,7 @@ class ConsistencyCheck(object):
         normal = self.check_code_map(df=df)
 
         # Filter sales matrix
-        normal = self.merge_sales_matrix(df=normal)
+        # normal = self.merge_sales_matrix(df=normal)
 
         return normal
 
@@ -55,6 +55,7 @@ class ConsistencyCheck(object):
         print("---------------------------------------")
         print(f"Normal data length: {len(normal)}")
         print(f"Error data length: {len(err)}")
+        print("---------------------------------------")
 
         # save the error data
         err_cd = 'err001'

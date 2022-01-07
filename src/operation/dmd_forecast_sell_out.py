@@ -40,8 +40,7 @@ step_cfg = {
     'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,
-    'cls_mdout': True,
-    'cls_rpt': False
+    'cls_mdout': True
 }
 
 # Load result configuration

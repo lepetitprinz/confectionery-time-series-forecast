@@ -37,6 +37,7 @@ class SqlSession(object):
         return Data Source Connection
         """
         return self.engine.connect()
+        # return self.engine.connect().execution_options(stream_results=True)
 
     def commit(self):
         """
@@ -62,7 +63,7 @@ class SqlSession(object):
             error = str(e.__dict__['orig'])
             print(f"Error: {error}")
 
-    def select(self, sql: str):
+    def select(self, sql: str, dtype=None):
         """
         get query
         """
@@ -70,7 +71,14 @@ class SqlSession(object):
             raise ConnectionError('Session is not initialized\n')
 
         try:
-            data = pd.read_sql_query(sql, self._connection)
+            # data = pd.read_sql_query(sql, self._connection)
+
+            # Memory handling
+            dfs = []
+            for chunk in pd.read_sql_query(sql, self._connection, chunksize=10000, dtype=dtype):
+                dfs.append(chunk)
+            data = pd.concat(dfs)
+
             return data
 
         except SQLAlchemyError as e:

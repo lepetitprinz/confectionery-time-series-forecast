@@ -11,14 +11,14 @@ class DataIO(object):
         self.session = SqlSession()
         self.session.init()
 
-    def get_df_from_db(self, sql) -> pd.DataFrame:
-        df = self.session.select(sql=sql)
+    def get_df_from_db(self, sql, dtype=None) -> pd.DataFrame:
+        df = self.session.select(sql=sql, dtype=dtype)
         df.columns = [col.lower() for col in df.columns]
 
         return df
 
-    def get_dict_from_db(self, sql, key, val) -> dict:
-        df = self.session.select(sql=sql)
+    def get_dict_from_db(self, sql, key, val, dtype=None) -> dict:
+        df = self.session.select(sql=sql, dtype=dtype)
         df[key] = df[key].apply(str.lower)
         result = df.set_index(keys=key).to_dict()[val]
 
@@ -46,6 +46,7 @@ class DataIO(object):
         elif data_type == 'binary':
             with open(file_path, 'wb') as handle:
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                handle.close()
 
         print("Data is saved\n")
 

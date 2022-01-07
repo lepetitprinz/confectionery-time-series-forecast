@@ -17,7 +17,7 @@ data_cfg = {
 exec_cfg = {
     'decompose_yn': True,            # Decomposition
     'cycle': True,                   # Weekly cycle
-    'save_step_yn': False,           # Save each step result to object or csv
+    'save_step_yn': False,           # Save each ste p result to object or csv
     'save_db_yn': True,              # Save result on DB
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction

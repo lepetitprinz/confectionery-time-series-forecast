@@ -1,6 +1,5 @@
 import common.util as util
 
-import os
 import pandas as pd
 
 
@@ -24,7 +23,7 @@ class DataLoad(object):
             # Previous data version usage convert to 'N'
             self.io.update_from_db(sql=self.sql_conf.update_data_version(**{'data_vrsn_cd': self.data_vrsn_cd}))
 
-    def load_sales(self):
+    def load_sales(self) -> pd.DataFrame:
         sales = None
         # Unit
         if self.unit_cfg['unit_test_yn']:
@@ -36,6 +35,24 @@ class DataLoad(object):
             }
             sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
         else:
+            # dtype = {
+            #     'DIVISION_CD': str,
+            #     'CUST_GRP_CD': object,
+            #     'BIZ_CD': object,
+            #     'LINE_CD': object,
+            #     'BRAND_CD': object,
+            #     'ITEM_CD': object,
+            #     'SKU_CD': object,
+            #     'YYMMDD': str,
+            #     'SEQ': str,
+            #     'FROM_DC_CD': object,
+            #     'UNIT_PRICE': np.int32,
+            #     'UNIT_CD': str,
+            #     'DISCOUNT': np.float16,
+            #     'WEEK': str,
+            #     'QTY': np.float32,
+            #     'CREATE_DATE': str,
+            # }
             if self.division == 'SELL_IN':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
 
@@ -44,7 +61,7 @@ class DataLoad(object):
 
         return sales
 
-    def load_mst(self):
+    def load_mst(self) -> dict:
         cust_grp = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
         item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
@@ -70,12 +87,19 @@ class DataLoad(object):
 
         return mst_info
 
-    def load_exog(self, info: dict):
+    def load_exog(self, info: dict) -> pd.DataFrame:
+        # dtype = {
+        #     'IDX_CD': object,
+        #     'IDX_DTL_CD': object,
+        #     'YYMM': object,
+        #     'REF_VAL': np.int16
+        # }
+
         exog = self.io.get_df_from_db(sql=self.sql_conf.sql_exg_data(**info))
 
         return exog
 
-    def filter_new_item(self, sales: pd.DataFrame):
+    def filter_new_item(self, sales: pd.DataFrame) -> pd.DataFrame:
         old_item = self.io.get_df_from_db(sql=self.sql_conf.sql_old_item_list())
         old_item = list(old_item.values)
 
