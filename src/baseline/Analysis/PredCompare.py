@@ -32,7 +32,7 @@ class PredCompare(object):
         self.init()
         sales, pred = self.load_dataset()
         sales = self.resample_sales(data=sales)
-        result = self.compare_result(sales=sales, pred=pred)
+        result = self.merge_result(sales=sales, pred=pred)
 
     def init(self) -> None:
         self.set_data_version()    # Set data version
@@ -118,8 +118,15 @@ class PredCompare(object):
             'yymmdd': self.date['from'],
         }
         pred = self.io.get_df_from_db(sql=self.sql_conf.sql_pred_best(**info_pred))
+        pred = self.filter_col(data=pred)
 
         return sales, pred
+
+    def filter_col(self, data: pd.DataFrame) -> pd.DataFrame:
+        filter_col = self.hrchy['apply'] + self.col_fixed + ['pred']
+        data = data[filter_col]
+
+        return data
 
     def resample_sales(self, data: pd.DataFrame) -> pd.DataFrame:
         grp_col = self.hrchy['apply'] + self.col_fixed
@@ -128,7 +135,7 @@ class PredCompare(object):
 
         return data
 
-    def compare_result(self, sales: pd.DataFrame, pred: pd.DataFrame):
+    def merge_result(self, sales: pd.DataFrame, pred: pd.DataFrame):
         merge_col = self.hrchy['apply'] + self.col_fixed
         merged = pd.merge(
             sales,

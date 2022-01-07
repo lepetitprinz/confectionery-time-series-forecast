@@ -478,18 +478,12 @@ class SqlConfig(object):
         sql = f"""
             SELECT DIVISION_CD
                  , CUST_GRP_CD
-                 , CUST_GRP_NM
                  , ITEM_ATTR01_CD
-                 , ITEM_ATTR01_NM
                  , ITEM_ATTR02_CD
-                 , ITEM_ATTR02_NM
                  , ITEM_ATTR03_CD
-                 , ITEM_ATTR03_NM
                  , ITEM_ATTR04_CD
-                 , ITEM_ATTR04_NM
                  , ITEM_CD
-                 , ITEM_NM
-                 , STAT_CD
+                 --, STAT_CD
                  , YYMMDD AS START_WEEK_DAY
                  , WEEK
                  , RESULT_SALES AS PRED
@@ -506,17 +500,11 @@ class SqlConfig(object):
         sql = f"""
             SELECT DIVISION_CD
                  , CUST_GRP_CD
-                 , CUST_GRP_NM
                  , ITEM_ATTR01_CD
-                 , ITEM_ATTR01_NM
                  , ITEM_ATTR02_CD
-                 , ITEM_ATTR02_NM
                  , ITEM_ATTR03_CD
-                 , ITEM_ATTR03_NM
                  , ITEM_ATTR04_CD
-                 , ITEM_ATTR04_NM
                  , ITEM_CD
-                 , ITEM_NM
                  , START_WEEK_DAY
                  , WEEK
                  , IIF(RST_SALES_QTY < 0, 0, RST_SALES_QTY) AS SALES
