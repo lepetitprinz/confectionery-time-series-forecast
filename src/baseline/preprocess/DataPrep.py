@@ -217,7 +217,7 @@ class DataPrep(object):
         df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
         df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
 
-        # Concatenate aggregation
+        # Concatenate aggregationSTR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist

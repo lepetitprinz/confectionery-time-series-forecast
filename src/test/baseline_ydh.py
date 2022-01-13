@@ -4,7 +4,7 @@ import time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineReal import PipelineReal
-
+import common.config as config
 
 # Root path
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
@@ -15,16 +15,16 @@ in_out = 'out'    # SELL-IN : out / in
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 item_lvl = 3 # 3: brand
 
-test_vrsn_cd = 'TEST_1228_SELL_IN_2YEAR_BRAND'
+test_vrsn_cd = 'TEST_0110_SELL_IN_3YEAR_BRAND'
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
+    'cls_load': True,
     'cls_cns': True,
-    'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
-    'clss_mdout': True,
+    'cls_prep': False,
+    'cls_train': False,
+    'cls_pred': False,
+    'cls_mdout': True,
     'cls_rpt': False
 }
 
@@ -32,7 +32,7 @@ step_cfg = {
 exec_cfg = {
     'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': True,             #
+    'save_db_yn': False,             #
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling
@@ -40,7 +40,7 @@ exec_cfg = {
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
     'grid_search_yn': False,          # Grid Search
-    'filter_threshold_week_yn': False,
+    'filter_threshold_week_yn': True,
     'rm_fwd_zero_sales_yn': True
 }
 
@@ -53,16 +53,16 @@ data_cfg = {
     'test_vrsn_cd': test_vrsn_cd,
     'date': {
         'history': {
-            'from': '20191223', # 20191223 for two years / 20201228 for one year
-            'to': '20211226'
+            'from': '20181001',    # 20201005
+            'to': '20211003'    # 20211003
         },
         'middle_out': {
-            'from': '20210927',
-            'to': '20211226'
+            'from': '20210705', # 20210705
+            'to': '20211003' # 20211003
         },
         'evaluation': {
-            'from': '20211227',
-            'to': '20220327'
+            'from': '20211004',    # 20210927
+            'to': '20220102'    # 20211226
         }
     }
 }
@@ -74,12 +74,6 @@ exec_rslt_cfg = {
     'middle_out': False
 }
 
-# Unit Test Option
-unit_cfg = {
-    'unit_test_yn': False,
-    'cust_grp_cd': '1202',
-    'item_cd': '5100000'
-}
 
 
 pipeline = PipelineReal(
@@ -87,12 +81,12 @@ pipeline = PipelineReal(
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     exec_rslt_cfg=exec_rslt_cfg,
-    unit_cfg=unit_cfg,
     path_root=path_root
 )
 
 start_time = time.time()
 print(test_vrsn_cd)
+print('threshold: ', config.threshold )
 # Execute Baseline Forecast
 pipeline.run()
 

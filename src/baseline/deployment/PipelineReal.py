@@ -91,7 +91,8 @@ class PipelineReal(object):
         if self.step_cfg['cls_load']:
             print("Step 1: Load the dataset\n")
             # Check data version
-            load.check_data_version()
+            # if self.exec_cfg['save_db_yn']:
+            #     load.check_data_version()
 
             # Load sales dataset
             sales = load.load_sales()
@@ -379,11 +380,10 @@ class PipelineReal(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**middle_info))
                 self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
 
-                if self.division == 'SELL_IN':
-                    # Save middle-out prediction of best algorithm to recent prediction table
-                    print("Save middle-out results on recent result table")
-                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent())
-                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
+                # Save middle-out prediction of best algorithm to recent prediction table
+                print("Save middle-out results on recent result table")
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**{'division_cd': self.division}))
+                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 
             print("Middle-out is finished\n")
 

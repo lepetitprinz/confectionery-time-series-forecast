@@ -106,4 +106,7 @@ class PipelineDecompCycle(object):
             self.io.delete_from_db(sql=self.sql_conf.del_decomposition(**info))
             self.io.insert_to_db(df=result, tb_name='M4S_O110500')
 
+        # Close session
+        self.io.session.close()
+
         print("Time series decomposition is finished\n")

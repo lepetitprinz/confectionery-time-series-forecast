@@ -129,7 +129,7 @@ class PipelineCycle(object):
                 algorithms=algorithms,
                 path_root=self.path_root
             )
-            train.init(params={})
+            train.init(params=best_params)
 
             # Train what-if models
             train.train(data=data_prep)

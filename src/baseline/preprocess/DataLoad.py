@@ -35,24 +35,6 @@ class DataLoad(object):
             }
             sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
         else:
-            # dtype = {
-            #     'DIVISION_CD': str,
-            #     'CUST_GRP_CD': object,
-            #     'BIZ_CD': object,
-            #     'LINE_CD': object,
-            #     'BRAND_CD': object,
-            #     'ITEM_CD': object,
-            #     'SKU_CD': object,
-            #     'YYMMDD': str,
-            #     'SEQ': str,
-            #     'FROM_DC_CD': object,
-            #     'UNIT_PRICE': np.int32,
-            #     'UNIT_CD': str,
-            #     'DISCOUNT': np.float16,
-            #     'WEEK': str,
-            #     'QTY': np.float32,
-            #     'CREATE_DATE': str,
-            # }
             if self.division == 'SELL_IN':
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
 

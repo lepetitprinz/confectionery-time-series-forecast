@@ -6,10 +6,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineReal import PipelineReal
 
 # Root path
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 path_root = os.path.join('..', '..')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
 # Execute Configuration
@@ -27,7 +28,7 @@ step_cfg = {
 exec_cfg = {
     'cycle': False,
     'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': False,             #
+    'save_db_yn': False,             # Save result on DB
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'decompose_yn': False,           # Decomposition
     'scaling_yn': False,             # Data scaling
@@ -45,8 +46,8 @@ data_cfg = {
     'cycle': cycle,
     'date': {
         'history': {
-            'from': '20201228',  # 20200928
-            'to': '20211226'     # 20210926
+            'from': '20190107',  # 20200928
+            'to': '20220102'     # 20210926
         },
         'middle_out': {
             'from': '20210628',
@@ -58,25 +59,6 @@ data_cfg = {
         }
     }
 }
-
-# data_cfg = {
-#     'division': division,
-#     'cycle': cycle,
-#     'date': {
-#         'history': {
-#             'from': '20201228',
-#             'to': '20211226'
-#         },
-#         'middle_out': {
-#             'from': '20210927',
-#             'to': '20211226'
-#         },
-#         'evaluation': {
-#             'from': '20211227',
-#             'to': '20220327'
-#         }
-#     }
-# }
 
 # Load result configuration
 exec_rslt_cfg = {

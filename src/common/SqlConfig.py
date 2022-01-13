@@ -496,7 +496,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_sell_week(**kwargs):
+    def sql_sell_week_compare(**kwargs):
         sql = f"""
             SELECT DIVISION_CD
                  , CUST_GRP_CD
@@ -511,6 +511,25 @@ class SqlConfig(object):
               FROM M4S_I002175
              WHERE DIVISION_CD = '{kwargs['division_cd']}'
                AND START_WEEK_DAY = '{kwargs['start_week_day']}'
+        """
+        return sql
+
+    @staticmethod
+    def sql_sell_week_hist(**kwargs):
+        sql = f"""
+            SELECT DIVISION_CD
+                 , CUST_GRP_CD
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR04_CD
+                 , ITEM_CD
+                 , START_WEEK_DAY
+                 , WEEK
+                 , RST_SALES_QTY AS SALES
+              FROM M4S_I002175
+             WHERE DIVISION_CD = '{kwargs['division_cd']}'
+               AND START_WEEK_DAY BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
         """
         return sql
 
@@ -667,9 +686,11 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def del_pred_recent():
+    def del_pred_recent(**kwargs):
         sql = f"""
-            TRUNCATE TABLE M4S_O111600
+            DELETE
+             FROM M4S_O111600
+            WHERE DIVISION_CD = '{kwargs['division_cd']}'
         """
         return sql
 

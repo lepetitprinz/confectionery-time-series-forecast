@@ -79,7 +79,7 @@ class Train(object):
     def train_model(self, df) -> List[List[np.array]]:
         # Show training progress
         self.cnt += 1
-        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         # Set features by models (univ/multi)

@@ -379,11 +379,12 @@ class PipelineCycle(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**middle_info))
                 self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
 
-                if self.division == 'SELL_IN':
-                    # Save prediction of best algorithm to recent prediction table
-                    print("Save middle-out results on recent result table")
-                    self.io.delete_from_db(sql=self.sql_conf.del_pred_recent())
-                    self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
+                # Save prediction of best algorithm to recent prediction table
+                print("Save middle-out results on recent result table")
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(
+                    **{'division_cd': self.division}
+                ))
+                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 
             # Close DB session
             self.io.session.close()

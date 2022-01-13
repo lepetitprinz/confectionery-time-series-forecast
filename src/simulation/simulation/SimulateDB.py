@@ -120,7 +120,7 @@ class SimulateDB(object):
 
         # convert to datetime type
         pred[self.date_col] = pd.to_datetime(pred[self.date_col], format='%Y%m%d')
-        pred[self.date_col] = pred[self.date_col].dt.date
+        pred[self.date_col] = pred[self.date_col].dt.date_sales
 
         # get first day
         date_sorted = pred[self.date_col].sort_values()

@@ -20,13 +20,19 @@ class ConsistencyCheck(object):
         self.division = division
         self.common = common
         self.hrchy = hrchy
+
+        self.resample_sum_list = ['qty']
+        self.resample_avg_list = ['unit_price', 'discount']
+
+        # Information
         self.mst_info = mst_info
         self.err_grp_map = err_grp_map
         self.unit_cd = common['unit_cd'].split(',')
         self.col_numeric = ['unit_price', 'discount', 'qty']
+        self.resample_rule = 'W-MON'
 
         # Save and Load Configuration
-        self.save_path = os.path.join(path_root, 'result')
+        self.save_path = os.path.join(path_root, 'error')
         self.tb_name = 'M4S_I002174'
 
     def check(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -75,7 +81,6 @@ class ConsistencyCheck(object):
         return normal
 
     def merge_sales_matrix(self, df: pd.DataFrame) -> pd.DataFrame:
-        sales_matrix = self.mst_info['sales_matrix']
         df['sku_cd'] = df['sku_cd'].astype(str)
 
         merged = pd.merge(
@@ -97,7 +102,51 @@ class ConsistencyCheck(object):
             data[col] = data[col].replace('', 0)    # replace empty string to zero
         return data
 
+    def resample_by_agg(self, df: pd.DataFrame, agg: str) -> pd.DataFrame:
+        resampled = None
+        if agg == 'sum':
+            resampled = df.resample(rule=self.resample_rule).sum()
+        elif agg == 'avg':
+            resampled = df.resample(rule=self.resample_rule).mean()
+        resampled = resampled.fillna(value=0)    # fill NaN
+        resampled = resampled.reset_index()
+
+        return resampled
+
+    def group_by_week(self, df: pd.DataFrame) -> pd.DataFrame:
+        # convert date string to datetime
+        df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
+        df = df.set_index(keys=['yymmdd'])
+
+        # convert date type
+        df['cust_grp_cd'] = df['cust_grp_cd'].astype(str)
+        df['sku_cd'] = df['sku_cd'].astype(str)
+
+        # Get unique group
+        grp_col = ['cust_grp_cd', 'sku_cd']
+        grp_df = df[grp_col].drop_duplicates()
+        grp_list = [tuple(x) for x in grp_df.to_numpy()]
+
+        result = pd.DataFrame()
+        for cust_grp, sku in grp_list:
+            temp = df[(df['cust_grp_cd'] == cust_grp) & (df['sku_cd'] == sku)]
+            resampled_sum = self.resample_by_agg(df=temp[grp_col + self.resample_sum_list], agg='sum')
+            resampled_avg = self.resample_by_agg(df=temp[grp_col + self.resample_avg_list], agg='avg')
+            resampled = pd.merge(resampled_sum, resampled_avg, on='yymmdd')
+
+            # add information
+            resampled['cust_grp_cd'] = cust_grp
+            resampled['sku_cd'] = sku
+
+            result = pd.concat([result, resampled], axis=0)
+
+        result = result.reset_index(drop=True)
+
+        return result
+
     def make_err_format(self, df: pd.DataFrame, err_cd: str):
+        df = self.group_by_week(df=df)
+
         df['project_cd'] = self.common['project_cd']
         df['data_vrsn_cd'] = self.data_vrsn_cd
         df['division_cd'] = self.division

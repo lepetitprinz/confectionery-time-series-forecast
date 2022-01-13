@@ -64,7 +64,7 @@ class Predict(object):
     def forecast_model(self, hrchy, df):
         # Show prediction progress
         self.cnt += 1
-        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         # Set features by models (univ/multi)

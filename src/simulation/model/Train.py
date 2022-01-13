@@ -45,7 +45,7 @@ class Train(object):
         self.best_params = {}
         self.param_grids = config.PARAM_GRIDS_SIM
 
-    def init(self, params: dict):
+    def init(self, params: pd.DataFrame):
         self.make_dir()    # Make directory
         self.prep_params(best_params=params)    # Prepare parameters
 
@@ -56,7 +56,7 @@ class Train(object):
         path = os.path.join(self.path_root, 'simulation', 'scaler', self.data_vrsn_cd)
         os.makedirs(name=path, exist_ok=True)
 
-    def prep_params(self, best_params):
+    def prep_params(self, best_params: pd.DataFrame):
         # convert string type int to int type
         option_val = [eval(val) if val.isnumeric() else val for val in best_params['option_val']]
         best_params['option_val'] = option_val
