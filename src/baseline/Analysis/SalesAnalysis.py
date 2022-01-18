@@ -1,8 +1,10 @@
 import common.util as util
+import common.config as config
 from dao.DataIO import DataIO
 from operation.Cycle import Cycle
 from common.SqlConfig import SqlConfig
 
+from typing import List, Tuple, Union
 import os
 import numpy as np
 import pandas as pd
@@ -46,17 +48,57 @@ class SalesAnalysis(object):
         sales = None
         if self.step_cfg['cls_load']:
             sales = self.load_sales()
+            # compare = self.load_compare()
 
-        result = []
+        sales_raw, accuracy = [], []
         if self.step_cfg['cls_prep']:
             if not self.step_cfg['cls_load']:
                 sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
-            result = self.preprocess(data=sales)
+                accuracy = self.load_accuracy()
+                sales_raw, sales_grp = self.preprocess(data=sales)
+
+        if self.step_cfg['cls_comp']:
+            self.compare_result(sales=sales_raw, accuracy=accuracy)
 
         if self.step_cfg['cls_view']:
-            self.view(data=result)
+            self.view(data=sales_raw)
 
         print("Finished")
+
+    def compare_result(self, sales: pd.DataFrame, accuracy: pd.DataFrame):
+
+        accuracy['accuracy'] = np.where(accuracy['accuracy'] > 1, 2 - accuracy['accuracy'], accuracy['accuracy'])
+        accuracy['accuracy'] = np.where(accuracy['accuracy'] < 0, 0, accuracy['accuracy'])
+
+        merged = pd.merge(
+            accuracy,
+            sales,
+            on=['cust_grp_cd', 'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd'],
+            how='inner'
+        )
+
+        # Filter zero sales
+        if self.data_cfg['rm_zero_yn']:
+            merged = merged[merged['sales'] != 0]
+
+        merged = merged.rename(columns={'bins': 'bin_cnt'})
+        merged['bin_acc'] = pd.cut(
+            merged['accuracy'],
+            bins=[num / 10 for num in range(0, 12, 1)],
+            right=False)
+
+        merged_grp = merged.groupby(by=['bin_acc', 'bin_cnt'])['success'].count().reset_index()
+        merged_grp_pivot = merged_grp.pivot(index='bin_cnt', columns='bin_acc', values='success')
+        merged_grp_pivot = merged_grp_pivot.rename(columns={'success': 'cnt'})
+
+        if self.data_cfg['rm_zero_yn']:
+            folder_nm = 'without_zero'
+        else:
+            folder_nm = 'with_zero'
+
+        merged_grp_pivot.to_csv(
+            os.path.join(self.path['cnt_acc'], folder_nm, self.data_vrsn_cd + '_' + self.division + '_' +
+                         str(self.level['item_lvl']) + '.csv'))
 
     def init(self):
         self.set_date()
@@ -64,9 +106,9 @@ class SalesAnalysis(object):
         self.set_hrchy()
         self.set_path()
 
-    def preprocess(self, data: pd.DataFrame) -> tuple:
+    def preprocess(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         # Drop unnecessary columns
-        drop_col = ['seq', 'unit_price', 'unit_cd', 'discount', 'create_date']
+        drop_col = ['seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'discount', 'create_date']
         data = data.drop(columns=drop_col, errors='ignore')
 
         # convert data type
@@ -95,31 +137,43 @@ class SalesAnalysis(object):
             fn=self.conv_to_df,
             df=data_resample
         )
+        # Choose count column
+        # result_cnt = np.array(result_raw)[:, -1].astype(int).tolist()
 
-        result = self.count_by_level(data=result_raw)
+        df_raw, df_grp = self.count_by_level(data=result_raw)
+        df_grp.to_csv(
+            os.path.join(
+            self.path['rate'], self.data_vrsn_cd + '_' + self.division + '_' + str(self.level['item_lvl']) + '.csv'),
+            index=False
+        )
 
-        return result, result_raw
+        # Rename columns
+        df_raw.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in df_raw.columns]
+        df_grp.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in df_grp.columns]
 
-    def view(self, data: list):
+        return df_raw, df_grp
+
+    def view(self, data: list) -> None:
         plt.hist(x=data, bins=30)
         plt.savefig(os.path.join(
             self.path['view'], self.data_vrsn_cd + '_' + self.division + '_' + str(self.level['item_lvl']) + '.png'))
 
-    def count_by_level(self, data) -> pd.DataFrame:
-        df = pd.DataFrame(data, columns=['cnt'])
-        df['bins'] = pd.cut(data, bins=range(0, 170, 10), right=False)
+    def count_by_level(self, data) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        cols = self.hrchy['apply'] + ['cnt']
+        df_raw = pd.DataFrame(data, columns=cols)
+        df_raw['bins'] = pd.cut(df_raw['cnt'], bins=range(0, 170, 10), right=False)
 
         # Grouping
-        df_grp = df.groupby('bins').count().reset_index()
+        df_grp = df_raw.groupby('bins').count().reset_index()
         df_grp = df_grp.sort_values(by='bins', ascending=False)
         df_grp['cum_cnt'] = df_grp['cnt'].cumsum(axis=0)
         total = df_grp['cnt'].sum()
         df_grp['rev_cnt'] = total - df_grp['cum_cnt']
         df_grp['rev_pct'] = df_grp['rev_cnt'] / total
 
-        return df_grp
+        return df_raw, df_grp
 
-    def set_date(self):
+    def set_date(self) -> None:
         if self.data_cfg['cycle_yn']:
             cycle = Cycle(common=self.common, rule='w')
             cycle.calc_period()
@@ -162,12 +216,14 @@ class SalesAnalysis(object):
         self.hrchy['apply'] = self.hrchy['list']['cust'] + self.hrchy['list']['item']
         self.hrchy_level = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
 
-    def set_path(self):
+    def set_path(self) -> None:
         self.path = {
             'load': util.make_path_baseline(
                 path=self.path_root, module='data', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl='', step='load', extension='csv'),
-            'view': os.path.join(self.path_root, 'analysis', 'hist')
+            'rate': os.path.join(self.path_root, 'analysis', 'sales', 'rate'),
+            'cnt_acc': os.path.join(self.path_root, 'analysis', 'sales', 'cnt_acc'),
+            'view': os.path.join(self.path_root, 'analysis', 'sales', 'hist')
         }
 
     def load_sales(self) -> pd.DataFrame:
@@ -180,9 +236,18 @@ class SalesAnalysis(object):
 
         return sales
 
+    def load_accuracy(self):
+        path = os.path.join(self.path_root, 'analysis', 'accuracy', self.data_vrsn_cd + '_' +
+                            self.division + '_' + str(self.hrchy['lvl']['item']) + '.csv')
+        compare = self.io.load_object(file_path=path, data_type='csv')
+
+        compare['cust_grp_cd'] = compare['cust_grp_cd'].astype(str)
+
+        return compare
+
     @staticmethod
-    def conv_to_df(hrchy: list, data) -> int:
-        return [data]
+    def conv_to_df(hrchy: list, data) -> List[List[Union[str, int]]]:
+        return [hrchy + [data]]
 
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         df[self.common['date_col']] = pd.to_datetime(df[self.common['date_col']], format='%Y%m%d')

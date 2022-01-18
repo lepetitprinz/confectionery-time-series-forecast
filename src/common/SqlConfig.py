@@ -182,13 +182,18 @@ class SqlConfig(object):
                     SELECT *
                       FROM M4S_I002176
                      WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                       AND QTY <> 0
                    ) SALES
              INNER JOIN (
                          SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
                               , ITEM_CD
                            FROM M4S_I204050
                           WHERE USE_YN = 'Y'
-                            AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
+                            AND SALES_MGMT_VRSN_ID = (
+                                                      SELECT SALES_MGMT_VRSN_ID 
+                                                        FROM M4S_I204010 
+                                                       WHERE USE_YN = 'Y'
+                                                     )
                         ) MAP
                 ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
                AND SALES.ITEM_CD = MAP.ITEM_CD
@@ -251,48 +256,6 @@ class SqlConfig(object):
               AND CUST_GRP_CD <> '1173'
               AND YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
                """
-        return sql
-
-    @staticmethod
-    def sql_unit_map():
-        sql = """
-            SELECT BOX.ITEM_CD AS SKU_CD
-                 , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
-                 , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE) AS BOX_EA
-              FROM (
-                    SELECT PROJECT_CD
-                         , ITEM_CD
-                         , PRICE_START_YYMMDD
-                         , FAC_PRICE
-                      FROM M4S_I002041
-                     WHERE PRICE_QTY_UNIT_CD = 'BOX'
-                       AND FAC_PRICE <> 0
-                   ) BOX
-              LEFT OUTER JOIN (
-                               SELECT PROJECT_CD
-                                    , ITEM_CD
-                                    , PRICE_START_YYMMDD
-                                    , FAC_PRICE
-                                 FROM M4S_I002041
-                                WHERE PRICE_QTY_UNIT_CD = 'BOL'
-                                  AND FAC_PRICE <> 0
-                              ) BOL
-                ON BOX.PROJECT_CD = BOL.PROJECT_CD
-               AND BOX.ITEM_CD = BOL.ITEM_CD
-               AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
-              LEFT OUTER JOIN (
-                               SELECT PROJECT_CD
-                                    , ITEM_CD
-                                    , PRICE_START_YYMMDD
-                                    , FAC_PRICE
-                                 FROM M4S_I002041
-                                WHERE PRICE_QTY_UNIT_CD = 'EA'
-                                  AND FAC_PRICE <> 0
-                               ) EA
-                ON BOX.PROJECT_CD = EA.PROJECT_CD
-               AND BOX.ITEM_CD = EA.ITEM_CD
-               AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
-            """
         return sql
 
     @staticmethod
@@ -387,6 +350,7 @@ class SqlConfig(object):
                              WHERE DIVISION_CD = '{kwargs['division_cd']}'
                                AND CUST_GRP_CD = '{kwargs['cust_grp_cd']}'
                                AND ITEM_CD = '{kwargs['item_cd']}'
+                               AND RST_SALES_QTY <> 0
                            ) SALES
                       LEFT OUTER JOIN (
                                        SELECT START_WEEK_DAY AS YYMMDD
@@ -511,6 +475,7 @@ class SqlConfig(object):
               FROM M4S_I002175
              WHERE DIVISION_CD = '{kwargs['division_cd']}'
                AND START_WEEK_DAY = '{kwargs['start_week_day']}'
+               AND RST_SALES_QTY <> 0
         """
         return sql
 
@@ -530,6 +495,7 @@ class SqlConfig(object):
               FROM M4S_I002175
              WHERE DIVISION_CD = '{kwargs['division_cd']}'
                AND START_WEEK_DAY BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+               AND RST_SALES_QTY <> 0
         """
         return sql
 
@@ -801,6 +767,56 @@ class SqlConfig(object):
                     , IDX_CD
                     , YYMM
         """
+        return sql
+
+    @staticmethod
+    def sql_cust_sp1_map_error(**kwargs):
+        sql = f"""
+            SELECT RSLT.CUST_CD
+                 , CUST_NM
+                 , SUBSTRING(CUST_MAP, 1, 3) AS CUST_ORG_CD
+                 , SUBSTRING(CUST_MAP, 5, 2) AS CUST_DIST_CD
+                 , SUBSTRING(CUST_MAP, 8, 2) AS ITEM_CLASS_CD
+              FROM (
+                    SELECT CUST_CD
+                         , CUST_GRP_CD
+                         , CUST_MAP
+                      FROM (
+                            SELECT SALES.CUST_CD
+                                 , SP1_CD AS CUST_GRP_CD
+                                 , SALES.CUST_MAP
+                              FROM (
+                                    SELECT SOLD_CUST_GRP_CD AS CUST_CD
+                                         , ITEM_CD          AS SKU_CD
+                                         , SEQ
+                                         , LEFT(SEQ, 9)     AS CUST_MAP
+                                         , RST_SALES_QTY    AS QTY
+                                      FROM M4S_I002170
+                                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                                   ) SALES
+                              LEFT OUTER JOIN (
+                                               SELECT CUST_CD
+                                                    , CONCAT(CUST_ORG_CD, '_', ITEM_CLASS_CD, '_', CUST_DIST_CD) AS CUST_MAP
+                                                    , SP1_CD
+                                                 FROM M4S_I002061
+                                              ) CUST
+                                ON SALES.CUST_CD = CUST.CUST_CD
+                               AND SALES.CUST_MAP = CUST.CUST_MAP
+                           ) RSLT
+                     WHERE CUST_GRP_CD IS NULL
+                     GROUP BY CUST_CD
+                            , CUST_GRP_CD
+                            , CUST_MAP
+                   ) RSLT
+              LEFT OUTER JOIN (
+                               SELECT CUST_CD
+                                    , CUST_NM
+                                 FROM M4S_I002060
+                              ) CUST_MST
+                ON RSLT.CUST_CD = CUST_MST.CUST_CD
+             ORDER BY CUST_CD
+        """
+
         return sql
 
     # Sell-Out Monthly Group
@@ -1250,4 +1266,46 @@ class SqlConfig(object):
     #                           ) PRICE
     #             ON SALES.SKU_CD = PRICE.SKU_CD
     #            """
+    #     return sql
+
+    # @staticmethod
+    # def sql_unit_map():
+    #     sql = """
+    #         SELECT BOX.ITEM_CD AS SKU_CD
+    #              , CONVERT(INT, BOX.FAC_PRICE / BOL.FAC_PRICE) AS BOX_BOL
+    #              , CONVERT(INT, BOX.FAC_PRICE / EA.FAC_PRICE) AS BOX_EA
+    #           FROM (
+    #                 SELECT PROJECT_CD
+    #                      , ITEM_CD
+    #                      , PRICE_START_YYMMDD
+    #                      , FAC_PRICE
+    #                   FROM M4S_I002041
+    #                  WHERE PRICE_QTY_UNIT_CD = 'BOX'
+    #                    AND FAC_PRICE <> 0
+    #                ) BOX
+    #           LEFT OUTER JOIN (
+    #                            SELECT PROJECT_CD
+    #                                 , ITEM_CD
+    #                                 , PRICE_START_YYMMDD
+    #                                 , FAC_PRICE
+    #                              FROM M4S_I002041
+    #                             WHERE PRICE_QTY_UNIT_CD = 'BOL'
+    #                               AND FAC_PRICE <> 0
+    #                           ) BOL
+    #             ON BOX.PROJECT_CD = BOL.PROJECT_CD
+    #            AND BOX.ITEM_CD = BOL.ITEM_CD
+    #            AND BOX.PRICE_START_YYMMDD = BOL.PRICE_START_YYMMDD
+    #           LEFT OUTER JOIN (
+    #                            SELECT PROJECT_CD
+    #                                 , ITEM_CD
+    #                                 , PRICE_START_YYMMDD
+    #                                 , FAC_PRICE
+    #                              FROM M4S_I002041
+    #                             WHERE PRICE_QTY_UNIT_CD = 'EA'
+    #                               AND FAC_PRICE <> 0
+    #                            ) EA
+    #             ON BOX.PROJECT_CD = EA.PROJECT_CD
+    #            AND BOX.ITEM_CD = EA.ITEM_CD
+    #            AND BOX.PRICE_START_YYMMDD = EA.PRICE_START_YYMMDD
+    #         """
     #     return sql

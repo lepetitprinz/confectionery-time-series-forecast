@@ -6,22 +6,23 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineCycle import PipelineCycle
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Data Configuration
 data_cfg = {
     'division': division,
-    'cycle': cycle
+    'cycle': cycle,
 }
 
 # Configuration
 exec_cfg = {
     'cycle': True,
-    'save_step_yn': True,            # Save each step result to object or csv
-    'save_db_yn': True,              # Save each step result to Database
+    'save_step_yn': False,           # Save each step result to object or csv
+    'save_db_yn': False,              # Save each step result to Database
     'rm_not_exist_lvl_yn': False,    # Remove not exist data level
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
@@ -51,9 +52,8 @@ exec_rslt_cfg = {
 }
 
 print('------------------------------------------------')
-print('Demand Forecast - SELL-IN')
+print('Demand Forecast - SELL-OUT')
 print('------------------------------------------------')
-
 # Check start time
 print("Forecast Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 

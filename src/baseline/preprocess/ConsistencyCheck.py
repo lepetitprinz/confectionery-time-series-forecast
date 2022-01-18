@@ -4,6 +4,7 @@ from dao.DataIO import DataIO
 
 import os
 import pandas as pd
+import datetime
 from copy import deepcopy
 
 
@@ -45,12 +46,35 @@ class ConsistencyCheck(object):
         return normal
 
     def check_code_map(self, df: pd.DataFrame) -> pd.DataFrame:
-        normal = self.check_prod_level(df=df)
+        # Check item Mapping
+        normal = self.check_item_map(df=df)
+
+        # Check customer <-> SP1 Mapping
+        self.check_cust_map()
 
         return normal
 
+    def check_cust_map(self) -> None:
+        today = datetime.date.today()
+        today = today - datetime.timedelta(days=today.weekday())
+
+        date_from = today - datetime.timedelta(days=7)    # Previous monday
+        date_to = today - datetime.timedelta(days=1)      # Previous sunday
+
+        # Convert datetime to string type
+        date_from = date_from.strftime('%Y%m%d')
+        date_to = date_to.strftime('%Y%m%d')
+        date = {'from': date_from, 'to': date_to}
+
+        # Get
+        result = self.io.get_df_from_db(sql=self.sql_config.sql_cust_sp1_map_error(**date))
+
+        # Save the result
+        save_path = os.path.join(self.save_path, 'sp1', self.division + '_' + date_from + '_' + date_to + '.csv')
+        self.io.save_object(data=result, data_type='csv', file_path=save_path)
+
     # Error 1
-    def check_prod_level(self, df: pd.DataFrame):
+    def check_item_map(self, df: pd.DataFrame) -> pd.DataFrame:
         test_df = deepcopy(df)
         test_df = test_df[self.hrchy['apply']]
         na_rows = test_df.isna().sum(axis=1) > 0
@@ -58,25 +82,26 @@ class ConsistencyCheck(object):
         normal = df[~na_rows]
 
         # Print result
-        print("---------------------------------------")
+        print("-----------------------------------")
         print(f"Normal data length: {len(normal)}")
         print(f"Error data length: {len(err)}")
-        print("---------------------------------------")
+        print("-----------------------------------")
 
         # save the error data
         err_cd = 'err001'
-        err = self.make_err_format(df=err, err_cd=err_cd)
+        if len(err) > 0:
+            err = self.make_err_format(df=err, err_cd=err_cd)
 
-        # Save results
-        if self.exec_cfg['save_step_yn']:
-            path = os.path.join(self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' +
-                                '-' + err_cd + '.csv')
-            err.to_csv(path, index=False, encoding='cp949')
+            # Save results
+            if self.exec_cfg['save_step_yn']:
+                path = os.path.join(self.save_path, self.division + '-' + self.data_vrsn_cd + '-' + 'cns' +
+                                    '-' + err_cd + '.csv')
+                err.to_csv(path, index=False, encoding='cp949')
 
-        if len(err) > 0 and self.exec_cfg['save_db_yn']:
-            info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
-            self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
-            self.io.insert_to_db(df=err, tb_name=self.tb_name)
+            if self.exec_cfg['save_db_yn']:
+                info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
+                self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
+                self.io.insert_to_db(df=err, tb_name=self.tb_name)
 
         return normal
 
@@ -144,7 +169,7 @@ class ConsistencyCheck(object):
 
         return result
 
-    def make_err_format(self, df: pd.DataFrame, err_cd: str):
+    def make_err_format(self, df: pd.DataFrame, err_cd: str) -> pd.DataFrame:
         df = self.group_by_week(df=df)
 
         df['project_cd'] = self.common['project_cd']
