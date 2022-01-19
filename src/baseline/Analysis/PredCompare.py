@@ -22,7 +22,7 @@ class PredCompare(object):
     # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
     pick_sp1 = ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173']
 
-    def __init__(self, date_cfg: dict, data_cfg: dict):
+    def __init__(self, exec_cfg: dict, opt_cfg: dict, date_cfg: dict, data_cfg: dict):
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.root_path = data_cfg['root_path']
@@ -33,10 +33,11 @@ class PredCompare(object):
         )
 
         # Data configuration
+        self.exec_cfg = exec_cfg
+        self.opt_cfg = opt_cfg
         self.date_cfg = date_cfg
         self.data_cfg = data_cfg
         self.division = data_cfg['division']
-        self.week_compare = 1
         self.date_sales = {}
         self.data_vrsn_cd = ''
         self.hist_date_range = []
@@ -45,9 +46,11 @@ class PredCompare(object):
         self.item_code_map = {}
 
         # Evaluation configuration
-        self.sales_threshold = 5
-        self.eval_threshold = 0.3    # percent
-        self.filter_n_threshold = 4
+        self.week_compare = 1             # Compare week range
+        self.sales_threshold = 5          # Minimum sales quantity
+        self.eval_threshold = 0.7         # Accuracy: Success or not
+        self.filter_top_n_threshold = 4   # Filter top N
+        self.filter_acc_rate = 0.1        # Filter accuracy rate
 
     def run(self) -> None:
         # Initialize information
@@ -56,42 +59,64 @@ class PredCompare(object):
         # Load the dataset
         sales_compare, sales_hist, pred = self.load_dataset()
 
-        # Resample data
-        sales_compare = self.resample_sales(data=sales_compare)
-        sales_hist = self.resample_sales(data=sales_hist)
-
-        # remove zero quantity
-        if self.data_cfg['rm_zero_yn']:
-            print("Remove zero sales quantities")
-            sales_compare = self.filter_zeros(data=sales_compare, col='sales')
-
-        if self.data_cfg['filter_sales_threshold_yn']:
-            print(f"Filter sales under {self.sales_threshold} quantity")
-            sales_compare = self.filter_sales_threshold(hist=sales_hist, recent=sales_compare)
+        # Preprocess the dataset
+        if self.exec_cfg['cls_prep']:
+            sales_hist, sales_compare = self.preprocessing(sales_hist=sales_hist, sales_compare=sales_compare)
 
         # Compare result
-        result = self.compare_result(sales=sales_compare, pred=pred)
+        result = None
+        if self.exec_cfg['cls_comp']:
+            result = self.compare_result(sales=sales_compare, pred=pred)
+
+            if self.opt_cfg['filter_specific_acc_yn']:
+                self.filter_specific_accuracy(data=result)
 
         # Convert
         sales_hist = self.conv_to_datetime(data=sales_hist, col='start_week_day')
         result = self.conv_to_datetime(data=result, col='start_week_day')
 
-        if self.data_cfg['pick_specific_sp1_yn']:
-            result_pick = self.pick_specific_sp1(data=result)
-            for sp1, data in result_pick.items():
+        if self.exec_cfg['cls_top_n']:
+            if self.opt_cfg['pick_specific_sp1_yn']:
+                result_pick = self.pick_specific_sp1(data=result)
+                for sp1, data in result_pick.items():
+                    # Filter n by accuracy
+                    data_filter_n = self.filter_n_by_accuracy(data=data)
+                    # Draw plots
+                    if self.exec_cfg['cls_graph']:
+                        self.draw_plot(result=data_filter_n, sales=sales_hist)
+
+            else:
                 # Filter n by accuracy
-                data_filter_n = self.filter_n_by_accuracy(data=data)
+                result = self.filter_n_by_accuracy(data=result)
+
                 # Draw plots
-                if self.data_cfg['draw_plot_yn']:
-                    self.draw_plot(result=data_filter_n, sales=sales_hist)
+                if self.exec_cfg['cls_graph']:
+                    self.draw_plot(result=result, sales=sales_hist)
 
-        else:
-            # Filter n by accuracy
-            result = self.filter_n_by_accuracy(data=result)
+    def filter_specific_accuracy(self, data: pd.DataFrame):
+        # Filter result by accuracy
+        filtered = data[data['accuracy'] < self.filter_acc_rate]
 
-            # Draw plots
-            if self.data_cfg['draw_plot_yn']:
-                self.draw_plot(result=result, sales=sales_hist)
+        # Save the result
+        path = os.path.join(self.root_path, self.data_vrsn_cd, 'filter', self.data_vrsn_cd + '_' + self.division +
+                            '_' + str(self.hrchy['lvl']['item']) + '_' + str(self.filter_acc_rate) + '.csv')
+        filtered.to_csv(path, index=False, encoding='cp949')
+
+    def preprocessing(self, sales_hist: pd.DataFrame, sales_compare: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        # Resample data
+        sales_compare = self.resample_sales(data=sales_compare)
+        sales_hist = self.resample_sales(data=sales_hist)
+
+        # remove zero quantity
+        if self.opt_cfg['rm_zero_yn']:
+            print("Remove zero sales quantities")
+            sales_compare = self.filter_zeros(data=sales_compare, col='sales')
+
+        if self.opt_cfg['filter_sales_threshold_yn']:
+            print(f"Filter sales under {self.sales_threshold} quantity")
+            sales_compare = self.filter_sales_threshold(hist=sales_hist, recent=sales_compare)
+
+        return sales_hist, sales_compare
 
     def pick_specific_sp1(self, data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
         data_pick = data[data['cust_grp_cd'].isin(self.pick_sp1)]
@@ -136,8 +161,8 @@ class PredCompare(object):
         self.set_date()    # Set date
         self.set_level(item_lvl=self.data_cfg['item_lvl'])
         self.set_hrchy()
-        self.make_dir()
         self.get_item_info()
+        self.make_dir()
 
     def get_item_info(self):
         item_info = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
@@ -198,6 +223,7 @@ class PredCompare(object):
             os.mkdir(path=path)
             os.mkdir(path=os.path.join(path, 'result'))
             os.mkdir(path=os.path.join(path, 'plot'))
+            os.mkdir(path=os.path.join(path, 'filter'))
 
     def calc_sales_date(self) -> Dict[str, Dict[str, str]]:
         today = datetime.date.today()
@@ -341,14 +367,7 @@ class PredCompare(object):
         return data
 
     def eval_result(self, data) -> pd.DataFrame:
-        conditions = [
-            data['accuracy'] < 1 - self.eval_threshold,
-            data['accuracy'] > 1 + self.eval_threshold
-        ]
-        values = ['N', 'N']
-        success = np.select(conditions, values, default=0)
-        success = np.where(success == '0', 'Y', success)
-        data['success'] = success
+        data['success'] = np.where(data['accuracy'] < self.eval_threshold, 'N', 'Y')
 
         len_total = len(data)
         len_success = len(data[data['success'] == 'Y'])
@@ -365,8 +384,8 @@ class PredCompare(object):
     def filter_n_by_accuracy(self, data) -> Dict[str, pd.DataFrame]:
         data = data.sort_values(by=['accuracy'], ascending=False)
         data = data[data['accuracy'] != 1]    # remove zero equal zero case
-        best = data.iloc[:self.filter_n_threshold, :]
-        worst = data.iloc[-self.filter_n_threshold:, :]
+        best = data.iloc[:self.filter_top_n_threshold, :]
+        worst = data.iloc[-self.filter_top_n_threshold:, :]
         worst = worst.fillna(0)
 
         result = {'best': best, 'worst': worst}

@@ -7,14 +7,24 @@ from baseline.analysis.PredCompare import PredCompare
 hist_from = '20190114'
 hist_to = '20220109'
 
+exec_cfg = {
+    'cls_prep': True,    # Preprocessing
+    'cls_comp': True,    # Compare result
+    'cls_top_n': False,   # Choose top N
+    'cls_graph': False   # Draw graph
+}
+
+opt_cfg = {
+    'rm_zero_yn': True,    # Preprocessing
+    'filter_sales_threshold_yn': True,    # Preprocessing
+    'filter_specific_acc_yn': True,    # Compare result
+    'pick_specific_sp1_yn': True,    # Top N
+}
+
 data_cfg = {
     'root_path': os.path.join('..', '..', 'analysis', 'accuracy'),
     'division': 'SELL_OUT',
-    'item_lvl': 3,
-    'rm_zero_yn': True,
-    'filter_sales_threshold_yn': True,
-    'pick_specific_sp1_yn': True,
-    'draw_plot_yn': True
+    'item_lvl': 5,
 }
 
 date_cfg = {
@@ -33,7 +43,7 @@ date_cfg = {
 }
 
 # Initialize class
-comp = PredCompare(date_cfg=date_cfg, data_cfg=data_cfg)
+comp = PredCompare(exec_cfg=exec_cfg, opt_cfg=opt_cfg, date_cfg=date_cfg, data_cfg=data_cfg)
 
 # run
 comp.run()

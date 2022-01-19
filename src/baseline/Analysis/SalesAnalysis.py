@@ -70,10 +70,13 @@ class SalesAnalysis(object):
         accuracy['accuracy'] = np.where(accuracy['accuracy'] > 1, 2 - accuracy['accuracy'], accuracy['accuracy'])
         accuracy['accuracy'] = np.where(accuracy['accuracy'] < 0, 0, accuracy['accuracy'])
 
+        merge_col = self.hrchy['apply']
+        merge_col = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in merge_col]
+        merge_col = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in merge_col]
         merged = pd.merge(
             accuracy,
             sales,
-            on=['cust_grp_cd', 'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd'],
+            on=merge_col,
             how='inner'
         )
 
@@ -149,7 +152,9 @@ class SalesAnalysis(object):
 
         # Rename columns
         df_raw.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in df_raw.columns]
+        df_raw.columns = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in df_raw.columns]
         df_grp.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in df_grp.columns]
+        df_grp.columns = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in df_grp.columns]
 
         return df_raw, df_grp
 
@@ -237,11 +242,12 @@ class SalesAnalysis(object):
         return sales
 
     def load_accuracy(self):
-        path = os.path.join(self.path_root, 'analysis', 'accuracy', self.data_vrsn_cd + '_' +
-                            self.division + '_' + str(self.hrchy['lvl']['item']) + '.csv')
+        path = os.path.join(self.path_root, 'analysis', 'accuracy', self.data_vrsn_cd, 'result',
+                            self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) + '.csv')
         compare = self.io.load_object(file_path=path, data_type='csv')
 
         compare['cust_grp_cd'] = compare['cust_grp_cd'].astype(str)
+        compare['item_cd'] = compare['item_cd'].astype(str)
 
         return compare
 
