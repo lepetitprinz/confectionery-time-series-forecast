@@ -4,12 +4,9 @@ import pandas as pd
 
 
 class DataLoad(object):
-    def __init__(self, io, sql_conf, data_cfg: dict, unit_cfg: dict,
-                 date: dict, division: str, data_vrsn_cd: str):
+    def __init__(self, io, sql_conf, date: dict, division: str, data_vrsn_cd: str):
         self.io = io
         self.sql_conf = sql_conf
-        self.data_cfg = data_cfg
-        self.unit_cfg = unit_cfg
         self.date = date
         self.division = division
         self.data_vrsn_cd = data_vrsn_cd
@@ -25,21 +22,11 @@ class DataLoad(object):
 
     def load_sales(self) -> pd.DataFrame:
         sales = None
-        # Unit
-        if self.unit_cfg['unit_test_yn']:
-            kwargs = {
-                'date_from': self.date['history']['from'],
-                'date_to': self.date['history']['to'],
-                'cust_grp_cd': self.unit_cfg['cust_grp_cd'],
-                'item_cd': self.unit_cfg['item_cd']
-            }
-            sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_unit(**kwargs))
-        else:
-            if self.division == 'SELL_IN':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
+        if self.division == 'SELL_IN':
+            sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**self.date['history']))
 
-            elif self.division == 'SELL_OUT':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date['history']))
+        elif self.division == 'SELL_OUT':
+            sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date['history']))
 
         return sales
 

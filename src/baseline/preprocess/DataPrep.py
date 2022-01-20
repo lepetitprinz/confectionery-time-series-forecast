@@ -3,10 +3,11 @@ from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
 import common.util as util
 import common.config as config
 
-from math import ceil
 import numpy as np
 import pandas as pd
+from math import ceil
 from copy import deepcopy
+from typing import Tuple, Union
 from sklearn.impute import KNNImputer
 
 
@@ -38,14 +39,14 @@ class DataPrep(object):
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
 
-        # missing
-        self.threshold = config.threshold
-        self.miss_count = 0
+        # Data threshold
+        self.rm_cnt = 0
+        self.threshold_cnt = int(self.common['filter_threshold_cnt'])
+        self.threshold_recent = int(self.common['filter_threshold_recent'])
 
         # Execute option
         self.imputer = 'knn'
         self.sigma = float(common['outlier_sigma'])
-        # self.sigma = 2
         self.outlier_method = 'std'
         self.quantile_range = 0.02
         self.noise_rate = 0.1
@@ -62,12 +63,6 @@ class DataPrep(object):
         # convert data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(str)
-
-        # ------------------------------- #
-        # 2. Remove sales
-        # ------------------------------- #
-        if self.exec_cfg['rm_not_exist_lvl_yn']:
-            data = self.rm_not_exist_sales(data=data)
 
         # convert datetime column
         data[self.common['date_col']] = data[self.common['date_col']].astype(np.int64)
@@ -117,30 +112,14 @@ class DataPrep(object):
             df=data_group
         )
 
-        # # Filter Missing Values
-        # data_resample = util.hrchy_recursion_with_none(
-        #     hrchy_lvl=self.hrchy_level,
-        #     fn=self.filter_week_by_threshold,
-        #     df=data_resample
-        # )
+        print('-----------------------------------')
+        print(f"Total data Level counts: {hrchy_cnt}")
+        print(f"Removed data Level counts: {self.rm_cnt}")
+        print(f"Applying data Level counts: {hrchy_cnt - self.rm_cnt}")
+        print('-----------------------------------')
+        hrchy_cnt -= self.rm_cnt
 
         return data_resample, exg_list, hrchy_cnt
-
-    def rm_not_exist_sales(self, data: pd.DataFrame) -> pd.DataFrame:
-        # Filter recent sales
-        # Todo: middle_out_start_day -> self.date['eval_from']
-        # Todo: middle_out_end_day -> self.date['eval_to']
-        data_recent = data[(data[self.common['date_col']] >= int(self.common['middle_out_start_day'])) &
-                           (data[self.common['date_col']] <= int(self.common['middle_out_end_day']))]
-        key_col_df = data_recent[self.key_col].drop_duplicates().reset_index()
-        key_col_df['key'] = key_col_df[self.key_col[0]] + '-' + key_col_df[self.key_col[1]]
-        data['key'] = data[self.key_col[0]] + '-' + data[self.key_col[1]]
-
-        # Boolean masking
-        masked = data[data['key'].isin(key_col_df['key'])]
-        masked = masked.drop(columns=['key'])
-
-        return masked
 
     def merge_exg(self, data: pd.DataFrame, exg: dict) -> pd.DataFrame:
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -213,29 +192,41 @@ class DataPrep(object):
 
         return grp
 
-    def resample(self, df: pd.DataFrame):
+    def resample(self, df: pd.DataFrame) -> Union[pd.DataFrame, None]:
         df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
         df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
 
-        # Concatenate aggregationSTR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
+        # Concatenate aggregation
+        # STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
-        if self.exec_cfg['filter_threshold_week_yn']:
-            if len(df_resampled[df_resampled['qty'] != 0]) < self.threshold:
+        if self.exec_cfg['filter_threshold_cnt_yn']:
+            if len(df_resampled[df_resampled['qty'] != 0]) < self.threshold_cnt:
+                self.rm_cnt += 1
                 return None
 
+        # Fill empty sales to zeros
         if len(df_resampled.index) != len(self.hist_date_range):
             # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
 
+        # Filter data level under threshold recent week
+        if self.exec_cfg['filter_threshold_recent_yn']:
+            if self.filter_threshold_recent(data=df_resampled, col=self.common['target_col']):
+                self.rm_cnt += 1
+                return None
+
+        # Remove forward empty sales
         if self.exec_cfg['rm_fwd_zero_sales_yn']:
             df_resampled = self.rm_fwd_zero_sales(df=df_resampled, feat=self.common['target_col'])
 
+        # Remove outlier
         if self.exec_cfg['rm_outlier_yn']:
             df_resampled = self.remove_outlier(df=df_resampled, feat=self.common['target_col'])
 
-        if self.exec_cfg['impute_yn']:
+        # Data imputation
+        if self.exec_cfg['data_imputation_yn']:
             df_resampled = self.impute_data(df=df_resampled, feat=self.common['target_col'])
 
         # Add data level
@@ -243,8 +234,18 @@ class DataPrep(object):
 
         return df_resampled
 
+    def filter_threshold_recent(self, data: pd.DataFrame, col: str) -> bool:
+        check = False
+        data_length = len(data[col])
+        data_trimmed_length = len(np.trim_zeros(data[col].to_numpy(), trim='b'))
+        diff = data_length - data_trimmed_length
+        if diff > self.threshold_recent:
+            check = True
+
+        return check
+
     @staticmethod
-    def rm_fwd_zero_sales(df, feat: str) -> pd.DataFrame:
+    def rm_fwd_zero_sales(df: pd.DataFrame, feat: str) -> pd.DataFrame:
         feature = df[feat].to_numpy()
         feature = np.trim_zeros(feature, trim='f')
         df_trim = df.iloc[len(df) - len(feature):, :]
@@ -265,7 +266,7 @@ class DataPrep(object):
 
         return missed_rate
 
-    def check_missing_data(self, df: pd.DataFrame):
+    def check_missing_data(self, df: pd.DataFrame) -> Tuple[int, float]:
         tot_len = len(self.hist_date_range)
         missed = tot_len - len(df.index)
         exist = tot_len - missed
@@ -384,12 +385,12 @@ class DataPrep(object):
         return df
 
     @staticmethod
-    def ravel_df(hrchy: list, df: pd.DataFrame):
+    def ravel_df(hrchy: list, df: pd.DataFrame) -> np.array:
         result = df.to_numpy()
 
         return result
 
-    def conv_decomposed_list(self, data):
+    def conv_decomposed_list(self, data: list) -> pd.DataFrame:
         cols = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd',
                 'yymmdd', 'org_val', 'trend_val', 'seasonal_val', 'resid_val']
 

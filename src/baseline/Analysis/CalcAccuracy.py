@@ -1,6 +1,7 @@
+import common.util as util
 import common.config as config
-from common.SqlConfig import SqlConfig
 from dao.DataIO import DataIO
+from common.SqlConfig import SqlConfig
 
 import os
 from typing import Dict, Tuple
@@ -10,15 +11,16 @@ import pandas as pd
 
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
+# import matplotlib.font_manager as fm
 # font_path = r'C:\Windows\Fonts\malgun.ttf'
 # font_name = fm.FontProperties(fname=font_path).get_name()
 matplotlib.rc('font', family='Malgun Gothic')
 plt.style.use('fivethirtyeight')
 
 
-class PredCompare(object):
+class CalcAccuracy(object):
     col_fixed = ['division_cd', 'start_week_day', 'week']
+
     # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
     pick_sp1 = ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173']
 
@@ -93,7 +95,7 @@ class PredCompare(object):
                 if self.exec_cfg['cls_graph']:
                     self.draw_plot(result=result, sales=sales_hist)
 
-    def filter_specific_accuracy(self, data: pd.DataFrame):
+    def filter_specific_accuracy(self, data: pd.DataFrame) -> None:
         # Filter result by accuracy
         filtered = data[data['accuracy'] < self.filter_acc_rate]
 
@@ -133,7 +135,7 @@ class PredCompare(object):
 
         return splited
 
-    def filter_sales_threshold(self, hist: pd.DataFrame, recent: pd.DataFrame):
+    def filter_sales_threshold(self, hist: pd.DataFrame, recent: pd.DataFrame) -> pd.DataFrame:
         hist_avg = self.calc_avg_sales(data=hist)
         hist_data_level = self.filter_avg_sales_by_threshold(data=hist_avg)
         recent_filtered = self.merged_filtered_data_level(data=recent, data_level=hist_data_level)
@@ -152,7 +154,7 @@ class PredCompare(object):
 
         return data
 
-    def merged_filtered_data_level(self, data: pd.DataFrame, data_level: pd.DataFrame):
+    def merged_filtered_data_level(self, data: pd.DataFrame, data_level: pd.DataFrame) -> pd.DataFrame:
         merged = pd.merge(data, data_level, on=self.hrchy['apply'], how='inner')
 
         return merged
@@ -164,7 +166,7 @@ class PredCompare(object):
         self.get_item_info()
         self.make_dir()
 
-    def get_item_info(self):
+    def get_item_info(self) -> None:
         item_info = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         item_info.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in item_info.columns]
         item_info.columns = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in item_info.columns]
@@ -358,11 +360,12 @@ class PredCompare(object):
         values = [1, 0, data['pred'] / data['sales']]
         accuracy = np.select(conditions, values)
 
-        # Additional calculation
-        accuracy = np.where(accuracy > 1, 2 - accuracy, accuracy)
-        accuracy = np.where(accuracy < 0, 0, accuracy)
-
-        data['accuracy'] = accuracy
+        # customize accuracy
+        data = util.customize_accuracy(data=data, col='accuracy')
+        # accuracy = np.where(accuracy > 1, 2 - accuracy, accuracy)
+        # accuracy = np.where(accuracy < 0, 0, accuracy)
+        #
+        # data['accuracy'] = accuracy
 
         return data
 

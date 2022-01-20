@@ -26,7 +26,6 @@ class PipelineMiddleOutTest(object):
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.unit_cfg = {'unit_test_yn': False}
         self.exec_rslt_cfg = exec_rslt_cfg
         self.path_root = path_root
 
@@ -77,8 +76,6 @@ class PipelineMiddleOutTest(object):
         load = DataLoad(
             io=self.io,
             sql_conf=self.sql_conf,
-            data_cfg=self.data_cfg,
-            unit_cfg=self.unit_cfg,
             date=self.date,
             division=self.division,
             data_vrsn_cd=self.data_vrsn_cd

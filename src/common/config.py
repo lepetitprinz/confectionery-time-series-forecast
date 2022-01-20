@@ -10,7 +10,8 @@ USER = 'matrix'            # User name
 PASSWORD = 'Diam0nd123!'   # User password
 
 # Data filtering threshold
-threshold = 4
+threshold_cnt = 4
+threshold_recent = 12
 
 # Model Hyper-parameters
 # 1.Time Series Forecast

@@ -325,3 +325,18 @@ def conv_col_lower(data: pd.DataFrame) -> pd.DataFrame:
     data.columns = [col.lower() for col in list(data.columns)]
 
     return data
+
+
+def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
+    """
+    recalculate accuracy
+    """
+    acc = data[col]
+
+    # customize rule
+    acc = np.where(acc > 1, 2 - acc, acc)
+    acc = np.where(acc < 0, 0, acc)    # minus accuracy values convert to zero
+
+    data[col] = acc
+
+    return data

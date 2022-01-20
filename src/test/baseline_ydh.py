@@ -40,7 +40,7 @@ exec_cfg = {
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,   # Feature Selection
     'grid_search_yn': False,          # Grid Search
-    'filter_threshold_week_yn': True,
+    'filter_threshold_cnt_yn': True,
     'rm_fwd_zero_sales_yn': True
 }
 
@@ -86,7 +86,7 @@ pipeline = PipelineReal(
 
 start_time = time.time()
 print(test_vrsn_cd)
-print('threshold: ', config.threshold )
+print('threshold: ', config.threshold_cnt)
 # Execute Baseline Forecast
 pipeline.run()
 

@@ -14,7 +14,7 @@ step_cfg = {
 
 data_cfg = {
     'division': 'SELL_IN',
-    'item_lvl': 5,
+    'item_lvl': 3,
     'cycle_yn': False,
     'rm_zero_yn': True,
     'date': {

@@ -29,7 +29,7 @@ exec_cfg = {
     'scaling_yn': False,              # Data scaling
     'feature_selection_yn': False,    # Feature Selection
     'grid_search_yn': False,          # Grid Search
-    'filter_threshold_week_yn': False,
+    'filter_threshold_cnt_yn': False,
     'rm_fwd_zero_sales_yn': True
 }
 

@@ -42,7 +42,7 @@ class SalesAnalysis(object):
         self.hrchy_level = 0
         self.data_vrsn_cd = ''
 
-    def run(self):
+    def run(self) -> None:
         self.init()
 
         sales = None
@@ -66,10 +66,6 @@ class SalesAnalysis(object):
         print("Finished")
 
     def compare_result(self, sales: pd.DataFrame, accuracy: pd.DataFrame):
-
-        accuracy['accuracy'] = np.where(accuracy['accuracy'] > 1, 2 - accuracy['accuracy'], accuracy['accuracy'])
-        accuracy['accuracy'] = np.where(accuracy['accuracy'] < 0, 0, accuracy['accuracy'])
-
         merge_col = self.hrchy['apply']
         merge_col = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in merge_col]
         merge_col = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in merge_col]
@@ -247,7 +243,8 @@ class SalesAnalysis(object):
         compare = self.io.load_object(file_path=path, data_type='csv')
 
         compare['cust_grp_cd'] = compare['cust_grp_cd'].astype(str)
-        compare['item_cd'] = compare['item_cd'].astype(str)
+        if 'item_cd' in compare.columns:
+            compare['item_cd'] = compare['item_cd'].astype(str)
 
         return compare
 

@@ -48,7 +48,7 @@ class DataIO(object):
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 handle.close()
 
-        print("Data is saved\n")
+        # print("Data is saved\n")
 
     @staticmethod
     def load_object(file_path: str, data_type: str):

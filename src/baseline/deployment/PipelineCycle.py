@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 
 
 class PipelineCycle(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, path_root: str):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
@@ -30,8 +30,6 @@ class PipelineCycle(object):
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.unit_cfg = {'unit_test_yn': False}
-        self.exec_rslt_cfg = exec_rslt_cfg
         self.path_root = path_root
 
         # Class Configuration
@@ -81,8 +79,6 @@ class PipelineCycle(object):
         load = DataLoad(
             io=self.io,
             sql_conf=self.sql_conf,
-            data_cfg=self.data_cfg,
-            unit_cfg=self.unit_cfg,
             date=self.date,
             division=self.division,
             data_vrsn_cd=self.data_vrsn_cd
@@ -172,14 +168,6 @@ class PipelineCycle(object):
                 exec_cfg=self.exec_cfg
             )
 
-            if self.exec_cfg['rm_not_exist_lvl_yn']:
-                sales_recent = self.io.get_df_from_db(
-                    sql=self.sql_conf.sql_sell_in_week_grp(
-                        **{'from': self.date['middle_out']['from'],
-                           'to': self.date['middle_out']['to']})
-                )
-                preprocess.sales_recent = sales_recent
-
             # Preprocessing the dataset
             data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
             self.hrchy['cnt'] = hrchy_cnt
@@ -216,15 +204,12 @@ class PipelineCycle(object):
                 exec_cfg=self.exec_cfg             # Execute configuration
             )
 
-            if not self.exec_rslt_cfg['train']:
-                # Train the models
-                scores = training.train(df=data_prep)
+            # Train the models
+            scores = training.train(df=data_prep)
 
-                # Save Step result
-                if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
-            else:
-                scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
             # Save best parameters
             if self.exec_cfg['grid_search_yn']:
@@ -291,16 +276,13 @@ class PipelineCycle(object):
                 common=self.common,
                 data_cfg=self.data_cfg
             )
-            if not self.exec_rslt_cfg['predict']:
-                # Forecast the model
-                prediction = predict.forecast(df=data_prep)
 
-                # Save Step result
-                if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
-            else:
-                # Load predicted object
-                prediction = self.io.load_object(file_path=self.path['pred'], data_type='binary')
+            # Forecast the model
+            prediction = predict.forecast(df=data_prep)
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
 
             # Make database format
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
@@ -363,14 +345,11 @@ class PipelineCycle(object):
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Run middle-out
-            if not self.exec_rslt_cfg['predict']:
-                middle_out_db, _ = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
+            middle_out_db, _ = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
 
-                if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(
-                        data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
-            else:
-                middle_out_db = self.io.load_object(file_path=self.path['middle_out_db'], data_type='csv')
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(
+                    data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
 
             if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()

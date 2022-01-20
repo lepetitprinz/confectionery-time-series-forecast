@@ -25,6 +25,7 @@ data_weather = api_weather.get_api_dataset()
 
 # Insert into db of API dataset
 print("Save the API dataset")
+# print(data_weather)
 api_weather.save_result_on_db(data=data_weather)
 
 # Check end time
