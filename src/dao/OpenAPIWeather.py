@@ -24,14 +24,14 @@ class OpenAPIWeather(object):
 
     def set_date_range(self):
         today = datetime.date.today()
-        prev_monday = today - datetime.timedelta(days=today.weekday()+7)
-        prev_sunday = today - datetime.timedelta(days=today.weekday()+1)
+        prev_monday = today - datetime.timedelta(days=today.weekday() + 8)   # sunday before 2 weeks
+        prev_sunday = today - datetime.timedelta(days=today.weekday() + 1)   # Previous sunday
 
         prev_monday = datetime.date.strftime(prev_monday, '%Y%m%d')
         prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
 
         self.date = {'from': prev_monday, 'to': prev_sunday}
-        # self.date = {'from': '20211006', 'to': '20211130'}
+        # self.date = {'from': '20220116', 'to': '20220116'}
 
     def get_api_info(self) -> None:
         self.info = self.io.get_dict_from_db(

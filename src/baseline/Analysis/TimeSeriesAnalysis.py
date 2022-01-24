@@ -5,12 +5,13 @@ from common.SqlConfig import SqlConfig
 import os
 import pandas as pd
 from typing import Tuple, Dict
-from pandas.plotting import autocorrelation_plot
 from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.stattools import acf
 
 
 class TimeSeriesAnalysis(object):
     col_fixed = ['division_cd', 'start_week_day', 'week']
+    col_str = ['cust_grp_cd', 'start_week_day', 'item_cd']
 
     def __init__(self, data_cfg: dict, exec_cfg: dict):
         self.io = DataIO()
@@ -37,14 +38,34 @@ class TimeSeriesAnalysis(object):
         self.level = {}
         self.hrchy = {}
 
+        self.n_lags = 4
+
     def run(self):
+        # Initialize process
         self.init()
 
+        # Load dataset
         sales, accuracy = self.load_dataset()
 
+        # Preprocessing
         sales, accuracy = self.preprocessing(sales=sales, accuracy=accuracy)
 
-        self.analysis(sales=sales, accuracy=accuracy)
+        # Analysis
+        result = self.analysis(sales=sales)
+
+        # After processing
+        self.after_process(result=result, accuracy=accuracy)
+
+    def after_process(self, result, accuracy):
+        merged = pd.merge(accuracy, result, how='left', on=['cust_grp_cd', self.hrchy['apply'][-1]])
+        merged_grp = merged.groupby(by=['bin_acc']).mean()
+        merged_grp = merged_grp.reset_index()
+
+        path = os.path.join(self.root_path, 'time_series', self.data_version + '_' + self.division + '_' +
+                            str(self.level['item_lvl']) + '.csv')
+        merged_grp.to_csv(path, index=False, encoding='cp949')
+
+        print("")
 
     def init(self):
         self.set_level(item_lvl=self.data_cfg['item_lvl'])
@@ -79,9 +100,9 @@ class TimeSeriesAnalysis(object):
         sales = self.load_sales()
 
         # Load accuracy dataset
-        path = os.path.join(self.root_path, self.data_version, 'result', self.data_version + '_' +
+        path = os.path.join(self.root_path, 'accuracy', self.data_version, 'result', self.data_version + '_' +
                             self.division + '_' + str(self.hrchy['lvl']['item']) + '.csv')
-        accuracy = pd.read_csv(path, )
+        accuracy = pd.read_csv(path, encoding='cp949')
 
         return sales, accuracy
 
@@ -104,7 +125,15 @@ class TimeSeriesAnalysis(object):
         sales = self.rename_column(data=sales)
         sales = self.resample_sales(data=sales)
 
-        accuracy = self.conv_to_str_type(data=accuracy, col='cust_grp_cd')
+        for col in self.col_str:
+            if col in accuracy.columns:
+                accuracy = self.conv_to_str_type(data=accuracy, col=col)
+
+        accuracy['bin_acc'] = pd.cut(
+            accuracy['accuracy'],
+            bins=[num / 10 for num in range(0, 12, 1)],
+            right=False
+        )
 
         return sales, accuracy
 
@@ -129,28 +158,49 @@ class TimeSeriesAnalysis(object):
 
         return data
 
-    def analysis(self, sales: pd.DataFrame, accuracy: pd.DataFrame):
+    def analysis(self, sales: pd.DataFrame):
         item_lvl_cd = self.hrchy['apply'][-1]
         data_level = sales[['cust_grp_cd', item_lvl_cd]].drop_duplicates()
 
-        chk_st = []
+        check = []
         for cust, item in zip(data_level['cust_grp_cd'], data_level[item_lvl_cd]):
             temp = sales[(sales['cust_grp_cd'] == cust) & (sales[item_lvl_cd] == item)]
             temp = temp.sort_values(by=['start_week_day'])
 
-            if len(temp) > 5:
-                chk_st.append(self.check_stationarity(data=temp[self.target_col]))
-            else:
-                chk_st.append(False)
+            # Check white noise
+            mean, std, auto_corr = self.check_white_noise(data=temp[self.target_col])
 
-        print("")
-        # Check stationarity
+            # Check stationarity
+            stationary = self.check_stationarity(data=temp[self.target_col])
 
-    def group_by_accuracy(self):
-        pass
+            check.append((cust, item, mean, std, auto_corr, stationary))
 
-    def check_white_noise(self):
-        pass
+        result = pd.DataFrame(check, columns=['cust_grp_cd', item_lvl_cd, 'mean', 'std', 'auto_corr', 'stationary'])
+
+        return result
+
+    def check_white_noise(self, data: pd.Series):
+        """
+        Check white noise
+        - Zero mean
+        - A constant variance / standard deviation (does not change over time)
+        - zero autocorrelation at all lags
+
+        """
+        # Calculate mean
+        mean = round(data.mean(), 1)
+
+        # Calculate standard deviation
+        std = round(data.std(), 1)
+
+        # auto_
+        auto = acf(data, nlags=self.n_lags, fft=True)
+        if len(auto) > 1:
+            auto_lag_1 = round(auto[1], 3)
+        else:
+            auto_lag_1 = 0
+
+        return mean, std, auto_lag_1
 
     def check_stationarity(self, data: pd.Series) -> bool:
         """
@@ -160,7 +210,11 @@ class TimeSeriesAnalysis(object):
         Weak stationarity
             a process where mean, variance, auto-correlation are constant throughout the time
         """
-        result = self.augmented_dickey_fuller_test(data=data)
+        if len(data) > 5:
+            result = self.augmented_dickey_fuller_test(data=data)
+        else:
+            # result = 'sparse'
+            result = False
 
         return result
 

@@ -1,12 +1,14 @@
-from baseline.analysis.TimeSeriesAnalysis import TimeSeriesAnalysis
-
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from baseline.analysis.TimeSeriesAnalysis import TimeSeriesAnalysis
 
 exec_cfg = {
 }
 
 data_cfg = {
-    'root_path': os.path.join('..', '..', 'analysis', 'accuracy'),
+    'root_path': os.path.join('..', '..', 'analysis'),
     'division': 'SELL_OUT',
     'item_lvl': 3,
     'data_version': '20190114-20220109',

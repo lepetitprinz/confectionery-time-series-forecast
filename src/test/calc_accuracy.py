@@ -4,8 +4,8 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.analysis.CalcAccuracy import CalcAccuracy
 
-hist_from = '20190114'
-hist_to = '20220109'
+hist_from = '20190121'
+hist_to = '20220116'
 
 exec_cfg = {
     'cls_prep': True,    # Preprocessing
@@ -23,7 +23,7 @@ opt_cfg = {
 
 data_cfg = {
     'root_path': os.path.join('..', '..', 'analysis', 'accuracy'),
-    'division': 'SELL_OUT',
+    'division': 'SELL_IN',
     'item_lvl': 3,
 }
 
@@ -35,8 +35,8 @@ date_cfg = {
             'to': hist_to
         },
         'compare': {
-            'from': '20220110',
-            'to': '20220116'
+            'from': '20220117',    # 20220110
+            'to': '20220123'    # 20220116
         }
     },
     'data_vrsn_cd': hist_from + '-' + hist_to
