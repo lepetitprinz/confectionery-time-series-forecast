@@ -10,14 +10,15 @@ hist_to = '20220116'
 exec_cfg = {
     'cls_prep': True,    # Preprocessing
     'cls_comp': True,    # Compare result
-    'cls_top_n': False,   # Choose top N
-    'cls_graph': False   # Draw graph
+    'cls_top_n': True,   # Choose top N
+    'cls_graph': True   # Draw graph
 }
 
 opt_cfg = {
     'rm_zero_yn': True,    # Preprocessing
     'filter_sales_threshold_yn': True,    # Preprocessing
     'filter_specific_acc_yn': False,    # Compare result
+    'filter_sepcific_biz_yn': True,
     'pick_specific_sp1_yn': True,    # Top N
 }
 
@@ -25,6 +26,7 @@ data_cfg = {
     'root_path': os.path.join('..', '..', 'analysis', 'accuracy'),
     'division': 'SELL_IN',
     'item_lvl': 3,
+    'item_attr01_cd': 'P2'
 }
 
 date_cfg = {
@@ -43,7 +45,12 @@ date_cfg = {
 }
 
 # Initialize class
-comp = CalcAccuracy(exec_cfg=exec_cfg, opt_cfg=opt_cfg, date_cfg=date_cfg, data_cfg=data_cfg)
+comp = CalcAccuracy(
+    exec_cfg=exec_cfg,
+    opt_cfg=opt_cfg,
+    date_cfg=date_cfg,
+    data_cfg=data_cfg
+)
 
 # run
 comp.run()

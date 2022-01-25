@@ -57,7 +57,7 @@ class TimeSeriesAnalysis(object):
         self.after_process(result=result, accuracy=accuracy)
 
     def after_process(self, result, accuracy):
-        merged = pd.merge(accuracy, result, how='left', on=['cust_grp_cd', self.hrchy['apply'][-1]])
+        merged = pd.merge(accuracy, result, how='inner', on=['cust_grp_cd', self.hrchy['apply'][-1]])
         merged_grp = merged.groupby(by=['bin_acc']).mean()
         merged_grp = merged_grp.reset_index()
 
@@ -139,9 +139,15 @@ class TimeSeriesAnalysis(object):
 
     @staticmethod
     def rename_column(data: pd.DataFrame) -> pd.DataFrame:
-        cols = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in data.columns]
-        cols = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in cols]
-        data.columns = cols
+
+        if 'biz_cd' in data.columns:
+            cols = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in data.columns]
+            cols = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in cols]
+            data.columns = cols
+
+        if 'sku_cd' in data.columns:
+            cols = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in data.columns]
+            data.columns = cols
 
         return data
 
@@ -161,9 +167,16 @@ class TimeSeriesAnalysis(object):
     def analysis(self, sales: pd.DataFrame):
         item_lvl_cd = self.hrchy['apply'][-1]
         data_level = sales[['cust_grp_cd', item_lvl_cd]].drop_duplicates()
+        data_level_length = len(data_level)
+
+        print(f"Total Data Level: {data_level_length}")
 
         check = []
+        cnt = 0
         for cust, item in zip(data_level['cust_grp_cd'], data_level[item_lvl_cd]):
+            cnt += 1
+            if (cnt % 100 == 0) or (cnt == data_level_length):
+                print(f"Progress: ({cnt} / {data_level_length})")
             temp = sales[(sales['cust_grp_cd'] == cust) & (sales[item_lvl_cd] == item)]
             temp = temp.sort_values(by=['start_week_day'])
 

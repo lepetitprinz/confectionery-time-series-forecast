@@ -11,7 +11,7 @@ data_cfg = {
     'root_path': os.path.join('..', '..', 'analysis'),
     'division': 'SELL_OUT',
     'item_lvl': 3,
-    'data_version': '20190114-20220109',
+    'data_version': '20190121-20220116',
     'target_col': 'sales'
 }
 

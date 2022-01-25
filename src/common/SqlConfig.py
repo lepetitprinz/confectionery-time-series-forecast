@@ -483,19 +483,44 @@ class SqlConfig(object):
     def sql_sell_week_hist(**kwargs):
         sql = f"""
             SELECT DIVISION_CD
-                 , CUST_GRP_CD
+                 , SALES.CUST_GRP_CD
                  , ITEM_ATTR01_CD
                  , ITEM_ATTR02_CD
                  , ITEM_ATTR03_CD
                  , ITEM_ATTR04_CD
-                 , ITEM_CD
+                 , SALES.ITEM_CD
                  , START_WEEK_DAY
                  , WEEK
-                 , RST_SALES_QTY AS SALES
-              FROM M4S_I002175
-             WHERE DIVISION_CD = '{kwargs['division_cd']}'
-               AND START_WEEK_DAY BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-               AND RST_SALES_QTY <> 0
+                 , SALES
+              FROM (
+                    SELECT DIVISION_CD
+                         , CUST_GRP_CD
+                         , ITEM_ATTR01_CD
+                         , ITEM_ATTR02_CD
+                         , ITEM_ATTR03_CD
+                         , ITEM_ATTR04_CD
+                         , ITEM_CD
+                         , START_WEEK_DAY
+                         , WEEK
+                         , RST_SALES_QTY AS SALES
+                      FROM M4S_I002175 SALES
+                     WHERE DIVISION_CD = '{kwargs['division_cd']}'
+                       AND START_WEEK_DAY BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                       AND RST_SALES_QTY <> 0 
+                    ) SALES
+             INNER JOIN (
+                         SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                              , ITEM_CD
+                           FROM M4S_I204050
+                          WHERE USE_YN = 'Y'
+                            AND SALES_MGMT_VRSN_ID = (
+                                                      SELECT SALES_MGMT_VRSN_ID 
+                                                        FROM M4S_I204010 
+                                                       WHERE USE_YN = 'Y'
+                                                     )
+                        ) MAP
+                ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+               AND SALES.ITEM_CD = MAP.ITEM_CD
         """
         return sql
 

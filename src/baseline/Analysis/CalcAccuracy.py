@@ -22,7 +22,8 @@ class CalcAccuracy(object):
     col_fixed = ['division_cd', 'start_week_day', 'week']
 
     # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
-    pick_sp1 = ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173']
+    pick_sp1_p1 = ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196']
+    pick_sp1_p2 = ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
 
     def __init__(self, exec_cfg: dict, opt_cfg: dict, date_cfg: dict, data_cfg: dict):
         self.io = DataIO()
@@ -51,7 +52,7 @@ class CalcAccuracy(object):
         self.week_compare = 1             # Compare week range
         self.sales_threshold = 5          # Minimum sales quantity
         self.eval_threshold = 0.7         # Accuracy: Success or not
-        self.filter_top_n_threshold = 4   # Filter top N
+        self.filter_top_n_threshold = 1   # Filter top N
         self.filter_acc_rate = 0.1        # Filter accuracy rate
 
     def run(self) -> None:
@@ -76,6 +77,9 @@ class CalcAccuracy(object):
         # Convert
         sales_hist = self.conv_to_datetime(data=sales_hist, col='start_week_day')
         result = self.conv_to_datetime(data=result, col='start_week_day')
+
+        if self.opt_cfg['filter_sepcific_biz_yn']:
+            result = result[result['item_attr01_cd'] == self.data_cfg['item_attr01_cd']]
 
         if self.exec_cfg['cls_top_n']:
             if self.opt_cfg['pick_specific_sp1_yn']:
@@ -121,14 +125,20 @@ class CalcAccuracy(object):
         return sales_hist, sales_compare
 
     def pick_specific_sp1(self, data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-        data_pick = data[data['cust_grp_cd'].isin(self.pick_sp1)]
+        pick_sp1 = []
+        if self.data_cfg['item_attr01_cd'] == 'P1':
+            pick_sp1 = self.pick_sp1_p1
+        elif self.data_cfg['item_attr01_cd'] == 'P2':
+            pick_sp1 = self.pick_sp1_p2
+
+        data_pick = data[data['cust_grp_cd'].isin(pick_sp1)]
 
         # sorting
         data_pick = data_pick.sort_values(by=['cust_grp_cd', 'accuracy'])
 
         # split by sp1
         splited = {}
-        for sp1 in self.pick_sp1:
+        for sp1 in pick_sp1:
             temp = data_pick[data_pick['cust_grp_cd'] == sp1]
             if len(temp) > 0:
                 splited[sp1] = temp.reset_index(drop=True)
