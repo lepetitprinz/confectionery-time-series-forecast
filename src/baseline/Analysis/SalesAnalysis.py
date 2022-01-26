@@ -31,16 +31,16 @@ class SalesAnalysis(object):
         # Data configuration
         self.step_cfg = step_cfg
         self.data_cfg = data_cfg
-        self.division = data_cfg['division']
-        self.cut_lvl = 10
+        self.division: str = data_cfg['division']
+        self.cut_lvl: int = 10
 
         # information
-        self.date = {}
-        self.path = {}
-        self.level = {}
-        self.hrchy = {}
-        self.hrchy_level = 0
-        self.data_vrsn_cd = ''
+        self.date: dict = {}
+        self.path: dict = {}
+        self.level: dict = {}
+        self.hrchy: dict = {}
+        self.hrchy_level: int = 0
+        self.data_vrsn_cd: str = ''
 
     def run(self) -> None:
         self.init()

@@ -4,7 +4,7 @@ from common.SqlConfig import SqlConfig
 
 import os
 import pandas as pd
-from typing import Tuple, Dict
+from typing import Tuple, Union, Optional
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.stattools import acf
 
@@ -23,8 +23,8 @@ class TimeSeriesAnalysis(object):
             val='OPTION_VAL'
         )
 
-        self.data_cfg = data_cfg
-        self.exec_cfg = exec_cfg
+        self.data_cfg: dict = data_cfg
+        self.exec_cfg: dict = exec_cfg
 
         # Data configuration
         self.division = data_cfg['division']

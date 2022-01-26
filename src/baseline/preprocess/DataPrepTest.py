@@ -11,7 +11,7 @@ from typing import Tuple, Union
 from sklearn.impute import KNNImputer
 
 
-class DataPrep(object):
+class DataPrepTest(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 
@@ -87,6 +87,14 @@ class DataPrep(object):
 
         # Grouping
         data_group, hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
+
+        # Filter threshold SKU based on recent sales
+        if self.exec_cfg['filter_threshold_recent_sku_yn']:
+            data_group = util.hrchy_recursion_with_none(
+                hrchy_lvl=self.hrchy_level,
+                fn=self.filter_threshold_recent_sku,
+                df=data_group
+            )
 
         # Decomposition
         if self.exec_cfg['decompose_yn']:
@@ -243,6 +251,13 @@ class DataPrep(object):
             check = True
 
         return check
+
+    def filter_threshold_recent_sku(self, df: pd.DataFrame) -> Union[pd.DataFrame, None]:
+        recent_date = sorted(list(df.index))[-1]
+        if (recent_date) < self.common['filter_threshold_sku_recent'] * 7:
+            return None
+
+        return df
 
     @staticmethod
     def rm_fwd_zero_sales(df: pd.DataFrame, feat: str) -> pd.DataFrame:

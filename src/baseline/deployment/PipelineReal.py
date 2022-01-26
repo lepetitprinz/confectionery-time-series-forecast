@@ -2,7 +2,7 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
-from baseline.preprocess.DataPrep import DataPrep
+from baseline.preprocess.DataPrepTest import DataPrepTest
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
@@ -158,7 +158,7 @@ class PipelineReal(object):
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
             # Initiate data preprocessing class
-            preprocess = DataPrep(
+            preprocess = DataPrepTest(
                 date=self.date,
                 common=self.common,
                 hrchy=self.hrchy,

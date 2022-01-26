@@ -800,8 +800,8 @@ class SqlConfig(object):
             SELECT RSLT.CUST_CD
                  , CUST_NM
                  , SUBSTRING(CUST_MAP, 1, 3) AS CUST_ORG_CD
-                 , SUBSTRING(CUST_MAP, 5, 2) AS CUST_DIST_CD
-                 , SUBSTRING(CUST_MAP, 8, 2) AS ITEM_CLASS_CD
+                 , SUBSTRING(CUST_MAP, 5, 2) AS ITEM_CLASS_CD
+                 , SUBSTRING(CUST_MAP, 8, 2) AS CUST_DIST_CD
               FROM (
                     SELECT CUST_CD
                          , CUST_GRP_CD

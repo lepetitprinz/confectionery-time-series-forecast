@@ -9,6 +9,8 @@ from copy import deepcopy
 
 
 class ConsistencyCheck(object):
+    item_class_list = ['10', '20', '60']
+
     def __init__(self, data_vrsn_cd: str, division: str, common: dict, hrchy: dict,
                  mst_info: dict, exec_cfg: dict, err_grp_map: dict, path_root: str):
         # Class Configuration
@@ -69,9 +71,19 @@ class ConsistencyCheck(object):
         # Get
         result = self.io.get_df_from_db(sql=self.sql_config.sql_cust_sp1_map_error(**date))
 
+        # Filter customer distribution
+        result = self.filter_customer_distribution(df=result)
+
         # Save the result
         save_path = os.path.join(self.save_path, 'sp1', self.division + '_' + date_from + '_' + date_to + '.csv')
         self.io.save_object(data=result, data_type='csv', file_path=save_path)
+
+    # filter customer distribution
+    def filter_customer_distribution(self, df: pd.DataFrame) -> pd.DataFrame:
+        df['item_class_cd'] = df['item_class_cd'].astype(str)
+        df = df[df['item_class_cd'].isin(self.item_class_list)]
+
+        return df
 
     # Error 1
     def check_item_map(self, df: pd.DataFrame) -> pd.DataFrame:
