@@ -7,6 +7,9 @@ from baseline.analysis.CalcAccuracy import CalcAccuracy
 hist_from = '20190121'
 hist_to = '20220116'
 
+compare_from = '20220117'
+compare_to = '20220123'
+
 exec_cfg = {
     'cls_prep': True,    # Preprocessing
     'cls_comp': True,    # Compare result
@@ -16,6 +19,7 @@ exec_cfg = {
 
 opt_cfg = {
     'rm_zero_yn': True,    # Preprocessing
+    'calc_acc_by_sp1_item_yn': True,
     'filter_sales_threshold_yn': True,    # Preprocessing
     'filter_specific_acc_yn': False,    # Compare result
     'filter_sepcific_biz_yn': True,
@@ -24,7 +28,7 @@ opt_cfg = {
 
 data_cfg = {
     'root_path': os.path.join('..', '..', 'analysis', 'accuracy'),
-    'division': 'SELL_IN',
+    'division': 'SELL_OUT',
     'item_lvl': 3,
     'item_attr01_cd': 'P2'
 }
@@ -37,8 +41,8 @@ date_cfg = {
             'to': hist_to
         },
         'compare': {
-            'from': '20220117',    # 20220110
-            'to': '20220123'    # 20220116
+            'from': compare_from,    # 20220110
+            'to': compare_to    # 20220116
         }
     },
     'data_vrsn_cd': hist_from + '-' + hist_to

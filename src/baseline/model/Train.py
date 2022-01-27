@@ -51,8 +51,8 @@ class Train(object):
         self.hrchy = hrchy
 
         # Algorithm Configuration
-        self.model_info = mst_info['model_mst']
-        self.param_grid = mst_info['param_grid']
+        self.model_info = mst_info['model_mst']     # Algorithm master
+        self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.param_grid_list = config.PARAM_GRIDS_FCST    # Todo: Correct later
         self.model_candidates = list(self.model_info.keys())
 
@@ -60,7 +60,7 @@ class Train(object):
         self.fixed_n_test = 4
         self.err_val = float(10 ** 5 - 1)
         self.validation_method = 'train_test'
-        self.grid_search_yn = exec_cfg['grid_search_yn']
+        self.grid_search_yn: bool = exec_cfg['grid_search_yn']    # Execute grid search or not
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
         # After processing Configuration
@@ -96,6 +96,7 @@ class Train(object):
 
         return models
 
+    # Split univariate / multivariate features
     def select_feature_by_variable(self, df: pd.DataFrame) -> dict:
         feature_by_variable = None
         try:
@@ -106,10 +107,13 @@ class Train(object):
 
         return feature_by_variable
 
+    # Validation
     def validation(self, data, model: str) -> Tuple[float, float, dict]:
+        # Train / Test Split method
         if self.validation_method == 'train_test':
             score = self.train_test_validation(data=data, model=model)
 
+        # Walk-forward method
         elif self.validation_method == 'walk_forward':
             score = self.walk_fwd_validation(data=data, model=model)
 
@@ -119,7 +123,7 @@ class Train(object):
         return score
 
     def train_test_validation(self, model: str, data) -> Tuple[float, float, dict]:
-        # set test length
+        # Set test length
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
         # Split train & test dataset

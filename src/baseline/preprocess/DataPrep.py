@@ -12,10 +12,18 @@ from sklearn.impute import KNNImputer
 
 
 class DataPrep(object):
+    # Unnecessary columns on data preprocessing process
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
-    STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
+    STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']    # Columns of string type
 
     def __init__(self, date: dict, common: dict, hrchy: dict, data_cfg: dict, exec_cfg: dict):
+        """
+        :param date: Date information
+        :param common: Common information
+        :param hrchy: Hierarchy information
+        :param data_cfg: Data configuration
+        :param exec_cfg: Execution information
+        """
         # Dataset configuration
         self.common = common
         self.data_cfg = data_cfg
@@ -33,22 +41,22 @@ class DataPrep(object):
         self.date = date
         self.date_length = len(self.hist_date_range)
         self.exg_map = config.EXG_MAP    # Exogenous variable map
-        self.key_col = ['cust_grp_cd', 'sku_cd']
+        self.key_col = ['cust_grp_cd', 'sku_cd']    # Key columns of data level
 
         # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
 
         # Data threshold
-        self.rm_cnt = 0
+        self.rm_cnt = 0    # Data level count filtered by threshold
         self.threshold_cnt = int(self.common['filter_threshold_cnt'])
         self.threshold_recent = int(self.common['filter_threshold_recent'])
 
         # Execute option
-        self.imputer = 'knn'
-        self.sigma = float(common['outlier_sigma'])
-        self.outlier_method = 'std'
-        self.quantile_range = 0.02
+        self.imputer = 'knn'    # Imputation method
+        self.outlier_method = 'std'    # Removing outlier method (Standard deviation / Quantile)
+        self.sigma = float(common['outlier_sigma'])    # Standard deviation: Sigma
+        self.quantile_range = 0.02    # Quantile filtering range
         self.noise_rate = 0.1
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> Tuple[dict, list, int]:
@@ -60,21 +68,21 @@ class DataPrep(object):
         else:
             exg_list = []
 
-        # convert data type
+        # Change data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(str)
 
-        # convert datetime column
+        # Change datetime column
         data[self.common['date_col']] = data[self.common['date_col']].astype(np.int64)
 
-        # 2. Preprocess Exogenous dataset
+        # Preprocess Exogenous dataset
         if not self.exec_cfg['decompose_yn']:
             exg = util.prep_exg_all(data=exg)
 
             # Merge sales data & exogenous(all) data
             data = self.merge_exg(data=data, exg=exg)
 
-        # preprocess sales dataset
+        # Preprocess sales dataset
         data = self.conv_data_type(df=data)
 
         # Feature engineering
@@ -88,7 +96,7 @@ class DataPrep(object):
         # Grouping
         data_group, hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
 
-        # Decomposition
+        # Time series decomposition
         if self.exec_cfg['decompose_yn']:
             decompose = Decomposition(
                 common=self.common,
@@ -103,7 +111,6 @@ class DataPrep(object):
             )
 
             return decomposed, exg_list, hrchy_cnt
-        # print("Week Count: ", len(self.hist_date_range))
 
         # Resampling
         data_resample = util.hrchy_recursion_with_none(
@@ -133,9 +140,10 @@ class DataPrep(object):
         return merged
 
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
-        # drop unnecessary columns
+        # Drop unnecessary columns
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
         # df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
+
         # Convert unit code
         # if self.data_cfg['division'] == 'SELL_OUT':
         #     conditions = [df['unit_cd'] == 'EA',
@@ -152,7 +160,7 @@ class DataPrep(object):
         df[self.common['date_col']] = pd.to_datetime(df[self.common['date_col']], format='%Y%m%d')
         df = df.set_index(keys=[self.common['date_col']])
 
-        # add noise feature
+        # Add noise data
         # df = self.add_noise_feat(df=df)
 
         return df
@@ -193,11 +201,11 @@ class DataPrep(object):
         return grp
 
     def resample(self, df: pd.DataFrame) -> Union[pd.DataFrame, None]:
-        df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
-        df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
+        # Data resampling
+        df_sum_resampled = self.resample_by_agg(df=df, agg='sum')    # Aggregation : Summation
+        df_avg_resampled = self.resample_by_agg(df=df, agg='avg')    # Aggregation : Average
 
-        # Concatenate aggregation
-        # STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
+        # Concatenate each resampled result
         df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
 
         # Check and add dates when sales does not exist
@@ -206,7 +214,7 @@ class DataPrep(object):
                 self.rm_cnt += 1
                 return None
 
-        # Fill empty sales to zeros
+        # Fill empty quantity period with zeros
         if len(df_resampled.index) != len(self.hist_date_range):
             # missed_rate = self.check_missing_data(df=df_resampled)
             df_resampled = self.fill_missing_date(df=df_resampled)
@@ -235,14 +243,19 @@ class DataPrep(object):
         return df_resampled
 
     def filter_threshold_recent(self, data: pd.DataFrame, col: str) -> bool:
-        check = False
+        filter_yn = False
         data_length = len(data[col])
+        # Trim backward zeros on target column
         data_trimmed_length = len(np.trim_zeros(data[col].to_numpy(), trim='b'))
-        diff = data_length - data_trimmed_length
-        if diff > self.threshold_recent:
-            check = True
 
-        return check
+        # calculate recent missing period of data
+        diff = data_length - data_trimmed_length
+
+        # if recent missing period is bigger than threshold period, then filter that data
+        if diff > self.threshold_recent:
+            filter_yn = True
+
+        return filter_yn
 
     @staticmethod
     def rm_fwd_zero_sales(df: pd.DataFrame, feat: str) -> pd.DataFrame:
@@ -274,28 +287,37 @@ class DataPrep(object):
 
         return exist, missed_rate
 
+    # Resample
     def resample_by_agg(self, df: pd.DataFrame, agg: str) -> pd.DataFrame:
         resampled = pd.DataFrame()
+
+        # Get common columns
         col_agg = set(df.columns).intersection(set(self.col_agg_map[agg]))
         if len(col_agg) > 0:
             resampled = df[col_agg]
-            if agg == 'sum':
-                resampled = resampled.resample(rule=self.resample_rule).sum()  # resampling
-            elif agg == 'avg':
+            if agg == 'sum':    # Summation
+                resampled = resampled.resample(rule=self.resample_rule).sum()    # resampling
+            elif agg == 'avg':    # Average
                 resampled = resampled.resample(rule=self.resample_rule).mean()
             resampled = resampled.fillna(value=0)  # fill NaN
 
         return resampled
 
     def fill_missing_date(self, df: pd.DataFrame) -> pd.DataFrame:
+        # check missing dates
         idx_add = list(set(self.hist_date_range) - set(df.index))
+
+        # Make zero numpy array
         data_add = np.zeros((len(idx_add), df.shape[1]))
         df_add = pd.DataFrame(data_add, index=idx_add, columns=df.columns)
+
+        # Add zero dataframe on original dataset
         df = df.append(df_add)
         df = df.sort_index()
 
         return df
 
+    # Add data level information
     def add_data_level(self, org: pd.DataFrame, resampled: pd.DataFrame) -> pd.DataFrame:
         cols = self.hrchy['apply'][:self.hrchy_level + 1]
         data_level = org[cols].iloc[0].to_dict()
@@ -306,6 +328,8 @@ class DataPrep(object):
 
     def impute_data(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
         feature = deepcopy(df[feat])
+
+        # Imputation Method: K-nearest neighborhood
         if self.imputer == 'knn':
             if len(feature) > 0:
                 feature = np.where(feature.values == 0, np.nan, feature.values)
@@ -314,11 +338,13 @@ class DataPrep(object):
                 feature = imputer.fit_transform(feature)
                 feature = feature.ravel()
 
+        # Imputation Method: Using previous data
         elif self.imputer == 'before':
             for i in range(1, len(feature)):
                 if feature[i] == 0:
                     feature[i] = feature[i-1]
 
+        # Imputation Method: Using average data
         elif self.imputer == 'avg':
             for i in range(1, len(feature)-1):
                 if feature[i] == 0:
@@ -328,24 +354,27 @@ class DataPrep(object):
 
         return df
 
+    # Remove outlier: Clipping method
     def remove_outlier(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
         feature = deepcopy(df[feat])
         lower, upper = 0, 0
 
+        # Method: Standard deviation
         if self.outlier_method == 'std':
             feature = feature.values
             mean = np.mean(feature)
             std = np.std(feature)
-            cut_off = std * self.sigma   # 99.7%
+            cut_off = std * self.sigma
             lower = mean - cut_off
             upper = mean + cut_off
 
+        # Method: Quantile range
         elif self.outlier_method == 'quantile':
             lower = feature.quantile(self.quantile_range)
             upper = feature.quantile(1 - self.quantile_range)
 
-        # feature = np.where(feature < 0, 0, feature)
-        feature = np.where(feature < lower, lower, feature)    # Todo:
+        # Clip outlier data
+        feature = np.where(feature < lower, lower, feature)
         feature = np.where(feature > upper, upper, feature)
 
         df[feat] = feature
@@ -358,7 +387,8 @@ class DataPrep(object):
 
         return seq_to_cust
 
-    def add_noise_feat(self, df: pd.DataFrame) -> pd.DataFrame:
+    # Add noise data
+    def add_noise_data(self, df: pd.DataFrame) -> pd.DataFrame:
         feature = deepcopy(df[self.common['target_col']])
 
         # Calculate mean, max, min

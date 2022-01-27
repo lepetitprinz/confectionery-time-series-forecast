@@ -15,16 +15,17 @@ warnings.filterwarnings("ignore")
 
 
 class PipelineCycle(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
+    """
+    Baseline forecast pipeline
+    """
+    def __init__(self, step_cfg: dict, data_cfg: dict, exec_cfg: dict, path_root: str):
         """
-        :param data_cfg: Data Configuration
-        :param exec_cfg: Data I/O Configuration
-        :param step_cfg: Execute Configuration
+        :param step_cfg: Pipeline step configuration
+        :param data_cfg: Data configuration
+        :param exec_cfg: Execution configuration
+        :param path_root: root path for baseline forecast
         """
-        self.item_lvl = 3    # Fixed
-
-        # Test version code
-        self.test_vrsn_cd = '-'
+        self.item_lvl = 3    # Brand Level (Fixed)
 
         # I/O & Execution Configuration
         self.data_cfg = data_cfg
@@ -33,28 +34,25 @@ class PipelineCycle(object):
         self.path_root = path_root
 
         # Class Configuration
-        self.io = DataIO()
-        self.sql_conf = SqlConfig()
-        self.common = self.io.get_dict_from_db(
+        self.io = DataIO()    # Data In/Out class
+        self.sql_conf = SqlConfig()    # DB Query class
+        self.common: dict = self.io.get_dict_from_db(    # common information dictionary
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        self.data_lvl = self.io.get_df_from_db(
-            sql=SqlConfig.sql_data_level()
-        )
 
         # Data Configuration
-        self.division = data_cfg['division']
-        self.data_vrsn_cd = ''
-        self.hrchy = {}
-        self.level = {}
-        self.date = {}
-        self.path = {}
+        self.division = data_cfg['division']    # division (SELL-IN/SELL-OUT)
+        self.data_vrsn_cd = ''    # Data version
+        self.hrchy = {}    # Data hierarchy for customer & item
+        self.level = {}    # Data hierarchy level for customer & item
+        self.date = {}     # Date information (History / Middle-out)
+        self.path = {}     # Save & Load path
 
     def run(self):
         # ================================================================================================= #
-        # 1. Initiate basic setting
+        # 1. Initialize time series setting
         # ================================================================================================= #
         init = Init(
             data_cfg=self.data_cfg,
@@ -145,6 +143,7 @@ class PipelineCycle(object):
         data_prep = None
         exg_list = None
 
+        # Exogenous information
         exg_info = {
             'partial_yn': 'N',
             'from': self.date['history']['from'],

@@ -819,11 +819,12 @@ class SqlConfig(object):
                                       FROM M4S_I002170
                                      WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
                                    ) SALES
-                              LEFT OUTER JOIN (
+                              INNER JOIN (
                                                SELECT CUST_CD
                                                     , CONCAT(CUST_ORG_CD, '_', ITEM_CLASS_CD, '_', CUST_DIST_CD) AS CUST_MAP
                                                     , SP1_CD
                                                  FROM M4S_I002061
+                                                WHERE ITEM_CLASS_CD IN ('10', '20', '60')
                                               ) CUST
                                 ON SALES.CUST_CD = CUST.CUST_CD
                                AND SALES.CUST_MAP = CUST.CUST_MAP

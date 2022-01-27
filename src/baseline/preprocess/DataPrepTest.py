@@ -1,3 +1,5 @@
+import datetime
+
 from baseline.analysis.Decomposition import Decomposition
 from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
 import common.util as util
@@ -32,17 +34,23 @@ class DataPrepTest(object):
         )
         self.date = date
         self.date_length = len(self.hist_date_range)
+
         self.exg_map = config.EXG_MAP    # Exogenous variable map
         self.key_col = ['cust_grp_cd', 'sku_cd']
 
         # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
+        self.hrchy_cnt = 0
 
         # Data threshold
-        self.rm_cnt = 0
+        self.rm_lvl_cnt = 0
+        self.tot_sku_cnt = 0
+        self.rm_sku_cnt = 0
         self.threshold_cnt = int(self.common['filter_threshold_cnt'])
         self.threshold_recent = int(self.common['filter_threshold_recent'])
+        self.exec_date = None
+        self.threshold_sku_period = None
 
         # Execute option
         self.imputer = 'knn'
@@ -86,15 +94,27 @@ class DataPrepTest(object):
             data, exg_list = fe.feature_selection(data=data)
 
         # Grouping
-        data_group, hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
+        data_group, self.hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
 
         # Filter threshold SKU based on recent sales
         if self.exec_cfg['filter_threshold_recent_sku_yn']:
+            # Execute date
+            exec_date = self.date['history']['to']
+            self.exec_date = datetime.datetime.strptime(exec_date, '%Y%m%d') + datetime.timedelta(days=1)
+
+            # Set
+            self.threshold_sku_period = datetime.timedelta(days=int(self.common['filter_threshold_sku_recent']) * 7)
+
             data_group = util.hrchy_recursion_with_none(
                 hrchy_lvl=self.hrchy_level,
                 fn=self.filter_threshold_recent_sku,
                 df=data_group
             )
+            print("-----------------------------")
+            print(f"Total SKU: {self.tot_sku_cnt}")
+            print(f"Removed SKU: {self.rm_sku_cnt}")
+            print(f"Applied SKU: {self.tot_sku_cnt - self.rm_sku_cnt}")
+            print("-----------------------------")
 
         # Decomposition
         if self.exec_cfg['decompose_yn']:
@@ -110,7 +130,7 @@ class DataPrepTest(object):
                 df=data_group
             )
 
-            return decomposed, exg_list, hrchy_cnt
+            return decomposed, exg_list, self.hrchy_cnt
         # print("Week Count: ", len(self.hist_date_range))
 
         # Resampling
@@ -121,13 +141,13 @@ class DataPrepTest(object):
         )
 
         print('-----------------------------------')
-        print(f"Total data Level counts: {hrchy_cnt}")
-        print(f"Removed data Level counts: {self.rm_cnt}")
-        print(f"Applying data Level counts: {hrchy_cnt - self.rm_cnt}")
+        print(f"Total data level counts: {self.hrchy_cnt}")
+        print(f"Removed data level counts: {self.rm_lvl_cnt}")
+        print(f"Applying data level counts: {self.hrchy_cnt - self.rm_lvl_cnt}")
         print('-----------------------------------')
-        hrchy_cnt -= self.rm_cnt
+        self.hrchy_cnt -= self.rm_lvl_cnt
 
-        return data_resample, exg_list, hrchy_cnt
+        return data_resample, exg_list, self.hrchy_cnt
 
     def merge_exg(self, data: pd.DataFrame, exg: dict) -> pd.DataFrame:
         cust_grp_list = list(data['cust_grp_cd'].unique())
@@ -211,7 +231,7 @@ class DataPrepTest(object):
         # Check and add dates when sales does not exist
         if self.exec_cfg['filter_threshold_cnt_yn']:
             if len(df_resampled[df_resampled['qty'] != 0]) < self.threshold_cnt:
-                self.rm_cnt += 1
+                self.rm_lvl_cnt += 1
                 return None
 
         # Fill empty sales to zeros
@@ -222,7 +242,7 @@ class DataPrepTest(object):
         # Filter data level under threshold recent week
         if self.exec_cfg['filter_threshold_recent_yn']:
             if self.filter_threshold_recent(data=df_resampled, col=self.common['target_col']):
-                self.rm_cnt += 1
+                self.rm_lvl_cnt += 1
                 return None
 
         # Remove forward empty sales
@@ -253,11 +273,23 @@ class DataPrepTest(object):
         return check
 
     def filter_threshold_recent_sku(self, df: pd.DataFrame) -> Union[pd.DataFrame, None]:
-        recent_date = sorted(list(df.index))[-1]
-        if (recent_date) < self.common['filter_threshold_sku_recent'] * 7:
-            return None
+        df['date'] = df.index
+        last_day_by_sku = df[['sku_cd', 'date']].groupby(by=['sku_cd']).max().reset_index()
+        last_day_by_sku['diff'] = self.exec_date - last_day_by_sku['date']
+        all_sku = list(df['sku_cd'].unique())
+        valid_sku = list(last_day_by_sku[last_day_by_sku['diff'] < self.threshold_sku_period]['sku_cd'])
 
-        return df
+        self.tot_sku_cnt += len(all_sku)
+        self.rm_sku_cnt += (len(all_sku) - len(valid_sku))
+
+        # Filtering sku
+        result = df[df['sku_cd'].isin(valid_sku)]
+
+        if len(result) == 0:
+            self.hrchy_cnt -= 1
+            result = None
+
+        return result
 
     @staticmethod
     def rm_fwd_zero_sales(df: pd.DataFrame, feat: str) -> pd.DataFrame:

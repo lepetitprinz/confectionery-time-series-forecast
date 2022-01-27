@@ -9,10 +9,21 @@ from copy import deepcopy
 
 
 class ConsistencyCheck(object):
-    item_class_list = ['10', '20', '60']
+    item_class_list = ['10', '20', '60']    # Applying item class list
 
     def __init__(self, data_vrsn_cd: str, division: str, common: dict, hrchy: dict,
                  mst_info: dict, exec_cfg: dict, err_grp_map: dict, path_root: str):
+        """
+        :param data_vrsn_cd: Data version
+        :param division: Division (SELL-IN/SELL-OUT)
+        :param common: Common information
+        :param hrchy: Hierarchy information
+        :param mst_info: Master information
+        :param exec_cfg: Execution configuration
+        :param err_grp_map: Error group information
+        :param path_root: Root path for baseline forecast
+        """
+
         # Class Configuration
         self.io = DataIO()
         self.sql_config = SqlConfig()
@@ -24,20 +35,22 @@ class ConsistencyCheck(object):
         self.common = common
         self.hrchy = hrchy
 
-        self.resample_sum_list = ['qty']
-        self.resample_avg_list = ['unit_price', 'discount']
+        # Resampling configuration
+        self.resample_rule = 'W-MON'    # Resampling rule
+        self.resample_sum_list = ['qty']     # columns of weekly resampling rule (Summation)
+        self.resample_avg_list = ['unit_price', 'discount']    # columns of weekly resampling rule (Average)
 
         # Information
         self.mst_info = mst_info
         self.err_grp_map = err_grp_map
-        self.unit_cd = common['unit_cd'].split(',')
-        self.col_numeric = ['unit_price', 'discount', 'qty']
-        self.resample_rule = 'W-MON'
+        self.unit_cd = common['unit_cd'].split(',')    # Applying unit code list
+        self.col_numeric = ['unit_price', 'discount', 'qty']    # Numeric column list
 
         # Save and Load Configuration
-        self.save_path = os.path.join(path_root, 'error')
-        self.tb_name = 'M4S_I002174'
+        self.save_path = os.path.join(path_root, 'error')    # Save path
+        self.tb_name = 'M4S_I002174'    # Saving table name
 
+    # Check the data consistency
     def check(self, df: pd.DataFrame) -> pd.DataFrame:
         # Code Mapping
         normal = self.check_code_map(df=df)
@@ -57,8 +70,8 @@ class ConsistencyCheck(object):
         return normal
 
     def check_cust_map(self) -> None:
-        today = datetime.date.today()
-        today = today - datetime.timedelta(days=today.weekday())
+        today = datetime.date.today()    # Today date (YYYY-MM-DD)
+        today = today - datetime.timedelta(days=today.weekday())    # This monday
 
         date_from = today - datetime.timedelta(days=7)    # Previous monday
         date_to = today - datetime.timedelta(days=1)      # Previous sunday
@@ -68,11 +81,11 @@ class ConsistencyCheck(object):
         date_to = date_to.strftime('%Y%m%d')
         date = {'from': date_from, 'to': date_to}
 
-        # Get
+        # Get customer
         result = self.io.get_df_from_db(sql=self.sql_config.sql_cust_sp1_map_error(**date))
 
         # Filter customer distribution
-        result = self.filter_customer_distribution(df=result)
+        # result = self.filter_customer_distribution(df=result)
 
         # Save the result
         save_path = os.path.join(self.save_path, 'sp1', self.division + '_' + date_from + '_' + date_to + '.csv')
@@ -86,6 +99,7 @@ class ConsistencyCheck(object):
         return df
 
     # Error 1
+    # Check the item information mapping error
     def check_item_map(self, df: pd.DataFrame) -> pd.DataFrame:
         test_df = deepcopy(df)
         test_df = test_df[self.hrchy['apply']]
@@ -95,11 +109,12 @@ class ConsistencyCheck(object):
 
         # Print result
         print("-----------------------------------")
+        print(f"All data length: {len(test_df)}")
         print(f"Normal data length: {len(normal)}")
         print(f"Error data length: {len(err)}")
         print("-----------------------------------")
 
-        # save the error data
+        # Save the error data
         err_cd = 'err001'
         if len(err) > 0:
             err = self.make_err_format(df=err, err_cd=err_cd)
@@ -112,11 +127,12 @@ class ConsistencyCheck(object):
 
             if self.exec_cfg['save_db_yn']:
                 info = {'data_vrsn_cd': self.data_vrsn_cd, 'division_cd': self.division, 'err_cd': err_cd}
-                self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))
-                self.io.insert_to_db(df=err, tb_name=self.tb_name)
+                self.io.delete_from_db(sql=self.sql_config.del_sales_err(**info))    # Delete duplicated result
+                self.io.insert_to_db(df=err, tb_name=self.tb_name)    # Insert result on DB
 
         return normal
 
+    # Demand forecast based on sp1 + items contained in sales matrix
     def merge_sales_matrix(self, df: pd.DataFrame) -> pd.DataFrame:
         df['sku_cd'] = df['sku_cd'].astype(str)
 
@@ -133,33 +149,35 @@ class ConsistencyCheck(object):
 
         return merged
 
+    # Fill empty rows with zeros
     def fill_numeric_na(self, data: pd.DataFrame) -> pd.DataFrame:
         for col in self.col_numeric:
-            data[col] = data[col].fillna(0)    # fill na to zero
+            data[col] = data[col].fillna(0)    # Fill empty rows with zeros
             data[col] = data[col].replace('', 0)    # replace empty string to zero
         return data
 
+    # Resampling
     def resample_by_agg(self, df: pd.DataFrame, agg: str) -> pd.DataFrame:
         resampled = None
-        if agg == 'sum':
+        if agg == 'sum':    # Summation
             resampled = df.resample(rule=self.resample_rule).sum()
-        elif agg == 'avg':
+        elif agg == 'avg':    # Average
             resampled = df.resample(rule=self.resample_rule).mean()
-        resampled = resampled.fillna(value=0)    # fill NaN
-        resampled = resampled.reset_index()
+        resampled = resampled.fillna(value=0)    # Fill empty rows with
+        resampled = resampled.reset_index()      # Reset index
 
         return resampled
 
     def group_by_week(self, df: pd.DataFrame) -> pd.DataFrame:
-        # convert date string to datetime
+        # Convert date string into datetime
         df['yymmdd'] = pd.to_datetime(df['yymmdd'], format='%Y%m%d')
         df = df.set_index(keys=['yymmdd'])
 
-        # convert date type
+        # Change date type
         df['cust_grp_cd'] = df['cust_grp_cd'].astype(str)
         df['sku_cd'] = df['sku_cd'].astype(str)
 
-        # Get unique group
+        # Make unique group (SP1 + Customer)
         grp_col = ['cust_grp_cd', 'sku_cd']
         grp_df = df[grp_col].drop_duplicates()
         grp_list = [tuple(x) for x in grp_df.to_numpy()]
@@ -171,7 +189,7 @@ class ConsistencyCheck(object):
             resampled_avg = self.resample_by_agg(df=temp[grp_col + self.resample_avg_list], agg='avg')
             resampled = pd.merge(resampled_sum, resampled_avg, on='yymmdd')
 
-            # add information
+            # Add information
             resampled['cust_grp_cd'] = cust_grp
             resampled['sku_cd'] = sku
 
@@ -181,21 +199,25 @@ class ConsistencyCheck(object):
 
         return result
 
+    # Convert error result into db format
     def make_err_format(self, df: pd.DataFrame, err_cd: str) -> pd.DataFrame:
         df = self.group_by_week(df=df)
 
-        df['project_cd'] = self.common['project_cd']
-        df['data_vrsn_cd'] = self.data_vrsn_cd
-        df['division_cd'] = self.division
-        df['err_grp_cd'] = self.err_grp_map[err_cd]
-        df['err_cd'] = err_cd.upper()
-        df['from_dc_cd'] = ''
-        df['create_user_cd'] = 'SYSTEM'
+        # Add columns
+        df['project_cd'] = self.common['project_cd']    # Project code
+        df['data_vrsn_cd'] = self.data_vrsn_cd          # Data version
+        df['division_cd'] = self.division               # Division(SELL-IN/SELL-OUT)
+        df['err_grp_cd'] = self.err_grp_map[err_cd]     # Error group information
+        df['err_cd'] = err_cd.upper()                   # Error code
+        df['from_dc_cd'] = ''                           # From DC code
+        df['create_user_cd'] = 'SYSTEM'                 # Create user code
 
-        # Merge SP1 information
+        # Change data types (Integer -> String)
         cust_grp = self.mst_info['cust_grp']
         cust_grp['cust_grp_cd'] = cust_grp['cust_grp_cd'].astype(str)
         df['cust_grp_cd'] = df['cust_grp_cd'].astype(str)
+
+        # Merge SP1 information
         df = pd.merge(df, cust_grp, on='cust_grp_cd', how='left')
 
         # Merge item master information
@@ -204,7 +226,7 @@ class ConsistencyCheck(object):
         df['sku_cd'] = df['sku_cd'].astype(str)
         df = pd.merge(df, item_mst, on='sku_cd', how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
-        # Fill na
+        # Fill empty rows with zeros and empty space
         df = self.fill_numeric_na(data=df)
         df = df.fillna('')
 
@@ -212,10 +234,11 @@ class ConsistencyCheck(object):
         df = df.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)
         df = df.rename(columns=config.HRCHY_SKU_TO_DB_SKU_MAP)
 
-        number = [str(i+1).zfill(10) for i in range(len(df))]
+        number = [str(i+1).zfill(10) for i in range(len(df))]    # Numbering sequence
         df['number'] = number
-        df['seq'] = df['seq'] + '-' + df['number']
+        df['seq'] = df['seq'] + '-' + df['number']    # Add sequnce column
 
+        # Remove unnecessary columns
         df = df.drop(columns=['number', 'create_date'], errors='ignore')
 
         return df

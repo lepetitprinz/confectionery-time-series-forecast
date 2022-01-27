@@ -22,6 +22,11 @@ class CalcAccuracy(object):
     col_fixed = ['division_cd', 'start_week_day', 'week']
 
     # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
+    pick_sp1 = {
+        'p1': ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196'],
+        'p2': ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
+    }
+
     pick_sp1_p1 = ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196']
     pick_sp1_p2 = ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
 
@@ -51,7 +56,7 @@ class CalcAccuracy(object):
         # Evaluation configuration
         self.week_compare = 1             # Compare week range
         self.sales_threshold = 5          # Minimum sales quantity
-        self.eval_threshold = 0.7         # Accuracy: Success or not
+        self.eval_threshold = 0.5         # Accuracy: Success or not
         self.filter_top_n_threshold = 1   # Filter top N
         self.filter_acc_rate = 0.1        # Filter accuracy rate
 
@@ -81,6 +86,10 @@ class CalcAccuracy(object):
         if self.opt_cfg['filter_sepcific_biz_yn']:
             result = result[result['item_attr01_cd'] == self.data_cfg['item_attr01_cd']]
 
+        # Accuracy rate bu SP1 + item level
+        if self.opt_cfg['calc_acc_by_sp1_item_yn']:
+            self.calc_acc_by_sp1_line(data=result, sp1_list=self.pick_sp1[self.data_cfg['item_attr01_cd']])
+
         if self.exec_cfg['cls_top_n']:
             if self.opt_cfg['pick_specific_sp1_yn']:
                 result_pick = self.pick_specific_sp1(data=result)
@@ -98,6 +107,20 @@ class CalcAccuracy(object):
                 # Draw plots
                 if self.exec_cfg['cls_graph']:
                     self.draw_plot(result=result, sales=sales_hist)
+
+    def calc_acc_by_sp1_line(self, data: pd.DataFrame, sp1_list=None) -> None:
+        if sp1_list is not None:
+            data = data[data['cust_grp_cd'].isin(sp1_list)]
+
+        grp_col = ['cust_grp_cd', 'item_attr01_cd', 'item_attr02_cd']
+        grp_avg = data.groupby(by=grp_col)['success'].mean().reset_index()
+        grp_avg_pivot = grp_avg.pivot(
+            index=['item_attr01_cd', 'item_attr02_cd'],
+            columns='cust_grp_cd',
+            values='success')
+
+        path = os.path.join(self.root_path)
+        grp_avg_pivot.to_csv(path)
 
     def filter_specific_accuracy(self, data: pd.DataFrame) -> None:
         # Filter result by accuracy
@@ -125,12 +148,7 @@ class CalcAccuracy(object):
         return sales_hist, sales_compare
 
     def pick_specific_sp1(self, data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-        pick_sp1 = []
-        if self.data_cfg['item_attr01_cd'] == 'P1':
-            pick_sp1 = self.pick_sp1_p1
-        elif self.data_cfg['item_attr01_cd'] == 'P2':
-            pick_sp1 = self.pick_sp1_p2
-
+        pick_sp1 = self.pick_sp1[self.data_cfg['item_attr01_cd']]
         data_pick = data[data['cust_grp_cd'].isin(pick_sp1)]
 
         # sorting
@@ -380,7 +398,8 @@ class CalcAccuracy(object):
         return data
 
     def eval_result(self, data) -> pd.DataFrame:
-        data['success'] = np.where(data['accuracy'] < self.eval_threshold, 'N', 'Y')
+        data['success'] = np.where(data['accuracy'] < self.eval_threshold, 0, 1)
+        # data['success'] = np.where(data['accuracy'] < self.eval_threshold, 'N', 'Y')
 
         len_total = len(data)
         len_success = len(data[data['success'] == 'Y'])
