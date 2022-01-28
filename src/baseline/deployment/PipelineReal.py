@@ -379,65 +379,65 @@ class PipelineReal(object):
         # ================================================================================================= #
         # 7. Report result
         # ================================================================================================= #
-        if self.step_cfg['cls_rpt']:
-            print("Step 7: Report result\n")
-            test_vrsn_cd = self.test_vrsn_cd
-
-            if self.level['middle_out']:
-                pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
-                test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
-            else:
-                if not self.step_cfg['cls_pred']:
-                    pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
-
-            # Load compare dataset
-            date_compare = {
-                'from': self.date['evaluation']['from'],
-                'to': self.date['evaluation']['to']
-            }
-            date_recent = {
-                'from': self.date['middle_out']['from'],
-                'to': self.date['middle_out']['to']
-            }
-
-            sales_comp = None
-            sales_recent = None
-            # Sell-In dataset
-            if self.division == 'SELL_IN':
-                sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_compare))
-                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
-
-            # Sell-Out dataset
-            elif self.division == 'SELL_OUT':
-                if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
-                    sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_compare))
-                    sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
-
-            # Load item master
-            item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
-
-            report = ResultSummary(
-                data_vrsn=self.data_vrsn_cd,
-                division=self.division,
-                common=self.common,
-                date=self.date,
-                test_vrsn=test_vrsn_cd,
-                hrchy=self.hrchy,
-                item_mst=item_mst,
-                lvl_cfg=self.level
-            )
-            result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
-            result, result_info = report.make_db_format(data=result)
-
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=result, file_path=self.path['report'], data_type='csv')
-
-            if self.exec_cfg['save_db_yn']:
-                print("Save prediction results on DB")
-                self.io.delete_from_db(sql=self.sql_conf.del_compare_result(**result_info))
-                self.io.insert_to_db(df=result, tb_name='M4S_O110620')
-
-            # Close DB session
-            self.io.session.close()
-
-            print("Report results is finished\n")
+        # if self.step_cfg['cls_rpt']:
+        #     print("Step 7: Report result\n")
+        #     test_vrsn_cd = self.test_vrsn_cd
+        #
+        #     if self.level['middle_out']:
+        #         pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
+        #         test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
+        #     else:
+        #         if not self.step_cfg['cls_pred']:
+        #             pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
+        #
+        #     # Load compare dataset
+        #     date_compare = {
+        #         'from': self.date['evaluation']['from'],
+        #         'to': self.date['evaluation']['to']
+        #     }
+        #     date_recent = {
+        #         'from': self.date['middle_out']['from'],
+        #         'to': self.date['middle_out']['to']
+        #     }
+        #
+        #     sales_comp = None
+        #     sales_recent = None
+        #     # Sell-In dataset
+        #     if self.division == 'SELL_IN':
+        #         sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_compare))
+        #         sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
+        #
+        #     # Sell-Out dataset
+        #     elif self.division == 'SELL_OUT':
+        #         if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
+        #             sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_compare))
+        #             sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
+        #
+        #     # Load item master
+        #     item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
+        #
+        #     report = ResultSummary(
+        #         data_vrsn=self.data_vrsn_cd,
+        #         division=self.division,
+        #         common=self.common,
+        #         date=self.date,
+        #         test_vrsn=test_vrsn_cd,
+        #         hrchy=self.hrchy,
+        #         item_mst=item_mst,
+        #         lvl_cfg=self.level
+        #     )
+        #     result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
+        #     result, result_info = report.make_db_format(data=result)
+        #
+        #     if self.exec_cfg['save_step_yn']:
+        #         self.io.save_object(data=result, file_path=self.path['report'], data_type='csv')
+        #
+        #     if self.exec_cfg['save_db_yn']:
+        #         print("Save prediction results on DB")
+        #         self.io.delete_from_db(sql=self.sql_conf.del_compare_result(**result_info))
+        #         self.io.insert_to_db(df=result, tb_name='M4S_O110620')
+        #
+        #     # Close DB session
+        #     self.io.session.close()
+        #
+        #     print("Report results is finished\n")

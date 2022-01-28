@@ -68,6 +68,7 @@ class Train(object):
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def train(self, df) -> dict:
+        # Evaluate each algorithm
         scores = util.hrchy_recursion(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
             fn=self.train_model,
@@ -77,7 +78,7 @@ class Train(object):
         return scores
 
     def train_model(self, df) -> List[List[np.array]]:
-        # Show training progress
+        # Print training progress
         self.cnt += 1
         if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
@@ -87,6 +88,7 @@ class Train(object):
 
         models = []
         for model in self.model_candidates:
+            # Validation
             score = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
                 model=model)
@@ -100,8 +102,8 @@ class Train(object):
     def select_feature_by_variable(self, df: pd.DataFrame) -> dict:
         feature_by_variable = None
         try:
-            feature_by_variable = {'univ': df[self.target_col],
-                                   'multi': df[self.exo_col_list + [self.target_col]]}
+            feature_by_variable = {'univ': df[self.target_col],    # Univariate columns
+                                   'multi': df[self.exo_col_list + [self.target_col]]}    # Multivariate columns
         except ValueError:
             print("Data dose not have some columns")
 
@@ -136,9 +138,9 @@ class Train(object):
                 test=data_test
             )
 
-        best_params = {}
-        acc = 0
         # Grid Search
+        acc = 0
+        best_params = {}
         if self.grid_search_yn:
             err, best_params = self.grid_search(
                 model=model,
@@ -158,16 +160,16 @@ class Train(object):
 
         return err, acc, best_params
 
-    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int) -> tuple:
+    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int) -> Tuple[dict, dict]:
         data_length = len(data)
 
         data_train, data_test = None, None
         if self.model_info[model]['variate'] == 'univ':
-            if data_length - n_test >= n_test:
+            if data_length - n_test >= n_test:    # if training period bigger than prediction
                 data_train = data.iloc[: data_length - n_test]
                 data_test = data.iloc[data_length - n_test:]
 
-            elif data_length > self.fixed_n_test:
+            elif data_length > self.fixed_n_test:    # if data period bigger than fixed period
                 data_train = data.iloc[: data_length - self.fixed_n_test]
                 data_test = data.iloc[data_length - self.fixed_n_test:]
 
@@ -176,11 +178,11 @@ class Train(object):
                 data_test = data.iloc[data_length - 1:]
 
         elif self.model_info[model]['variate'] == 'multi':
-            if data_length - n_test >= n_test:
+            if data_length - n_test >= n_test:    # if training period bigger than prediction
                 data_train = data.iloc[: data_length - n_test, :]
                 data_test = data.iloc[data_length - n_test:, :]
 
-            elif data_length > self.fixed_n_test:
+            elif data_length > self.fixed_n_test:    # if data period bigger than fixed period
                 data_train = data.iloc[: data_length - self.fixed_n_test, :]
                 data_test = data.iloc[data_length - self.fixed_n_test:, :]
 
@@ -193,16 +195,17 @@ class Train(object):
 
             data_train = {
                 'endog': data_train[self.target_col].values.ravel(),    # Target variable
-                'exog': x_train
+                'exog': x_train    # Input variable
             }
             data_test = {
                 'endog': data_test[self.target_col].values,    # Target variable
-                'exog': x_test
+                'exog': x_test    # Input variable
             }
 
         return data_train, data_test
 
     @staticmethod
+    # Calculate accuracy
     def calc_accuracy(test, pred) -> float:
         pred = np.where(pred < 0, 0, pred)
         arr_acc = np.array([test, pred]).T
@@ -225,14 +228,14 @@ class Train(object):
         else:
             length = len(train['endog'])
 
-        if length > self.fixed_n_test:
+        if length > self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
             try:
                 yhat = self.estimators[model](
                     history=train,
                     cfg=params,
                     pred_step=n_test
                 )
-                # yhat = np.nan_to_num(yhat)
+
                 if yhat is not None:
                     err = 0
                     if self.model_info[model]['variate'] == 'univ':
@@ -245,20 +248,21 @@ class Train(object):
                         # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), 2)
                         acc = 0
 
-                    # Exception 처리
+                    # Exception
                     if err > self.err_val:
-                        err = self.err_val
+                        err = self.err_val    # Clip error values
                 else:
                     err = self.err_val    # Not solvable problem
 
             except ValueError:
-                err = self.err_val  # Not solvable problem
+                err = self.err_val    # Not solvable problem
         else:
             err = self.err_val
 
         return err, acc
 
     def grid_search(self, model, train, test, n_test) -> Tuple[tuple, dict]:
+        # get hyper-parameter grid for current algorithm
         param_grid_list = self.get_param_list(model=model)
 
         err_list = []
@@ -272,7 +276,7 @@ class Train(object):
             )
             err_list.append((err, params))
 
-        err_list = sorted(err_list, key=lambda x: x[0])
+        err_list = sorted(err_list, key=lambda x: x[0])    # Sort result based on error score
         best_result = err_list[0]    # Get best result
 
         return best_result
@@ -302,9 +306,11 @@ class Train(object):
 
     @staticmethod
     def scaling(train, test) -> tuple:
+        # split train and test dataset
         x_train = train['exog']
         x_test = test['exog']
 
+        # Apply Min-Max Scaling
         scaler = MinMaxScaler()
         x_train_scaled = scaler.fit_transform(x_train)
         x_test_scaled = scaler.transform(x_test)
@@ -315,7 +321,7 @@ class Train(object):
         return train, test
 
     def make_best_params_data(self, model: str, params: dict) -> tuple:
-        model = model.upper()
+        model = model.upper()    # Convert name to uppercase
         data, info = [], []
         for key, val in params.items():
             data.append([
@@ -433,13 +439,6 @@ class Train(object):
         }
 
         return result, score_info
-
-    def fill_na(self, data) -> pd.DataFrame:
-        for col in self.fill_na_chk_list:
-            if col in list(data.columns):
-                data[col] = data[col].fillna('')
-
-        return data
 
     @staticmethod
     def score_to_df(hrchy: list, data) -> List[list]:

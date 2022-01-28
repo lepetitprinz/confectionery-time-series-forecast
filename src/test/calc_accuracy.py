@@ -14,23 +14,25 @@ exec_cfg = {
     'cls_prep': True,    # Preprocessing
     'cls_comp': True,    # Compare result
     'cls_top_n': True,   # Choose top N
-    'cls_graph': True   # Draw graph
+    'cls_graph': False    # Draw graph
 }
 
 opt_cfg = {
     'rm_zero_yn': True,    # Preprocessing
     'calc_acc_by_sp1_item_yn': True,
-    'filter_sales_threshold_yn': True,    # Preprocessing
-    'filter_specific_acc_yn': False,    # Compare result
+    'filter_sales_threshold_yn': True,
+    'filter_specific_acc_yn': False,
     'filter_sepcific_biz_yn': True,
-    'pick_specific_sp1_yn': True,    # Top N
+    'pick_specific_sp1_yn': False,
 }
 
 data_cfg = {
-    'root_path': os.path.join('..', '..', 'analysis', 'accuracy'),
-    'division': 'SELL_OUT',
+    # 'root_path': os.path.join('..', '..'),
+    'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
+    'load_option': 'csv',
+    'division': 'SELL_IN',
     'item_lvl': 3,
-    'item_attr01_cd': 'P2'
+    'item_attr01_cd': 'P1'
 }
 
 date_cfg = {

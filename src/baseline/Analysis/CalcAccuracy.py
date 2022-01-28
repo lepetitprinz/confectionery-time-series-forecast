@@ -20,15 +20,21 @@ plt.style.use('fivethirtyeight')
 
 class CalcAccuracy(object):
     col_fixed = ['division_cd', 'start_week_day', 'week']
-
-    # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
     pick_sp1 = {
-        'p1': ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196'],
-        'p2': ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
+        # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
+        'P1': ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196'],
+        'P2': ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
     }
-
-    pick_sp1_p1 = ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196']
-    pick_sp1_p2 = ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
+    pred_csv_map = {
+        'name': {
+            'C1-P3': 'pred_best.csv',
+            'C1-P5': 'pred_middle_out_db.csv'
+        },
+        'encoding': {
+            'C1-P3': 'cp949',
+            'C1-P5': 'utf-8'
+        }
+    }
 
     def __init__(self, exec_cfg: dict, opt_cfg: dict, date_cfg: dict, data_cfg: dict):
         self.io = DataIO()
@@ -51,14 +57,17 @@ class CalcAccuracy(object):
         self.hist_date_range = []
         self.level = {}
         self.hrchy = {}
-        self.item_code_map = {}
+        self.item_info = None
+        self.cust_map = {}
+
+        self.filter_sales_threshold_standard = 'recent'    # hist / recent
 
         # Evaluation configuration
         self.week_compare = 1             # Compare week range
         self.sales_threshold = 5          # Minimum sales quantity
         self.eval_threshold = 0.5         # Accuracy: Success or not
         self.filter_top_n_threshold = 1   # Filter top N
-        self.filter_acc_rate = 0.1        # Filter accuracy rate
+        self.filter_acc_rate = 2          # Filter accuracy rate
 
     def run(self) -> None:
         # Initialize information
@@ -119,7 +128,10 @@ class CalcAccuracy(object):
             columns='cust_grp_cd',
             values='success')
 
-        path = os.path.join(self.root_path)
+        path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd, 'result',
+                            self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) +
+                            'pivot.csv')
+
         grp_avg_pivot.to_csv(path)
 
     def filter_specific_accuracy(self, data: pd.DataFrame) -> None:
@@ -127,7 +139,8 @@ class CalcAccuracy(object):
         filtered = data[data['accuracy'] < self.filter_acc_rate]
 
         # Save the result
-        path = os.path.join(self.root_path, self.data_vrsn_cd, 'filter', self.data_vrsn_cd + '_' + self.division +
+        path = os.path.join(self.root_path, 'analysis', 'accuracy',
+                            self.data_vrsn_cd, 'filter', self.data_vrsn_cd + '_' + self.division +
                             '_' + str(self.hrchy['lvl']['item']) + '_' + str(self.filter_acc_rate) + '.csv')
         filtered.to_csv(path, index=False, encoding='cp949')
 
@@ -164,9 +177,14 @@ class CalcAccuracy(object):
         return splited
 
     def filter_sales_threshold(self, hist: pd.DataFrame, recent: pd.DataFrame) -> pd.DataFrame:
-        hist_avg = self.calc_avg_sales(data=hist)
-        hist_data_level = self.filter_avg_sales_by_threshold(data=hist_avg)
-        recent_filtered = self.merged_filtered_data_level(data=recent, data_level=hist_data_level)
+        recent_filtered = None
+        if self.filter_sales_threshold_standard == 'hist':
+            hist_avg = self.calc_avg_sales(data=hist)
+            hist_data_level = self.filter_avg_sales_by_threshold(data=hist_avg)
+            recent_filtered = self.merged_filtered_data_level(data=recent, data_level=hist_data_level)
+
+        elif self.filter_sales_threshold_standard == 'recent':
+            recent_filtered = recent[recent['sales'] >= self.sales_threshold]
 
         return recent_filtered
 
@@ -192,18 +210,37 @@ class CalcAccuracy(object):
         self.set_level(item_lvl=self.data_cfg['item_lvl'])
         self.set_hrchy()
         self.get_item_info()
+        self.get_cust_info()
         self.make_dir()
+
+    def get_cust_info(self) -> None:
+        cust_info = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
+        cust_info['cust_grp_cd'] = cust_info['cust_grp_cd'].astype(str)
+        cust_info = cust_info.set_index('cust_grp_cd')['cust_grp_nm'].to_dict()
+
+        self.cust_map = cust_info
 
     def get_item_info(self) -> None:
         item_info = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         item_info.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in item_info.columns]
         item_info.columns = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in item_info.columns]
-        item_lvl_cd = self.hrchy['apply'][-1]
-        item_lvl_nm = item_lvl_cd[:-2] + 'nm'
-        item_info = item_info[[item_lvl_cd, item_lvl_nm]].drop_duplicates()
-        item_code_map = item_info.set_index(item_lvl_cd)[item_lvl_nm].to_dict()
 
-        self.item_code_map = item_code_map
+        if 'item_cd' in item_info.columns:
+            item_info['item_cd'] = item_info['item_cd'].astype(str)
+
+        item_col_grp = self.hrchy['list']['item']
+        item_col_grp = [[col, col[:-2] + 'nm'] for col in item_col_grp]
+        item_col_list = []
+        for col in item_col_grp:
+            item_col_list.extend(col)
+
+        item_info = item_info[item_col_list].drop_duplicates()
+        # item_lvl_cd = self.hrchy['apply'][-1]
+        # item_lvl_nm = item_lvl_cd[:-2] + 'nm'
+        # item_info = item_info[[item_lvl_cd, item_lvl_nm]].drop_duplicates()
+        # item_code_map = item_info.set_index(item_lvl_cd)[item_lvl_nm].to_dict()
+
+        self.item_info = item_info
 
     def set_date(self) -> None:
         if self.date_cfg['cycle_yn']:
@@ -248,7 +285,7 @@ class CalcAccuracy(object):
         self.hrchy['apply'] = self.hrchy['list']['cust'] + self.hrchy['list']['item']
 
     def make_dir(self) -> None:
-        path = os.path.join(self.root_path, self.data_vrsn_cd)
+        path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd)
         if not os.path.isdir(path):
             os.mkdir(path=path)
             os.mkdir(path=os.path.join(path, 'result'))
@@ -310,13 +347,27 @@ class CalcAccuracy(object):
             sales_hist = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_week_hist(**info_sales_hist))
 
         # load prediction dataset
-        info_pred = {
-            'data_vrsn_cd': self.data_vrsn_cd,
-            'division_cd': self.division,
-            'fkey': self.hrchy['key'][:-1],
-            'yymmdd': self.date_sales['compare']['from'],
-        }
-        pred = self.io.get_df_from_db(sql=self.sql_conf.sql_pred_best(**info_pred))
+        pred = None
+        if self.data_cfg['load_option'] == 'db':
+            info_pred = {
+                'data_vrsn_cd': self.data_vrsn_cd,
+                'division_cd': self.division,
+                'fkey': self.hrchy['key'][:-1],
+                'yymmdd': self.date_sales['compare']['from'],
+            }
+            pred = self.io.get_df_from_db(sql=self.sql_conf.sql_pred_best(**info_pred))
+
+        elif self.data_cfg['load_option'] == 'csv':
+            path = os.path.join('..', '..', 'prediction', self.division + '_' + self.data_vrsn_cd +
+                                '_C1-P3-' + self.pred_csv_map['name'][self.hrchy['key'][:-1]])
+            pred = pd.read_csv(path, encoding=self.pred_csv_map['encoding'][self.hrchy['key'][:-1]])
+            pred.columns = [col.lower() for col in pred.columns]
+            pred = pred.rename(columns={'yymmdd': 'start_week_day', 'result_sales': 'pred'})
+            pred['cust_grp_cd'] = pred['cust_grp_cd'].astype(str)
+            pred['start_week_day'] = pred['start_week_day'].astype(str)
+            if 'item_cd' in pred.columns:
+                pred['item_cd'] = pred['item_cd'].astype(str)
+
         pred = self.filter_col(data=pred)
 
         return sales_compare, sales_hist, pred
@@ -369,12 +420,23 @@ class CalcAccuracy(object):
         data = self.calc_accuracy(data=data)
         data = self.eval_result(data=data)
 
-        item_lvl_cd = self.hrchy['apply'][-1]
-        item_lvl_nm = item_lvl_cd[:-2] + 'nm'
-        data[item_lvl_nm] = [self.item_code_map.get(code, code) for code in data[item_lvl_cd].values]
-        path = os.path.join(self.root_path, self.data_vrsn_cd, 'result', self.data_vrsn_cd + '_' + self.division +
-                            '_' + str(self.hrchy['lvl']['item']) + '.csv')
-        data.to_csv(path, index=False, encoding='cp949')
+        # Add name information
+        # Add SP1 name
+        data['cust_grp_nm'] = [self.cust_map.get(code, code) for code in data['cust_grp_cd'].values]
+
+        # Add item names
+        data = pd.merge(data, self.item_info, how='left', on=self.hrchy['list']['item'])
+
+        # item_lvl_cd = self.hrchy['apply'][-1]
+        # item_lvl_nm = item_lvl_cd[:-2] + 'nm'
+        # data[item_lvl_nm] = [self.item_info.get(code, code) for code in data[item_lvl_cd].values]
+
+        view_col = ['cust_grp_cd', 'cust_grp_nm'] + list(self.item_info.columns) + ['sales', 'pred', 'accuracy']
+        data_save = data[view_col]
+
+        path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd, 'result',
+                            self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) + '.csv')
+        data_save.to_csv(path, index=False, encoding='cp949')
 
         return data
 
@@ -402,8 +464,8 @@ class CalcAccuracy(object):
         # data['success'] = np.where(data['accuracy'] < self.eval_threshold, 'N', 'Y')
 
         len_total = len(data)
-        len_success = len(data[data['success'] == 'Y'])
-        len_fail = len(data[data['success'] == 'N'])
+        len_success = len(data[data['success'] == 1])
+        len_fail = len(data[data['success'] == 0])
 
         print("---------------------------------")
         print(f"Prediction Total: {len_total}")
@@ -455,10 +517,11 @@ class CalcAccuracy(object):
                     plt.xticks(rotation=30)
                     plt.ylim(ymin=-5)
                     date_str = datetime.datetime.strftime(date, '%Y%m%d')
-                    plt.title(f'Date: {date_str} / Cust Group: {cust_grp} / Brand: {self.item_code_map[item_lvl_cd]}')
+                    plt.title(f'Date: {date_str} / Cust Group: {cust_grp} / Brand: {self.item_info[item_lvl_cd]}')
                     plt.tight_layout()
                     plt.savefig(os.path.join(
-                        self.root_path, self.data_vrsn_cd, 'plot', self.data_vrsn_cd + '_' + self.division + '_' +
+                        self.root_path, 'analysis', 'accuracy',
+                        self.data_vrsn_cd, 'plot', self.data_vrsn_cd + '_' + self.division + '_' +
                         kind + '_' + str(cust_grp) + '_' + str(item_lvl_cd) + '.png'))
 
                     plt.close(fig)
