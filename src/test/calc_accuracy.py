@@ -4,11 +4,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.analysis.CalcAccuracy import CalcAccuracy
 
-hist_from = '20190121'
-hist_to = '20220116'
+hist_from = '20190128'
+hist_to = '20220123'
 
-compare_from = '20220117'
-compare_to = '20220123'
+compare_from = '20220124'
+compare_to = '20220130'
 
 exec_cfg = {
     'cls_prep': True,    # Preprocessing
@@ -20,10 +20,10 @@ exec_cfg = {
 opt_cfg = {
     'rm_zero_yn': True,    # Preprocessing
     'calc_acc_by_sp1_item_yn': True,
-    'filter_sales_threshold_yn': True,
-    'filter_specific_acc_yn': False,
-    'filter_sepcific_biz_yn': True,
-    'pick_specific_sp1_yn': False,
+    'filter_sales_threshold_yn': True,    # Filter based on sales threshold
+    'filter_specific_acc_yn': False,      # Filter Specific accuracy range
+    'pick_specific_biz_yn': True,         # Pick Specific business code
+    'pick_specific_sp1_yn': False,        # Pick Specific sp1 list
 }
 
 data_cfg = {
@@ -31,8 +31,8 @@ data_cfg = {
     'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
     'load_option': 'csv',
     'division': 'SELL_IN',
-    'item_lvl': 3,
-    'item_attr01_cd': 'P1'
+    'item_lvl': 5,
+    'item_attr01_cd': 'P2'
 }
 
 date_cfg = {
@@ -44,7 +44,7 @@ date_cfg = {
         },
         'compare': {
             'from': compare_from,    # 20220110
-            'to': compare_to    # 20220116
+            'to': compare_to         # 20220116
         }
     },
     'data_vrsn_cd': hist_from + '-' + hist_to

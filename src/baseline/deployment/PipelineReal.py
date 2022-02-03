@@ -228,7 +228,7 @@ class PipelineReal(object):
             scores_best, score_best_info = training.make_score_result(
                 data=scores,
                 hrchy_key=self.hrchy['key'],
-                fn=training.best_score_to_df
+                fn=training.make_best_score_df
             )
 
             scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')

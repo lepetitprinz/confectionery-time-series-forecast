@@ -23,7 +23,7 @@ class CalcAccuracy(object):
     pick_sp1 = {
         # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
         'P1': ['1005', '1022', '1051', '1063', '1107', '1128', '1065', '1073', '1173', '1196'],
-        'P2': ['1017', '1098', '1101', '1112', '1128', '1206', '1213']
+        'P2': ['1017', '1098', '1101', '1112', '1128', '1206', '1213', '1230']
     }
     pred_csv_map = {
         'name': {
@@ -92,7 +92,7 @@ class CalcAccuracy(object):
         sales_hist = self.conv_to_datetime(data=sales_hist, col='start_week_day')
         result = self.conv_to_datetime(data=result, col='start_week_day')
 
-        if self.opt_cfg['filter_sepcific_biz_yn']:
+        if self.opt_cfg['pick_specific_biz_yn']:
             result = result[result['item_attr01_cd'] == self.data_cfg['item_attr01_cd']]
 
         # Accuracy rate bu SP1 + item level
@@ -130,7 +130,7 @@ class CalcAccuracy(object):
 
         path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd, 'result',
                             self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) +
-                            'pivot.csv')
+                            '_' + self.data_cfg['item_attr01_cd'] + '_pivot.csv')
 
         grp_avg_pivot.to_csv(path)
 
@@ -517,7 +517,7 @@ class CalcAccuracy(object):
                     plt.xticks(rotation=30)
                     plt.ylim(ymin=-5)
                     date_str = datetime.datetime.strftime(date, '%Y%m%d')
-                    plt.title(f'Date: {date_str} / Cust Group: {cust_grp} / Brand: {self.item_info[item_lvl_cd]}')
+                    plt.title(f'Date: {date_str} / Cust Group: {cust_grp} / Brand: {self.item_info.get(item_lvl_cd, item_lvl_cd)}')
                     plt.tight_layout()
                     plt.savefig(os.path.join(
                         self.root_path, 'analysis', 'accuracy',

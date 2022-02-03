@@ -17,15 +17,15 @@ threshold_recent = 12
 # 1.Time Series Forecast
 PARAM_GRIDS_FCST = {
     'ar': {
-        'lags': ['7', '14', '28'],
-        'period': ['1', '7', '14'],
+        'lags': ['2', '3', '4'],
+        'period': ['2', '3', '4'],
         'seasonal': [True, False],
         'trend': ['t', 'ct']
     },
     'hw': {
         'damped_trend': [True],
         'remove_bias': [True],
-        'seasonal_period': ['4'],
+        'seasonal_period': ['2', '3', '4'],
         'seasonal': ['add'],
         'trend': ['add'],
         'alpha': [0.1, 0.2, 0.3],
@@ -203,5 +203,6 @@ EXG_MAP = {
     '1226': '138',    # 경북 -> 포항
     '1227': '253',    # 경남 -> 김해
     '1228': '131',    # 충청 -> 청주
-    '1229': '156'     # 호남 빙과 -> 광주
+    '1229': '156',    # 호남 빙과 -> 광주
+    '1230': '999'     # 나뚜루유통영업 -> 전국
 }

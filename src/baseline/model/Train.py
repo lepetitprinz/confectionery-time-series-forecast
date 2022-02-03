@@ -28,42 +28,52 @@ class Train(object):
         'sarima': Algorithm.sarimax
     }
 
-    def __init__(self, mst_info: dict, common: dict, division: str, data_vrsn_cd: str,
-                 hrchy: dict, exg_list: list, data_cfg: dict, exec_cfg: dict):
+    def __init__(self, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
+                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list):
+        """
+        :param division: Division (SELL-IN/SELl-OUT)
+        :param data_vrsn_cd: Data version code
+        :param common: Common information
+        :param hrchy: Hierarchy information
+        :param data_cfg: Data configuration
+        :param exec_cfg: Execution configuration
+        :param mst_info: Several master information
+        :param exg_list: Exogenous variable list
+        """
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
         # Data Configuration
-        self.data_cfg = data_cfg
-        self.exec_cfg = exec_cfg
-        self.data_vrsn_cd = data_vrsn_cd
-        self.common = common
+        self.common = common    # Common information
+        self.data_cfg = data_cfg    # Data configuration
+        self.exec_cfg = exec_cfg    # Execute configuration
         self.division = division    # SELL-IN / SELL-OUT
+        self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.target_col = common['target_col']    # Target column
 
         self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        self.cust_grp = mst_info['cust_grp']
-        self.item_mst = mst_info['item_mst']
+        self.cust_grp = mst_info['cust_grp']    # Customer group master
+        self.item_mst = mst_info['item_mst']    # Item master
 
         # Data Level Configuration
-        self.cnt = 0
-        self.hrchy = hrchy
+        self.cnt = 0    # Data level count
+        self.hrchy = hrchy    # Hierarchy information
 
         # Algorithm Configuration
-        self.model_info = mst_info['model_mst']     # Algorithm master
+        self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
-        self.param_grid_list = config.PARAM_GRIDS_FCST    # Todo: Correct later
-        self.model_candidates = list(self.model_info.keys())
+        self.model_candidates = list(self.model_info.keys())    # Model candidates list
+        self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
         self.fixed_n_test = 4
-        self.err_val = float(10 ** 5 - 1)
-        self.validation_method = 'train_test'
+        self.err_val = float(10 ** 5 - 1)    # set error values or clip outlier values
+        self.validation_method = 'train_test'    # Train-test / Walk-forward
         self.grid_search_yn: bool = exec_cfg['grid_search_yn']    # Execute grid search or not
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
-        # After processing Configuration
+        # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
@@ -138,10 +148,10 @@ class Train(object):
                 test=data_test
             )
 
-        # Grid Search
         acc = 0
         best_params = {}
         if self.grid_search_yn:
+            # Grid Search
             err, best_params = self.grid_search(
                 model=model,
                 train=data_train,
@@ -150,6 +160,7 @@ class Train(object):
             )
 
         else:
+            # Evaluation
             err, acc = self.evaluation(
                 model=model,
                 params=self.param_grid[model],
@@ -207,7 +218,7 @@ class Train(object):
     @staticmethod
     # Calculate accuracy
     def calc_accuracy(test, pred) -> float:
-        pred = np.where(pred < 0, 0, pred)
+        pred = np.where(pred < 0, 0, pred)    # change minus values to zero
         arr_acc = np.array([test, pred]).T
         arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
 
@@ -252,10 +263,10 @@ class Train(object):
                     if err > self.err_val:
                         err = self.err_val    # Clip error values
                 else:
-                    err = self.err_val    # Not solvable problem
+                    err = self.err_val    # Non-solvable problem
 
             except ValueError:
-                err = self.err_val    # Not solvable problem
+                err = self.err_val    # Non-solvable problem
         else:
             err = self.err_val
 
@@ -291,7 +302,7 @@ class Train(object):
         dataset = self.window_generator(df=data, model=model)
 
         # evaluation
-        n_test = ast.literal_eval(self.model_info[model]['label_width'])
+        n_test = ast.literal_eval(self.model_info[model]['label_width'])    # Change data type
         predictions = []
         for train, test in dataset:
             yhat = self.estimators[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
@@ -306,7 +317,7 @@ class Train(object):
 
     @staticmethod
     def scaling(train, test) -> tuple:
-        # split train and test dataset
+        # Split train and test dataset
         x_train = train['exog']
         x_test = test['exog']
 
@@ -340,9 +351,9 @@ class Train(object):
         return param_df, info
 
     def get_param_list(self, model) -> List[dict]:
-        param_grids = self.param_grid_list[model]
-        params = list(param_grids.keys())
-        values = param_grids.values()
+        param_grids = self.param_grid_list[model]    # Hyper-parameter list
+        params = list(param_grids.keys())    # Hyper-parameter options
+        values = param_grids.values()    # Hyper-parameter values
         values_combine_list = list(product(*values))
 
         values_combine_map_list = []
@@ -351,6 +362,7 @@ class Train(object):
 
         return values_combine_map_list
 
+    # Save best hyper-parameter based on counting
     def save_best_params(self, scores) -> None:
         # Count best params for each data level
         util.hrchy_recursion(
@@ -369,6 +381,7 @@ class Train(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_hyper_params(**params_info))
             self.io.insert_to_db(df=best_params, tb_name='M4S_I103011')
 
+    # Count best hyper-parameters
     def count_best_params(self, data) -> None:
         for algorithm in data:
             model, score, accuracy, params = algorithm
@@ -384,13 +397,13 @@ class Train(object):
         result.columns = cols
 
         # Add information
-        result['project_cd'] = self.common['project_cd']
+        result['project_cd'] = self.common['project_cd']    # Project code
         result['division_cd'] = self.division
         result['data_vrsn_cd'] = self.data_vrsn_cd
         result['create_user_cd'] = 'SYSTEM'
 
-        if hrchy_key[:2] == 'C1':
-            if hrchy_key[3:5] == 'P5':
+        if hrchy_key[:2] == 'C1':    # if hierarchy contains SP1 (Customer group)
+            if hrchy_key[3:5] == 'P5':    # if hierarchy contains SKU code
                 result['fkey'] = hrchy_key + result['cust_grp_cd'] + '-' + result['sku_cd']
             else:
                 key = self.hrchy['apply'][-1]
@@ -403,14 +416,14 @@ class Train(object):
         # result['accuracy'] = result['accuracy'].where(pd.notnull(result['accuracy']), None)
 
         # Merge information
-        # Item Names
+        # 1.Item code & name
         if self.hrchy['lvl']['item'] > 0:
             result = pd.merge(result,
                               self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
                               on=self.hrchy['list']['item'][:self.hrchy['lvl']['item']],
                               how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
 
-        # Customer Names
+        # 2.SP1 code & name
         if self.hrchy['lvl']['cust'] > 0:
             result = pd.merge(result,
                               self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
@@ -418,7 +431,7 @@ class Train(object):
                               how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
             # result = result.fillna('-')
 
-        # Fill na
+        # Fill null values
         result = util.fill_na(data=result, chk_list=self.fill_na_chk_list)
 
         # Rename columns
@@ -430,7 +443,7 @@ class Train(object):
             if col in list(result.columns):
                 result = util.remove_special_character(data=result, feature=col)
 
-        # set score_info
+        # set score information used to delete previous results
         score_info = {
             'project_cd': self.common['project_cd'],
             'data_vrsn_cd': self.data_vrsn_cd,
@@ -441,25 +454,28 @@ class Train(object):
         return result, score_info
 
     @staticmethod
+    # Save all of scores to dataframe
     def score_to_df(hrchy: list, data) -> List[list]:
         result = []
         for algorithm, err, accuracy, _ in data:
             # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), err, accuracy])    # ToDo: Correct score (err, accuracy)
+            result.append(hrchy + [algorithm.upper(), err, accuracy])
 
         return result
 
     @staticmethod
-    def best_score_to_df(hrchy: list, data) -> list:
+    # Save best scores to dataframe
+    def make_best_score_df(hrchy: list, data) -> list:
         result = []
         for algorithm, err, accuracy, _ in data:
             # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), err, accuracy])  # ToDo: Correct score (err, accuracy)
+            result.append(hrchy + [algorithm.upper(), err, accuracy])
 
         result = sorted(result, key=lambda x: x[2])
 
         return [result[0]]
 
+    # Make the sliding window data
     def window_generator(self, df, model: str) -> List[Tuple]:
         data_length = len(df)
         input_width = int(self.model_info[model]['input_width'])
@@ -468,9 +484,11 @@ class Train(object):
         data_target = None
         dataset = []
         for i in range(data_length - input_width - label_width + 1):
+            # Univariate variable
             if self.model_info[model]['variate'] == 'univ':
                 data_input = df.iloc[i: i + input_width]
                 data_target = df.iloc[i + input_width: i + input_width + label_width]
+            # Multivariate variable
             elif self.model_info[model]['variate'] == 'multi':
                 data_input = df.iloc[i: i + input_width, :]
                 data_target = df.iloc[i + input_width: i + input_width + label_width, :]

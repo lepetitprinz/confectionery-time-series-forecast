@@ -225,7 +225,7 @@ class PipelineCycle(object):
             scores_best, score_best_info = training.make_score_result(
                 data=scores,
                 hrchy_key=self.hrchy['key'],
-                fn=training.best_score_to_df
+                fn=training.make_best_score_df
             )
 
             scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
@@ -262,6 +262,7 @@ class PipelineCycle(object):
                 self.hrchy['cnt'] = hrchy_cnt
 
             if not self.step_cfg['cls_train']:
+                # Load best scores
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
 
             # Initiate predict class
@@ -276,7 +277,7 @@ class PipelineCycle(object):
                 data_cfg=self.data_cfg
             )
 
-            # Forecast the model
+            # Forecast
             prediction = predict.forecast(df=data_prep)
 
             # Save Step result
@@ -302,7 +303,7 @@ class PipelineCycle(object):
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_all(**pred_info))
                 self.io.insert_to_db(df=pred_all, tb_name=table_pred_all)
 
-                # Save prediction of best algorithm
+                # Save prediction results of best algorithm
                 print("Save best of prediction results on DB")
                 table_pred_best = 'M4S_O110600'
                 pred_info['table_nm'] = table_pred_best

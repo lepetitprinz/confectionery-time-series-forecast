@@ -82,7 +82,7 @@ class Train(object):
     def train_model(self, hrchy_list: list, data):
         # Show training progress
         self.cnt += 1
-        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt_filtered']):
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt_filtered']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt_filtered']})")
 
         # Split dataset

@@ -11,6 +11,7 @@ class FeatureEngineering(object):
         self.feat_select_method = 'spearmanr'    # pearson / spearmanr
         self.n_feature_to_select = 2
 
+    # Feature selection
     def feature_selection(self, data: pd.DataFrame):
         drop_feat_list, exg_list = self.numeric_to_numeric(data=data)
         data = data.drop(columns=drop_feat_list)
@@ -19,23 +20,23 @@ class FeatureEngineering(object):
 
     def numeric_to_numeric(self, data):
         # feature selection with numeric to numeric
-        target = data[self.target_col].values
+        target = data[self.target_col].values    # Target values
 
         coef_list = []
         for exg in self.exg_list:
             coef = 0
-            if self.feat_select_method == 'spearmanr':
+            if self.feat_select_method == 'spearmanr':    # Spearman correlation
                 coef, p = spearmanr(target, data[exg].values)
-            elif self.feat_select_method == 'pearson':
+            elif self.feat_select_method == 'pearson':    # Pearson correlation
                 coef = np.corrcoef(target, data[exg].values)[0][1]
             coef_list.append((exg, abs(coef)))
 
-         # Rank the feature importance
+        # Rank the feature importance
         coef_list = sorted(coef_list, key=lambda x: x[1], reverse=True)
-        exg_list = coef_list[:self.n_feature_to_select]    # Feature select
-        drop_exg_list = coef_list[self.n_feature_to_select:]
+        exg_list = coef_list[:self.n_feature_to_select]    # Selected variables & p-values
+        drop_exg_list = coef_list[self.n_feature_to_select:]    # Removed variables  & p-values
 
-        exg_list = [exg for exg, p in exg_list]
-        drop_exg_list = [exg for exg, p in drop_exg_list]
+        exg_list = [exg for exg, p in exg_list]    # Selected variables
+        drop_exg_list = [exg for exg, p in drop_exg_list]    # Removed variables
 
         return drop_exg_list, exg_list

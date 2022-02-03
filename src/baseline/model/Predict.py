@@ -11,43 +11,53 @@ import pandas as pd
 
 class Predict(object):
     estimators = {
-        'ar': Algorithm.ar,
-        'arima': Algorithm.arima,
-        'hw': Algorithm.hw,
-        'var': Algorithm.var,
-        'varmax': Algorithm.varmax,
-        'sarima': Algorithm.sarimax
+        'ar': Algorithm.ar,            # Autoregressive model
+        'arima': Algorithm.arima,      # Arima model
+        'hw': Algorithm.hw,            # Holt-winters model
+        'var': Algorithm.var,          # Vector Autoregressive model
+        'varmax': Algorithm.varmax,    # VARMAX model
+        'sarima': Algorithm.sarimax    # SARIMAX model
     }
 
-    def __init__(self, division: str, mst_info: dict, date: dict, data_vrsn_cd: str,
-                 exg_list: list, hrchy: dict, common: dict, data_cfg: dict):
+    def __init__(self, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
+                 data_cfg: dict, mst_info: dict, exg_list: list):
+        """
+        :param date: Date information
+        :param division: Division (SELL-IN/SELl-OUT)
+        :param data_vrsn_cd: Data version code
+        :param common: Common information
+        :param hrchy: Hierarchy information
+        :param data_cfg: Data configuration
+        :param mst_info: Several master information
+        :param exg_list: Exogenous variable list
+        """
         # Class Configuration
         self.algorithm = Algorithm()
 
         # Data Configuration
-        self.data_cfg = data_cfg
-        self.date = date
-        self.data_vrsn_cd = data_vrsn_cd
-        self.division = division    # SELL-IN / SELL-OUT
-        self.target_col = common['target_col']    # Target features
-        self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        self.cust_grp = mst_info['cust_grp']
-        self.item_mst = mst_info['item_mst']
-        self.cal_mst = mst_info['cal_mst']
+        self.date = date                    # Date information
+        self.data_cfg = data_cfg            # Data configuration
+        self.data_vrsn_cd = data_vrsn_cd    # Data version code
+        self.division = division            # SELL-IN / SELL-OUT
+        self.target_col = common['target_col']          # Target features
+        self.exo_col_list = exg_list + ['discount']     # Exogenous features
+        self.cust_grp = mst_info['cust_grp']            # Customer group master
+        self.item_mst = mst_info['item_mst']            # Item master
+        self.cal_mst = mst_info['cal_mst']              # Calendar master
 
         # Data Level Configuration
-        self.cnt = 0
-        self.hrchy = hrchy
-        self.fixed_n_test = 4
+        self.cnt = 0          # Data level count
+        self.hrchy = hrchy    # Hierarchy information
 
         # Algorithms
-        self.err_val = 0
-        self.max_val = float(10 ** 5 - 1)
-        self.param_grid = mst_info['param_grid']
-        self.model_info = mst_info['model_mst']
+        self.err_val = 0    # Setting value for prediction error
+        self.fixed_n_test = 4
+        self.max_val = float(10 ** 5 - 1)           # Clipping value for outlier
+        self.model_info = mst_info['model_mst']     # Algorithm master
+        self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.cand_models = list(self.model_info.keys())
 
-        # After processing Configuration
+        # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
@@ -88,8 +98,8 @@ class Predict(object):
                         pred_step=n_test
                     )
 
-                    prediction = np.clip(prediction, 0, self.max_val).tolist()  # Clip results
-                    prediction = np.round(prediction, 3)  # Round results
+                    prediction = np.clip(prediction, 0, self.max_val).tolist()    # Clip results
+                    prediction = np.round(prediction, 3)    # Round results
 
                 except ValueError:
                     prediction = [self.err_val] * n_test
@@ -149,6 +159,8 @@ class Predict(object):
         result_pred['data_vrsn_cd'] = self.data_vrsn_cd
         result_pred['create_user_cd'] = 'SYSTEM'
 
+        # Merge master information
+        # 1.Item code & name
         if self.hrchy['lvl']['item'] > 0:
             result_pred = pd.merge(
                 result_pred,
@@ -158,6 +170,7 @@ class Predict(object):
                 suffixes=('', '_DROP')
             ).filter(regex='^(?!.*_DROP)')
 
+        # 2.SP1 code & name
         if self.hrchy['lvl']['cust'] > 0:
             result_pred = pd.merge(
                 result_pred,
@@ -169,12 +182,11 @@ class Predict(object):
 
             result_pred = result_pred.fillna('-')
 
+        # 3.Calendar information
         calendar = self.cal_mst[['yymmdd', 'week']]
-
-        # Merge calendar data
         result_pred = pd.merge(result_pred, calendar, on='yymmdd', how='left')
 
-        # Fill na
+        # Fill null values
         result_pred = util.fill_na(data=result_pred, chk_list=self.fill_na_chk_list)
 
         # Rename columns
@@ -201,6 +213,7 @@ class Predict(object):
         pred.columns = [col.lower() for col in list(pred.columns)]
         score.columns = [col.lower() for col in list(score.columns)]
 
+        # Merge prediction and score dataset
         best = pd.merge(
             pred,
             score,
