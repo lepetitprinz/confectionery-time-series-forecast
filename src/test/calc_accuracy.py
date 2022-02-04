@@ -4,11 +4,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.analysis.CalcAccuracy import CalcAccuracy
 
-hist_from = '20190128'
-hist_to = '20220123'
+hist_from = '20190204'    # 20190128
+hist_to = '20220130'    # 20220123
 
-compare_from = '20220124'
-compare_to = '20220130'
+compare_from = '20220131'    # 20220124
+compare_to = '20220206'    # 20220130
 
 exec_cfg = {
     'cls_prep': True,    # Preprocessing

@@ -6,9 +6,10 @@ from baseline.preprocess.DataPrepTest import DataPrepTest
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
-from baseline.analysis.ResultSummary import ResultSummary
 from baseline.middle_out.MiddleOut import MiddleOut
 
+import os
+import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -22,9 +23,6 @@ class PipelineReal(object):
         """
         # Hierarchy Level
         self.item_lvl = 3    # Fixed
-
-        # Test version code
-        self.test_vrsn_cd = 'TEST_220105'
 
         # I/O & Execution Configuration
         self.data_cfg = data_cfg
@@ -41,9 +39,8 @@ class PipelineReal(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        self.data_lvl = self.io.get_df_from_db(
-            sql=SqlConfig.sql_data_level()
-        )
+        # self.io.save_object(data=self.common, data_type='binary',
+        #                     file_path=os.path.join('..', '..', 'data', 'common.pickle'))
 
         # Data Configuration
         self.division = data_cfg['division']
@@ -94,6 +91,12 @@ class PipelineReal(object):
             # Load sales dataset
             sales = load.load_sales()
 
+            # temp
+            sales = sales[sales['cust_grp_cd'].isin(['1065', '1073'])]
+            sales = sales.drop(columns=['division_cd', 'seq', 'unit_cd', 'unit_price', 'create_date'])
+            self.io.save_object(data=sales, data_type='binary',
+                                file_path=os.path.join('..', '..', 'data', 'SELL_OUT_20210124-20220123.pickle'))
+
             # Save Step result
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
@@ -102,6 +105,10 @@ class PipelineReal(object):
 
         # Load master dataset
         mst_info = load.load_mst()
+
+        # temp
+        self.io.save_object(data=mst_info, data_type='binary',
+                            file_path=os.path.join('..', '..', 'data', 'mst_info.pickle'))
 
         # ================================================================================================= #
         # 2. Check Consistency
@@ -117,6 +124,10 @@ class PipelineReal(object):
                 key='COMM_DTL_CD',
                 val='ATTR01_VAL'
             )
+
+            # temp
+            self.io.save_object(data=err_grp_map, data_type='binary',
+                                file_path=os.path.join('..', '..', 'data', 'err_grp_map.pickle'))
 
             # Initiate consistency check class
             cns = ConsistencyCheck(
@@ -151,6 +162,10 @@ class PipelineReal(object):
             'to': self.date['history']['to']
         }
         exg = load.load_exog(info=exg_info)
+
+        # temp
+        self.io.save_object(data=exg, data_type='binary',
+                            file_path=os.path.join('..', '..', 'data', 'exg.pickle'))
 
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")

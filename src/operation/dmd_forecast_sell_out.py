@@ -57,3 +57,4 @@ pipeline.run()
 
 # Check end time
 print("Forecast End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("")

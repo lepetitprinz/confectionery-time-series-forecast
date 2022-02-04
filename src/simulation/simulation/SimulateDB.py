@@ -38,43 +38,49 @@ class SimulateDB(object):
         self.sql_conf = SqlConfig()
 
         # Execute Configuration
-        self.exec_cfg = exec_cfg
-        self.path_root = path_root
+        self.exec_cfg = exec_cfg      # Execution configuration
+        self.path_root = path_root    # Root path
 
         # Data Configuration
-        self.date_range = []
         self.cal = None
+        self.date_range = []
         self.common = self.io.get_dict_from_db(
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        self.item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
-        self.cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
+        self.item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())    # Item master
+        self.cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())      # Calendar master
         self.input_col = 'discount'
-        self.date_col = self.common['date_col']
-        self.target_col = self.common['target_col']
+        self.date_col = self.common['date_col']        # Date column name
+        self.target_col = self.common['target_col']    # Target column name
         self.lag = lag
         self.hrchy_lvl = 6
         self.tb_name = 'M4S_I110521'
 
     def run(self):
+        # Load the dataset about simulation
         exec_info_dict, exec_list = self.load_data()
 
         for info in exec_info_dict:
             self.io.update_from_db(sql=self.sql_conf.update_what_if_exec_info(**info))
 
-        for sim in exec_list:
+        for sim in exec_list:    # For each simulation
             try:
+                # What-if simulation
                 result = self.simulate(sim=sim)
+
+                # Convert simulation result to DB format
                 result, info = self.make_db_format(result=result, sim=sim)
+
                 if self.exec_cfg['save_db_yn']:
                     self.save_result(result=result, info=info)
+
             except ValueError:
                 print("SP1 + SKU does not exist")
 
+    # Load dataset
     def load_data(self):
-        # Load dataset
         exec_info = self.io.get_df_from_db(sql=self.sql_conf.sql_what_if_exec_info())
         exec_info_dict = exec_info.to_dict('records')
         exec_df = self.io.get_df_from_db(sql=self.sql_conf.sql_what_if_exec_list())
@@ -85,16 +91,21 @@ class SimulateDB(object):
     def simulate(self, sim: dict):
         self.set_date_range(sim=sim)
 
+        # Data preprocessing
         pred, sales = self.preprocessing(sim=sim)
 
+        # Add lagging data set
         pred = self.lagging(data=pred)
 
+        # Add previous sales
         data = self.add_prev_sales(pred=pred, sales=sales)
 
+        # Prediction
         result = self.predict(data=data, sim=sim)
 
         return result
 
+    # Set date range
     def set_date_range(self, sim: dict):
         cal = self.cal_mst
         cal = cal[(cal['yy'] == sim['yy']) & (cal['week'] == sim['week'])]
@@ -105,31 +116,32 @@ class SimulateDB(object):
 
         self.date_range = date_list
 
+    # Data preprocess
     def preprocessing(self, sim: dict):
-        # load prediction data
+        # Load prediction data
         pred = self.load_prediction(sim=sim)
 
-        # slice the data set
+        # Slice the data set
         pred = pred[pred[self.date_col].isin(self.date_range)]
 
-        # add discount data
+        # Add discount data
         pred['discount'] = sim['discount']
         # pred = pd.merge(pred, discount, on=self.date_col)
 
         self.cal = pred[[self.date_col, 'week']]
 
-        # convert to datetime type
+        # Change datetime type (String -> Datetime)
         pred[self.date_col] = pd.to_datetime(pred[self.date_col], format='%Y%m%d')
         pred[self.date_col] = pred[self.date_col].dt.date_sales
 
-        # get first day
+        # Get first day
         date_sorted = pred[self.date_col].sort_values()
         first_day = date_sorted.values[0]
 
-        # get days of previous week
+        # Get days of previous week
         date_dict = self.get_prev_week_days(date=first_day)
 
-        # load sales data
+        # Load the sales data
         sales = self.load_sales(date=date_dict, sim=sim)
 
         if len(sales) > 0:
@@ -137,16 +149,19 @@ class SimulateDB(object):
         else:
             sales = 0
 
+        # Set date to index
         pred = pred.set_index(keys=self.date_col)
 
         return pred, sales
 
+    # Add previous sales
     @staticmethod
     def add_prev_sales(pred: pd.DataFrame, sales: float):
         pred.loc[:, 'qty_lag'][0] = sales
 
         return pred
 
+    # Predict
     def predict(self, data, sim: dict):
         # Load best estimator
         estimator_info = self.load_best_estimator(sim=sim)
@@ -154,10 +169,11 @@ class SimulateDB(object):
 
         # Predict
         result = estimator.predict(data)
-        result = np.round(result, 2)
+        result = np.round(result, 2)    # round result
 
         return result
 
+    # Load best algorithm
     def load_best_estimator(self, sim: dict):
         path = os.path.join(self.path_root, sim['data_vrsn_cd'], sim['division_cd'] + '_' +sim['data_vrsn_cd'] +
                             '_' + sim['sales_mgmt_cd'][-4:] + '-' + sim['item_cd'] + '.pickle')
@@ -198,6 +214,7 @@ class SimulateDB(object):
 
         return result
 
+    # Get days of previous week
     def get_prev_week_days(self, date: datetime.date) -> dict:
         date_before_week = date - timedelta(days=7)
 

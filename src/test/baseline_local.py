@@ -6,21 +6,21 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineReal import PipelineReal
 
 # Root path
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
-# path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 cycle = 'w'    # SELL-OUT : w(week) / m(month)
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
-    'cls_cns': False,
+    'cls_load': True,
+    'cls_cns': True,
     'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
-    'cls_mdout': True
+    'cls_train': False,
+    'cls_pred': False,
+    'cls_mdout': False
 }
 
 # Configuration
@@ -49,12 +49,12 @@ data_cfg = {
     'cycle': cycle,
     'date': {
         'history': {
-            'from': '20190121',  # 20200928
-            'to': '20220116'     # 20210926
+            'from': '20210124',  # 20200928
+            'to': '20220123'     # 20210926
         },
         'middle_out': {
-            'from': '20210628',
-            'to': '20220116'
+            'from': '20211024',
+            'to': '20220123'
         },
         'evaluation': {
             'from': '20210927',

@@ -4,36 +4,36 @@ from operation.Cycle import Cycle
 
 class Init(object):
     def __init__(self, common: dict, division: str, path_root: str):
-        self.division = division
-        self.common = common
-        self.path_root = path_root
-        self.cycle = 'w'
-        self.date = {}
-        self.data_vrsn_cd = ''
-        self.hrchy = {}
-        self.path = {}
+        self.common = common          # Common information
+        self.division = division      # Division (SELL-IN/SELL-OUT)
+        self.path_root = path_root    # Root path
+        self.cycle = 'w'              # Date resample standard: w(weekly)
+        self.date = {}                # Date
+        self.data_vrsn_cd = ''        # Data version
+        self.hrchy = {}               # Hierarchy
+        self.path = {}                # Path
 
     def run(self):
-        self.set_date()
-        self.set_data_version()
-        self.set_hrchy()
-        self.set_path()
+        self.set_date()    # Set date
+        self.set_data_version()    # Set data version
+        self.set_hrchy()    # Set Hierarchy
+        self.set_path()    # Set path
 
     def set_date(self) -> None:
         cycle = Cycle(common=self.common, rule=self.cycle)
         cycle.calc_period()
         self.date = {
             'history': {
-                'from': cycle.hist_period[0],
-                'to': cycle.hist_period[1]
+                'from': cycle.hist_period[0],    # History start day
+                'to': cycle.hist_period[1]       # History end day
             },
             'middle_out': {
-                'from': cycle.eval_period[0],
-                'to': cycle.eval_period[1]
+                'from': cycle.eval_period[0],    # Middle-out start day
+                'to': cycle.eval_period[1]       # Middle-out end day
             },
             'evaluation': {
-                'from': cycle.pred_period[0],
-                'to': cycle.pred_period[1]
+                'from': cycle.pred_period[0],    # Prediction start day
+                'to': cycle.pred_period[1]       # Prediction end day
             }
         }
 

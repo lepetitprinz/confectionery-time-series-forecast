@@ -1,6 +1,4 @@
 import ast
-import numpy as np
-from sklearn.metrics import mean_squared_error
 
 # Algorithm
 from sklearn.ensemble import RandomForestRegressor
@@ -12,9 +10,6 @@ class Algorithm(object):
     # Random Forest
     @staticmethod
     def random_forest(data: dict, cfg: dict):
-        """
-
-        """
         regr = RandomForestRegressor(
             n_estimators=ast.literal_eval(cfg['n_estimators']),
             criterion=cfg['criterion'],
@@ -29,9 +24,6 @@ class Algorithm(object):
     # Random Forest
     @staticmethod
     def gradient_boost(data: dict, cfg: dict):
-        """
-
-        """
         regr = GradientBoostingRegressor(
             n_estimators=ast.literal_eval(cfg['n_estimators']),
             criterion=cfg['criterion'],
@@ -46,9 +38,6 @@ class Algorithm(object):
     # Extremely Randomized Trees
     @staticmethod
     def extra_trees(data: dict, cfg: dict):
-        """
-
-        """
         regr = ExtraTreesRegressor(
             n_estimators=ast.literal_eval(cfg['n_estimators']),
             criterion=cfg['criterion'],

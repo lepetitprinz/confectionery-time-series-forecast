@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from typing import Dict, List
 from copy import deepcopy
 from datetime import datetime, date, timedelta
 from collections import defaultdict
@@ -187,6 +188,17 @@ def make_path_sim(path: str, module: str, division: str, data_vrsn: str, step: s
     path = os.path.join(path, 'simulation', module, division + '_' + data_vrsn + '_' + step + '.' + extension)
 
     return path
+
+
+# def make_lvl_key_val_map(df: pd.DataFrame, lvl: str, key: str, val: str):
+#     result = {}
+#     for i in df[lvl].unique():
+#         temp = df[df[lvl] == i]
+#         result[i] = {}
+#         for k, v in zip(temp[key], temp[val]):
+#             result[i][k] = v
+#
+#     return result
 
 
 def make_lvl_key_val_map(df: pd.DataFrame, lvl: str, key: str, val: str):

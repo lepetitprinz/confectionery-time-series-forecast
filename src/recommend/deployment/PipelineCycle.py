@@ -21,14 +21,14 @@ class PipelineCycle(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        self.date = {}
-        self.data_vrsn_cd = {}
+        self.date = {}    # Date
+        self.data_vrsn_cd = {}    # Data version
 
-        self.item_col = 'sku_cd'
-        self.meta_col = 'bom_cd'
-        self.rank_n = 30
-        self.filter_n = 10
-        self.tb_name_rank = 'M4S_O110300'
+        self.item_col = 'sku_cd'    # Item code
+        self.meta_col = 'bom_cd'    # Material code
+        self.rank_n = 30      # Filter top n rank
+        self.filter_n = 10    # Filter top best rank
+        self.tb_name_rank = 'M4S_O110300'    # Ranking result table
 
     def run(self):
         # ====================================================================== #
@@ -41,13 +41,13 @@ class PipelineCycle(object):
         self.date = init.date
         self.data_vrsn_cd = init.data_vrsn_cd
 
-        # ====================================================================== # #
+        # ====================================================================== #
         # 2. Load Data
         # ====================================================================== #
-        item_profile = self.io.get_df_from_db(sql=self.sql_conf.sql_bom_mst())
-        item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
+        item_profile = self.io.get_df_from_db(sql=self.sql_conf.sql_bom_mst())   #
+        item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())     # Item Master
         data_vrsn_list = self.io.get_df_from_db(sql=self.sql_conf.sql_data_version())
-        calendar = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
+        calendar = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())    # Calendar Master
 
         # ====================================================================== #
         # 3. Data Preprocessing
@@ -83,7 +83,7 @@ class PipelineCycle(object):
             results.append([item_cd, rank_result])
 
         # ====================================================================== #
-        # 6. Line Filtering
+        # 6. Line Filtering (Optional)
         # ====================================================================== #
         results = prep.filter_rerank_by_line(data=results, filter_n=self.filter_n)
 

@@ -26,13 +26,13 @@ class Train(object):
                  algorithms: pd.DataFrame, path_root: str):
 
         # Data Configuration
-        self.common = common
-        self.division = division
-        self.data_vrsn_cd = data_version
-        self.target_col = common['target_col']
-        self.hrchy = hrchy
-        self.exec_cfg = exec_cfg
-        self.path_root = path_root
+        self.common = common          # Common configuration
+        self.division = division      # Division
+        self.data_vrsn_cd = data_version          # Data version
+        self.target_col = common['target_col']    # Target column name
+        self.hrchy = hrchy            # Hierarchy information
+        self.exec_cfg = exec_cfg      # Execution configuration
+        self.path_root = path_root    # Root path
 
         # Train Option configuration
         self.cnt = 0
@@ -50,22 +50,24 @@ class Train(object):
         self.prep_params(best_params=params)    # Prepare parameters
 
     def make_dir(self):
+        # Model directory
         path = os.path.join(self.path_root, 'simulation', 'model', self.data_vrsn_cd)
         os.makedirs(name=path, exist_ok=True)
 
+        # Scaling directory
         path = os.path.join(self.path_root, 'simulation', 'scaler', self.data_vrsn_cd)
         os.makedirs(name=path, exist_ok=True)
 
     def prep_params(self, best_params: pd.DataFrame):
-        # convert string type int to int type
+        # Change data type (string -> integer)
         option_val = [eval(val) if val.isnumeric() else val for val in best_params['option_val']]
         best_params['option_val'] = option_val
 
-        # convert upper case to lower case
+        # Convert upper case to lower case
         best_params['stat_cd'] = best_params['stat_cd'].apply(lambda x: x.lower())
         best_params['option_cd'] = best_params['option_cd'].apply(lambda x: x.lower())
 
-        # map key-value pair
+        # Map key-value pair
         best_params = util.make_lvl_key_val_map(df=best_params, lvl='stat_cd', key='option_cd', val='option_val')
 
         self.best_params = best_params
@@ -87,9 +89,9 @@ class Train(object):
 
         # Split dataset
         data_split = self.split_data(data=data)
-        hrchy_code = hrchy_list[0] + '-' + hrchy_list[-1]    # cust_grp_code-sp1
+        hrchy_code = hrchy_list[0] + '-' + hrchy_list[-1]    # SP1 + SKU
 
-        # Scaling
+        # Data scaling
         if self.exec_cfg['scaling_yn']:
             scaler, x_scaled = self.scaling(data=data_split['x_train'])
             data_split['x_train'] = x_scaled
@@ -110,30 +112,30 @@ class Train(object):
                    scoring='neg_root_mean_squared_error', cv=5):
         # Execute grid search cross validation
         results = []
-        for estimator in estimators:
+        for estimator in estimators:    # For each algorithm
             if grid_search_yn:
                 score, params = self.grid_search_cv(
                     data=data,
-                    estimator=self.estimators[estimator],
-                    param_grid=self.param_grids[estimator],
-                    scoring=scoring,
-                    cv=cv,
-                    verbose=verbose
+                    estimator=self.estimators[estimator],      # set algorithm
+                    param_grid=self.param_grids[estimator],    # set hyper-parameter
+                    scoring=scoring,    # strategy to evaluate the performance
+                    cv=cv,              # cross validation fold
+                    verbose=verbose     # control the verbosity
                 )
             else:
                 score, params = self.cross_validation(
                     data=data,
-                    estimator=self.estimators[estimator],
-                    param_grid=self.best_params[estimator],
-                    scoring=scoring,
-                    cv=cv,
-                    verbose=verbose
+                    estimator=self.estimators[estimator],      # set algorithm
+                    param_grid=self.best_params[estimator],    # set hyper-parameter
+                    scoring=scoring,    # strategy to evaluate the performance
+                    cv=cv,              # cross validation fold
+                    verbose=verbose     # control the verbosity
                 )
-            # append each result
+            # Append each result
             results.append([estimator, params, score])
 
         # Get best model
-        results = sorted(results, key=lambda x: x[-1], reverse=True)  # Sort by score
+        results = sorted(results, key=lambda x: x[-1], reverse=True)    # Sort by score
         best_model = results[0]
 
         est_fit = self.fit_model(
@@ -145,6 +147,7 @@ class Train(object):
 
         return best_model
 
+    # Fit the model
     @staticmethod
     def fit_model(data, model, params):
         estimator = model().set_params(**params)
@@ -152,6 +155,7 @@ class Train(object):
 
         return estimator
 
+    # Grid search cross validation
     @staticmethod
     def grid_search_cv(data, estimator, param_grid: dict, scoring, cv: int, verbose: bool):
         gsc = GridSearchCV(
@@ -172,14 +176,16 @@ class Train(object):
 
         return result.best_score_, result.best_params_
 
+    # Cross validation
     @staticmethod
     def cross_validation(data: dict, estimator, param_grid: dict, scoring: str, cv: int, verbose: bool):
-        regr = estimator()
-        regr.set_params(**param_grid)
-        score = 0
-        if len(data['y_train']) >= cv:
+        regr = estimator()               # Set algorithm
+        regr.set_params(**param_grid)    # Set hyper-parameters
+
+        score = 0    # Initialize score
+        if len(data['y_train']) >= cv:    # if length of data is bigger than cross validation fold
             scores = cross_val_score(regr, data['x_train'], data['y_train'], scoring=scoring, cv=cv)
-            score = sum(scores) / len(scores)
+            score = sum(scores) / len(scores)    # Calculate average score
         else:
             regr.fit(data['x_train'], data['y_train'])
 
@@ -188,12 +194,14 @@ class Train(object):
 
         return score, param_grid
 
+    # Save the fitted model object
     def save_object(self, result, module: str, hrchy_code: str):
         f = open(os.path.join(self.path_root, 'simulation', module, self.data_vrsn_cd,
                               self.division + '_' + self.data_vrsn_cd + '_' + hrchy_code + '.pickle'), 'wb')
         pickle.dump(result, f)
         f.close()
 
+    # Save the scaling object
     def save_scaler(self, scaler, hrchy_code: str):
         f = open(os.path.join(self.path_root, 'simulation', 'scaler', self.data_vrsn_cd,
                               self.division + '_' + self.data_vrsn_cd + '_' +
@@ -201,12 +209,14 @@ class Train(object):
         pickle.dump(scaler, f)
         f.close()
 
+    # Split data into input & target data
     def split_data(self, data):
         y_train = data[self.target_col]
         x_train = data.drop(columns=[self.target_col])
 
         return {'x_train': x_train, 'y_train': y_train}
 
+    # Data scaling
     @staticmethod
     def scaling(data):
         scaler = StandardScaler()

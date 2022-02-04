@@ -9,14 +9,14 @@ from simulation.model.Train import Train
 
 
 class PipelineCycle(object):
-    def __init__(self, step_cfg: dict, exec_cfg: dict, path_root: str,):
+    def __init__(self, step_cfg: dict, exec_cfg: dict, path_root: str):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
         # I/O & Execution Configuration
-        self.step_cfg = step_cfg
-        self.exec_cfg = exec_cfg
+        self.step_cfg = step_cfg    # Step configuration
+        self.exec_cfg = exec_cfg    # Execution configuration
 
         # Data configuration
         self.common = self.io.get_dict_from_db(
@@ -24,20 +24,20 @@ class PipelineCycle(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        self.path_root = path_root
-        self.division = 'SELL_IN'
-        self.date = {}
-        self.path = {}
-        self.data_vrsn_cd = ''
+        self.path_root = path_root    # Root path
+        self.division = 'SELL_IN'     # Division (SELL-IN/SELL-OUT)
+        self.data_vrsn_cd = ''        # Data version
+        self.date = {}                # Date
+        self.path = {}                # Path
 
         # Data Level Configuration
-        self.hrchy = {}
-        self.lag = 'w1'
-        self.threshold = 20
+        self.hrchy = {}        # Hierarchy
+        self.lag = 'w1'        # Lag
+        self.threshold = 20    # Minimum data length
 
     def run(self):
         # ================================================================================================= #
-        # 1. initiate basic setting
+        # 1. Initiate basic setting
         # ================================================================================================= #
         init = Init(common=self.common, division=self.division, path_root=self.path_root)
         init.run()
@@ -58,12 +58,12 @@ class PipelineCycle(object):
                 'from': self.date['history']['from'],
                 'to': self.date['history']['to']
             }
-            if self.division == 'SELL_IN':
+            if self.division == 'SELL_IN':   # Load SELL-IN dataset
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in(**date))
-            elif self.division == 'SELL_OUT':
-                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**date))    # Todo: Temp data
+            elif self.division == 'SELL_OUT':   # Load SELL-OUT dataset
+                sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**date))
 
-            # Save Step result
+            # Save load step result
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
 

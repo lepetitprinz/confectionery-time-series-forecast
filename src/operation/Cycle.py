@@ -12,7 +12,7 @@ class Cycle(object):
         self.pred_period = ()    # Forecast period (forecast_start, forecast_end)
 
     def calc_period(self) -> None:
-        today = datetime.date.today()
+        today = datetime.date.today()    # Get today date
         today = today - datetime.timedelta(days=today.weekday())    # Convert this week monday
 
         hist_from, hist_to = (None, None)
@@ -20,15 +20,15 @@ class Cycle(object):
         pred_from, pred_to = (None, None)
 
         if self.rule == 'w':
-            # Period: Sales History
+            # Period: Sales history range
             hist_from = today - datetime.timedelta(days=int(self.common['week_hist']) * 7)
             hist_to = today - datetime.timedelta(days=1)
 
-            # Period: Evaluation ToDo: Additional function
+            # Period: Middle-out range
             eval_from = today - datetime.timedelta(days=int(self.common['week_eval']) * 7)
             eval_to = today - datetime.timedelta(days=1)
 
-            # Period: Forecast
+            # Period: Forecast range
             pred_from = today    # Monday
             pred_to = today + datetime.timedelta(days=int(self.common['week_pred']) * 7 - 1)
 
