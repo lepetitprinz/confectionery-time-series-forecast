@@ -52,7 +52,8 @@ class Train(object):
         self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.target_col = common['target_col']    # Target column
 
-        self.exo_col_list = exg_list + ['discount']    # Exogenous features
+        # self.exo_col_list = exg_list + ['discount']    # Exogenous features
+        self.exo_col_list = exg_list + ['discount', 'num_work_day']    # Todo : Test columns
         self.cust_grp = mst_info['cust_grp']    # Customer group master
         self.item_mst = mst_info['item_mst']    # Item master
 

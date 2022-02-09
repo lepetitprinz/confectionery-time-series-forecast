@@ -1,3 +1,5 @@
+import pandas as pd
+
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
@@ -91,12 +93,6 @@ class PipelineReal(object):
             # Load sales dataset
             sales = load.load_sales()
 
-            # temp
-            sales = sales[sales['cust_grp_cd'].isin(['1065', '1073'])]
-            sales = sales.drop(columns=['division_cd', 'seq', 'unit_cd', 'unit_price', 'create_date'])
-            self.io.save_object(data=sales, data_type='binary',
-                                file_path=os.path.join('..', '..', 'data', 'SELL_OUT_20210124-20220123.pickle'))
-
             # Save Step result
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
@@ -105,10 +101,6 @@ class PipelineReal(object):
 
         # Load master dataset
         mst_info = load.load_mst()
-
-        # temp
-        self.io.save_object(data=mst_info, data_type='binary',
-                            file_path=os.path.join('..', '..', 'data', 'mst_info.pickle'))
 
         # ================================================================================================= #
         # 2. Check Consistency
@@ -124,10 +116,6 @@ class PipelineReal(object):
                 key='COMM_DTL_CD',
                 val='ATTR01_VAL'
             )
-
-            # temp
-            self.io.save_object(data=err_grp_map, data_type='binary',
-                                file_path=os.path.join('..', '..', 'data', 'err_grp_map.pickle'))
 
             # Initiate consistency check class
             cns = ConsistencyCheck(
@@ -163,10 +151,6 @@ class PipelineReal(object):
         }
         exg = load.load_exog(info=exg_info)
 
-        # temp
-        self.io.save_object(data=exg, data_type='binary',
-                            file_path=os.path.join('..', '..', 'data', 'exg.pickle'))
-
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
             if not self.step_cfg['cls_cns']:
@@ -179,6 +163,23 @@ class PipelineReal(object):
                 hrchy=self.hrchy,
                 data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
+            )
+
+            # Test code
+            work_day = self.io.load_object(
+                file_path=os.path.join(self.path_root, 'data', 'work_day.csv'),
+                data_type='csv'
+            )
+            work_day.columns = [col.lower() for col in work_day.columns]
+            work_day['yy'] = work_day['yy'].astype(str)
+            work_day = work_day[['yy', 'week', 'num_work_day']]
+
+            sales['yy'] = sales['yymmdd'].astype(str).str.slice(0, 4)
+            sales = pd.merge(
+                sales,
+                work_day,
+                on=['yy', 'week'],
+                how='inner'
             )
 
             # Preprocessing the dataset

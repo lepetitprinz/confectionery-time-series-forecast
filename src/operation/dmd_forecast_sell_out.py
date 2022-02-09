@@ -22,21 +22,25 @@ step_cfg = {
 
 # Configuration
 exec_cfg = {
-    'cycle': True,                          # Prediction cycle
+    'cycle': True,                            # Prediction cycle
+
     # save configuration
-    'save_step_yn': True,                   # Save each step result to object or csv
-    'save_db_yn': True,                     # Save each step result to Database
+    'save_step_yn': True,                     # Save each step result to object or csv
+    'save_db_yn': True,                       # Save each step result to Database
+
     # Data preprocessing configuration
-    'decompose_yn': False,                  # Decomposition
-    'feature_selection_yn': False,          # Feature Selection
-    'filter_threshold_cnt_yn': False,       # Filter data level under threshold count
-    'filter_threshold_recent_yn': True,    # Filter data level under threshold recent week
-    'rm_fwd_zero_sales_yn': True,           # Remove forward empty sales
-    'rm_outlier_yn': True,                  # Outlier Correction
-    'data_imputation_yn': True,             # Data Imputation
+    'decompose_yn': False,                    # Decomposition
+    'feature_selection_yn': False,            # Feature Selection
+    'filter_threshold_cnt_yn': False,         # Filter data level under threshold count
+    'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
+    'filter_threshold_recent_sku_yn': True,  # Filter SKU level under threshold recent week
+    'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
+    'rm_outlier_yn': True,                    # Outlier Correction
+    'data_imputation_yn': True,               # Data Imputation
+
     # Training configuration
-    'scaling_yn': False,                    # Data scaling
-    'grid_search_yn': False,                # Grid Search
+    'scaling_yn': False,                      # Data scaling
+    'grid_search_yn': False,                  # Grid Search
 }
 
 print('------------------------------------------------')

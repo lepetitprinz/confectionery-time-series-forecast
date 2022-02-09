@@ -447,7 +447,8 @@ class CalcAccuracy(object):
             data['sales'] == 0,
             data['sales'] != data['pred']
         ]
-        values = [1, 0, data['pred'] / data['sales']]
+        # values = [1, 0, data['pred'] / data['sales']]
+        values = [1, 0, data['sales'] / data['pred']]    # Todo: Change logic (22.02.09)
         data['accuracy'] = np.select(conditions, values)
 
         # customize accuracy

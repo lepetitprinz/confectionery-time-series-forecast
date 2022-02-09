@@ -19,7 +19,7 @@ class OpenAPIWeather(object):
         self.info = None
         self.stn_list = [98, 99, 101, 105, 108, 112, 114, 119, 127, 131, 133, 136, 138, 140, 143, 146,
                          152, 155, 156, 159, 162, 165, 174, 177, 184, 192, 232, 236, 253, 257, 279]
-        self.stn_avg_list = [108, 112, 133, 143, 152, 156, 159]    # 서울 / 인천 / 대전 / 대구 / 울산 / 광주 / 부산
+        # self.stn_avg_list = [108, 112, 133, 143, 152, 156, 159]    # 서울 / 인천 / 대전 / 대구 / 울산 / 광주 / 부산
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum', 'rain_sum']
 
     def set_date_range(self):
@@ -31,7 +31,7 @@ class OpenAPIWeather(object):
         prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
 
         self.date = {'from': prev_monday, 'to': prev_sunday}
-        # self.date = {'from': '20220116', 'to': '20220116'}
+        # self.date = {'from': '20190101', 'to': '20191231'}
 
     def get_api_info(self) -> None:
         self.info = self.io.get_dict_from_db(

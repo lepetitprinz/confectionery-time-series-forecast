@@ -4,22 +4,22 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.analysis.CalcAccuracy import CalcAccuracy
 
-hist_from = '20190204'    # 20190128
-hist_to = '20220130'    # 20220123
+hist_from = '20190128'    # 20190204
+hist_to = '20220123'      # 20220130
 
-compare_from = '20220131'    # 20220124
-compare_to = '20220206'    # 20220130
+compare_from = '20220124'    # 20220131
+compare_to = '20220130'      # 20220206
 
 exec_cfg = {
-    'cls_prep': True,    # Preprocessing
-    'cls_comp': True,    # Compare result
-    'cls_top_n': True,   # Choose top N
+    'cls_prep': True,     # Preprocessing
+    'cls_comp': True,     # Compare result
+    'cls_top_n': True,    # Choose top N
     'cls_graph': False    # Draw graph
 }
 
 opt_cfg = {
-    'rm_zero_yn': True,    # Preprocessing
-    'calc_acc_by_sp1_item_yn': True,
+    'rm_zero_yn': True,                   # Remove zeros
+    'calc_acc_by_sp1_item_yn': True,      # Calculate accuracy on SP1 items
     'filter_sales_threshold_yn': True,    # Filter based on sales threshold
     'filter_specific_acc_yn': False,      # Filter Specific accuracy range
     'pick_specific_biz_yn': True,         # Pick Specific business code
@@ -31,8 +31,8 @@ data_cfg = {
     'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
     'load_option': 'csv',
     'division': 'SELL_IN',
-    'item_lvl': 5,
-    'item_attr01_cd': 'P2'
+    'item_lvl': 3,
+    'item_attr01_cd': 'P1'
 }
 
 date_cfg = {

@@ -3,6 +3,7 @@ from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
 import common.util as util
 import common.config as config
 
+import datetime
 import numpy as np
 import pandas as pd
 from math import ceil
@@ -46,18 +47,23 @@ class DataPrep(object):
         # Hierarchy configuration
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
+        self.hrchy_cnt = 0
 
         # Data threshold
-        self.rm_cnt = 0    # Data level count filtered by threshold
-        self.threshold_cnt = int(self.common['filter_threshold_cnt'])
-        self.threshold_recent = int(self.common['filter_threshold_recent'])
+        self.exec_date = None       # Baseline forecast execution date
+        self.rm_lvl_cnt = 0         # Data level count filtered by threshold
+        self.tot_sp1_sku_cnt = 0    # Total SP1+SKU count
+        self.rm_sp1_sku_cnt = 0     # Removed SP1+SKU count
+        self.threshold_cnt = int(self.common['filter_threshold_cnt'])          # Threshold count
+        self.threshold_recent = int(self.common['filter_threshold_recent'])    # Threshold recent periods
+        self.threshold_sku_period = datetime.timedelta(days=int(self.common['filter_threshold_sku_recent']) * 7)
 
         # Execute option
-        self.imputer = 'knn'    # Imputation method
+        self.imputer = 'knn'           # Imputation method
         self.outlier_method = 'std'    # Removing outlier method (Standard deviation / Quantile)
+        self.noise_rate = 0.1          # Noise rate
+        self.quantile_range = 0.02     # Quantile filtering range
         self.sigma = float(common['outlier_sigma'])    # Standard deviation: Sigma
-        self.quantile_range = 0.02    # Quantile filtering range
-        self.noise_rate = 0.1
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> Tuple[dict, list, int]:
         # ------------------------------- #
@@ -94,7 +100,30 @@ class DataPrep(object):
             data, exg_list = fe.feature_selection(data=data)
 
         # Grouping
-        data_group, hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
+        data_group, hrchy_cnt = util.group(
+            hrchy=self.hrchy['apply'],
+            hrchy_lvl=self.hrchy_level,
+            data=data
+        )
+
+        # Filter threshold SKU based on recent sales
+        if self.exec_cfg['filter_threshold_recent_sku_yn']:
+            # Execute date
+            exec_date = self.date['history']['to']
+            self.exec_date = datetime.datetime.strptime(exec_date, '%Y%m%d') + datetime.timedelta(days=1)
+
+            # Set
+            data_group = util.hrchy_recursion_with_none(
+                hrchy_lvl=self.hrchy_level,
+                fn=self.filter_threshold_recent_sku,
+                df=data_group
+            )
+
+            print("-----------------------------")
+            print(f"Total SKU: {self.tot_sp1_sku_cnt}")
+            print(f"Removed SKU: {self.rm_sp1_sku_cnt}")
+            print(f"Applied SKU: {self.tot_sp1_sku_cnt - self.rm_sp1_sku_cnt}")
+            print("-----------------------------")
 
         # Time series decomposition
         if self.exec_cfg['decompose_yn']:
@@ -121,10 +150,10 @@ class DataPrep(object):
 
         print('-----------------------------------')
         print(f"Total data Level counts: {hrchy_cnt}")
-        print(f"Removed data Level counts: {self.rm_cnt}")
-        print(f"Applying data Level counts: {hrchy_cnt - self.rm_cnt}")
+        print(f"Removed data Level counts: {self.rm_lvl_cnt}")
+        print(f"Applying data Level counts: {hrchy_cnt - self.rm_lvl_cnt}")
         print('-----------------------------------')
-        hrchy_cnt -= self.rm_cnt
+        hrchy_cnt -= self.rm_lvl_cnt
 
         return data_resample, exg_list, hrchy_cnt
 
@@ -211,7 +240,7 @@ class DataPrep(object):
         # Check and add dates when sales does not exist
         if self.exec_cfg['filter_threshold_cnt_yn']:
             if len(df_resampled[df_resampled['qty'] != 0]) < self.threshold_cnt:
-                self.rm_cnt += 1
+                self.rm_lvl_cnt += 1
                 return None
 
         # Fill empty quantity period with zeros
@@ -222,7 +251,7 @@ class DataPrep(object):
         # Filter data level under threshold recent week
         if self.exec_cfg['filter_threshold_recent_yn']:
             if self.filter_threshold_recent(data=df_resampled, col=self.common['target_col']):
-                self.rm_cnt += 1
+                self.rm_lvl_cnt += 1
                 return None
 
         # Remove forward empty sales
@@ -256,6 +285,25 @@ class DataPrep(object):
             filter_yn = True
 
         return filter_yn
+
+    def filter_threshold_recent_sku(self, df: pd.DataFrame) -> Union[pd.DataFrame, None]:
+        df['date'] = df.index
+        last_day_by_sku = df[['sku_cd', 'date']].groupby(by=['sku_cd']).max().reset_index()
+        last_day_by_sku['diff'] = self.exec_date - last_day_by_sku['date']
+        all_sku = list(df['sku_cd'].unique())
+        valid_sku = list(last_day_by_sku[last_day_by_sku['diff'] < self.threshold_sku_period]['sku_cd'])
+
+        self.tot_sp1_sku_cnt += len(all_sku)
+        self.rm_sp1_sku_cnt += (len(all_sku) - len(valid_sku))
+
+        # Filtering sku
+        result = df[df['sku_cd'].isin(valid_sku)]
+
+        if len(result) == 0:
+            self.hrchy_cnt -= 1
+            result = None
+
+        return result
 
     @staticmethod
     def rm_fwd_zero_sales(df: pd.DataFrame, feat: str) -> pd.DataFrame:

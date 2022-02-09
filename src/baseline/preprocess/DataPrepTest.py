@@ -45,8 +45,8 @@ class DataPrepTest(object):
 
         # Data threshold
         self.rm_lvl_cnt = 0
-        self.tot_sku_cnt = 0
-        self.rm_sku_cnt = 0
+        self.tot_sp1_sku_cnt = 0
+        self.rm_sp1_sku_cnt = 0
         self.threshold_cnt = int(self.common['filter_threshold_cnt'])
         self.threshold_recent = int(self.common['filter_threshold_recent'])
         self.exec_date = None
@@ -111,9 +111,9 @@ class DataPrepTest(object):
                 df=data_group
             )
             print("-----------------------------")
-            print(f"Total SKU: {self.tot_sku_cnt}")
-            print(f"Removed SKU: {self.rm_sku_cnt}")
-            print(f"Applied SKU: {self.tot_sku_cnt - self.rm_sku_cnt}")
+            print(f"Total SKU: {self.tot_sp1_sku_cnt}")
+            print(f"Removed SKU: {self.rm_sp1_sku_cnt}")
+            print(f"Applied SKU: {self.tot_sp1_sku_cnt - self.rm_sp1_sku_cnt}")
             print("-----------------------------")
 
         # Decomposition
@@ -249,6 +249,12 @@ class DataPrepTest(object):
         if self.exec_cfg['rm_fwd_zero_sales_yn']:
             df_resampled = self.rm_fwd_zero_sales(df=df_resampled, feat=self.common['target_col'])
 
+        # Todo : New Function
+        # Rolling statistics of time series
+        if self.exec_cfg['rolling_statistics_yn']:
+            fe = FeatureEngineering(common=self.common)
+            df_resampled = fe.rolling(df=df_resampled, feat=self.common['target_col'])
+
         # Remove outlier
         if self.exec_cfg['rm_outlier_yn']:
             df_resampled = self.remove_outlier(df=df_resampled, feat=self.common['target_col'])
@@ -279,8 +285,8 @@ class DataPrepTest(object):
         all_sku = list(df['sku_cd'].unique())
         valid_sku = list(last_day_by_sku[last_day_by_sku['diff'] < self.threshold_sku_period]['sku_cd'])
 
-        self.tot_sku_cnt += len(all_sku)
-        self.rm_sku_cnt += (len(all_sku) - len(valid_sku))
+        self.tot_sp1_sku_cnt += len(all_sku)
+        self.rm_sp1_sku_cnt += (len(all_sku) - len(valid_sku))
 
         # Filtering sku
         result = df[df['sku_cd'].isin(valid_sku)]

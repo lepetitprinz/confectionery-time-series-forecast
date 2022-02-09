@@ -22,6 +22,7 @@ exec_cfg = {
     'impute_yn': True,               # Data Imputation
     'rm_outlier_yn': True,           # Outlier Correction
     'feature_selection_yn': False,
+    'filter_threshold_recent_sku_yn': False,  # Filter SKU level under threshold recent week
     'rm_not_exist_lvl_yn': False
 }
 
