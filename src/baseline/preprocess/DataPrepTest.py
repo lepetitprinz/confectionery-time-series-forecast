@@ -60,13 +60,14 @@ class DataPrepTest(object):
         self.noise_rate = 0.1
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> Tuple[dict, list, int]:
-        # ------------------------------- #
-        # 1. Preprocess sales dataset
-        # ------------------------------- #
+        # Preprocess sales dataset
         if not self.exec_cfg['decompose_yn']:
             exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
         else:
             exg_list = []
+
+        # Initiate feature engineering class
+        fe = FeatureEngineering(common=self.common, exg_list=exg_list)
 
         # convert data type
         for col in self.STR_TYPE_COLS:
@@ -87,10 +88,6 @@ class DataPrepTest(object):
 
         # Feature engineering
         if self.exec_cfg['feature_selection_yn']:
-            fe = FeatureEngineering(
-                common=self.common,
-                exg_list=exg_list
-            )
             data, exg_list = fe.feature_selection(data=data)
 
         # Grouping
@@ -116,6 +113,16 @@ class DataPrepTest(object):
             print(f"Applied SKU: {self.tot_sp1_sku_cnt - self.rm_sp1_sku_cnt}")
             print("-----------------------------")
 
+        # Representative sampling
+        if self.exec_cfg['representative_sampling_yn']:
+            data_group = util.hrchy_recursion_with_none(
+                hrchy_lvl=self.hrchy_level,
+                fn=fe.repr_sampling,
+                df=data_group
+            )
+            exg_add_list = [self.common['target_col'] + '_' + col for col in fe.repr_sampling_agg_list]
+            exg_list += exg_add_list
+
         # Decomposition
         if self.exec_cfg['decompose_yn']:
             decompose = Decomposition(
@@ -131,7 +138,6 @@ class DataPrepTest(object):
             )
 
             return decomposed, exg_list, self.hrchy_cnt
-        # print("Week Count: ", len(self.hist_date_range))
 
         # Resampling
         data_resample = util.hrchy_recursion_with_none(
@@ -146,6 +152,11 @@ class DataPrepTest(object):
         print(f"Applying data level counts: {self.hrchy_cnt - self.rm_lvl_cnt}")
         print('-----------------------------------')
         self.hrchy_cnt -= self.rm_lvl_cnt
+
+        #
+        if self.exec_cfg['rolling_statistics_yn']:
+            exg_add_list = [self.common['target_col'] + '_' + col for col in fe.rolling_agg_list]
+            exg_list += exg_add_list
 
         return data_resample, exg_list, self.hrchy_cnt
 

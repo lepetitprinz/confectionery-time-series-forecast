@@ -11,13 +11,12 @@ from baseline.model.Predict import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
 
 import os
-import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
 
 
 class PipelineReal(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, exec_rslt_cfg: dict, path_root: str):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
         """
         :param data_cfg: Data Configuration
         :param exec_cfg: Data I/O Configuration
@@ -30,7 +29,6 @@ class PipelineReal(object):
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.exec_rslt_cfg = exec_rslt_cfg
         self.path_root = path_root
 
         # Class Configuration
@@ -41,8 +39,6 @@ class PipelineReal(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        # self.io.save_object(data=self.common, data_type='binary',
-        #                     file_path=os.path.join('..', '..', 'data', 'common.pickle'))
 
         # Data Configuration
         self.division = data_cfg['division']
@@ -166,21 +162,22 @@ class PipelineReal(object):
             )
 
             # Test code
-            work_day = self.io.load_object(
-                file_path=os.path.join(self.path_root, 'data', 'work_day.csv'),
-                data_type='csv'
-            )
-            work_day.columns = [col.lower() for col in work_day.columns]
-            work_day['yy'] = work_day['yy'].astype(str)
-            work_day = work_day[['yy', 'week', 'num_work_day']]
+            if self.data_cfg['apply_num_work_day']:
+                work_day = self.io.load_object(
+                    file_path=os.path.join(self.path_root, 'data', 'work_day.csv'),
+                    data_type='csv'
+                )
+                work_day.columns = [col.lower() for col in work_day.columns]
+                work_day['yy'] = work_day['yy'].astype(str)
+                work_day = work_day[['yy', 'week', 'num_work_day']]
 
-            sales['yy'] = sales['yymmdd'].astype(str).str.slice(0, 4)
-            sales = pd.merge(
-                sales,
-                work_day,
-                on=['yy', 'week'],
-                how='inner'
-            )
+                sales['yy'] = sales['yymmdd'].astype(str).str.slice(0, 4)
+                sales = pd.merge(
+                    sales,
+                    work_day,
+                    on=['yy', 'week'],
+                    how='inner'
+                )
 
             # Preprocessing the dataset
             data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
@@ -218,16 +215,12 @@ class PipelineReal(object):
                 exec_cfg=self.exec_cfg             # Execute configuration
             )
 
-            if not self.exec_rslt_cfg['train']:
-                # Train the models
-                scores = training.train(df=data_prep)
+            # Train the models
+            scores = training.train(df=data_prep)
 
-                # Save Step result
-                if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
-
-            else:
-                scores = self.io.load_object(file_path=self.path['train'], data_type='binary')
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
             # Save best parameters
             if self.exec_cfg['grid_search_yn']:
@@ -294,16 +287,13 @@ class PipelineReal(object):
                 common=self.common,
                 data_cfg=self.data_cfg
             )
-            if not self.exec_rslt_cfg['predict']:
-                # Forecast the model
-                prediction = predict.forecast(df=data_prep)
 
-                # Save Step result
-                if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
-            else:
-                # Load predicted object
-                prediction = self.io.load_object(file_path=self.path['pred'], data_type='binary')
+            # Forecast the model
+            prediction = predict.forecast(df=data_prep)
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
 
             # Make database format
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
@@ -367,16 +357,13 @@ class PipelineReal(object):
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Run middle-out
-            if not self.exec_rslt_cfg['predict']:
-                middle_out_db, middle_out = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
+            middle_out_db, middle_out = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
 
-                if self.exec_cfg['save_step_yn']:
-                    self.io.save_object(
-                        data=middle_out, file_path=self.path['middle_out'], data_type='csv')
-                    self.io.save_object(
-                        data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
-            else:
-                middle_out_db = self.io.load_object(file_path=self.path['middle_out_db'], data_type='csv')
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(
+                    data=middle_out, file_path=self.path['middle_out'], data_type='csv')
+                self.io.save_object(
+                    data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
 
             if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()

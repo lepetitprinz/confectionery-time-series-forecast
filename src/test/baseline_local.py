@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineReal import PipelineReal
@@ -11,7 +12,18 @@ path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
-cycle = 'w'    # SELL-OUT : w(week) / m(month)
+hist_to = '20220123'     # W05(20220130) / W04(20220123)
+
+# Change data type (string -> datetime)
+hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
+
+# Add dates
+hist_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
+md_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=13) + datetime.timedelta(days=1)
+
+# Change data type (datetime -> string)
+hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')
+md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 
 # Execute Configuration
 step_cfg = {
@@ -28,8 +40,8 @@ exec_cfg = {
     'cycle': False,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': True,                    # Save each step result to object or csv
-    'save_db_yn': False,                     # Save each step result to Database
+    'save_step_yn': True,                     # Save each step result to object or csv
+    'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration
     'decompose_yn': False,                    # Decomposition
@@ -38,9 +50,12 @@ exec_cfg = {
     'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
     'filter_threshold_recent_sku_yn': False,  # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
-    'rolling_statistics_yn': False,           # Rolling Statistics
     'rm_outlier_yn': True,                    # Outlier Correction
     'data_imputation_yn': True,               # Data Imputation
+
+    # Feature engineering configuration
+    'rolling_statistics_yn': True,            # Rolling Statistics
+    'representative_sampling_yn': False,      # Add features of representative sampling
 
     # Training configuration
     'scaling_yn': False,                      # Data scaling
@@ -50,35 +65,24 @@ exec_cfg = {
 # Data Configuration
 data_cfg = {
     'division': division,
-    'cycle': cycle,
+    'cycle': 'w',
     'date': {
         'history': {
-            'from': '20190128',  # 20190204
-            'to': '20220123'     # 20220130
+            'from': hist_from,
+            'to': hist_to
         },
         'middle_out': {
-            'from': '20211025',  # 20211101
-            'to': '20220123'     # 20220130
-        },
-        'evaluation': {
-            'from': '20210927',
-            'to': '20211226'
+            'from': md_from,
+            'to': hist_to
         }
-    }
-}
-
-# Load result configuration
-exec_rslt_cfg = {
-    'train': False,
-    'predict': False,
-    'middle_out': False
+    },
+    'apply_num_work_day': False
 }
 
 pipeline = PipelineReal(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
-    exec_rslt_cfg=exec_rslt_cfg,
     path_root=path_root
 )
 

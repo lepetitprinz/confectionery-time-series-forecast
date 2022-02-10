@@ -15,7 +15,12 @@ class FeatureEngineering(object):
 
         # Time series rolling statistics
         self.rolling_window = 4    # Weekly
-        self.rolling_agg_list = ['mean', 'median']
+        self.rolling_center = False
+        self.rolling_agg_list = ['min', 'max', 'mean', 'median']
+
+        # Representative sampling
+        self.repr_sampling_grp_list = ['sku_cd', 'yy', 'week']
+        self.repr_sampling_agg_list = ['min', 'max', 'mean', 'median']
 
     # Feature selection
     def feature_selection(self, data: pd.DataFrame):
@@ -53,16 +58,56 @@ class FeatureEngineering(object):
         for agg in self.rolling_agg_list:
             feat_agg = None
             if agg == 'mean':
-                feat_agg = feature.rolling(window=self.rolling_window, min_periods=1).mean()
-            elif agg == 'med':
-                feat_agg = feature.rolling(window=self.rolling_window, min_periods=1).median()
-            elif agg == 'sum':
-                feat_agg = feature.rolling(window=self.rolling_window, min_periods=1).sum()
+                feat_agg = feature.rolling(
+                    window=self.rolling_window,
+                    center=self.rolling_center,
+                    min_periods=1
+                ).mean()
+            elif agg == 'median':
+                feat_agg = feature.rolling(
+                    window=self.rolling_window,
+                    center=self.rolling_center,
+                    min_periods=1
+                ).median()
             elif agg == 'min':
-                feat_agg = feature.rolling(window=self.rolling_window, min_periods=1).min()
+                feat_agg = feature.rolling(
+                    window=self.rolling_window,
+                    center=self.rolling_center,
+                    min_periods=1
+                ).min()
             elif agg == 'max':
-                feat_agg = feature.rolling(window=self.rolling_window, min_periods=1).max()
+                feat_agg = feature.rolling(
+                    window=self.rolling_window,
+                    center=self.rolling_center,
+                    min_periods=1
+                ).max()
 
+            # Rename column
+            feat_agg.name = feat + '_' + agg
+
+            # concatenate aggregated feature
             df = pd.concat([df, feat_agg], axis=1)
+
+        return df
+
+    # Representative sampling
+    def repr_sampling(self, df: pd.DataFrame) -> pd.DataFrame:
+        df['yymmdd'] = df.index
+        df['yy'] = df['yymmdd'].dt.year
+
+        repr_sample = df.groupby(by=self.repr_sampling_grp_list).agg(
+            {self.target_col: self.repr_sampling_agg_list}
+        ).round(3)
+
+        # Reset index
+        repr_sample.columns = repr_sample.columns.get_level_values(1)
+        repr_sample.columns = [self.target_col + '_' + col for col in repr_sample.columns]
+        repr_sample = repr_sample.reset_index()
+
+        # Merge dataset
+        df = pd.merge(df, repr_sample, how='inner', on=self.repr_sampling_grp_list)
+
+        df = df.drop(columns=['yy'])
+        df = df.set_index('yymmdd')
 
         return df

@@ -40,7 +40,9 @@ class Predict(object):
         self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.division = division            # SELL-IN / SELL-OUT
         self.target_col = common['target_col']          # Target features
-        self.exo_col_list = exg_list + ['discount']     # Exogenous features
+        # self.exo_col_list = exg_list + ['discount']    # Exogenous features
+        # self.exo_col_list = exg_list + ['discount', 'num_work_day']    # Todo : Test columns
+        self.exo_col_list = exg_list + common['exg_fixed'].split(',')
         self.cust_grp = mst_info['cust_grp']            # Customer group master
         self.item_mst = mst_info['item_mst']            # Item master
         self.cal_mst = mst_info['cal_mst']              # Calendar master
