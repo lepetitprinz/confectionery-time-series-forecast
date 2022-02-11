@@ -50,12 +50,12 @@ exec_cfg = {
     'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
     'filter_threshold_recent_sku_yn': False,  # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
-    'rm_outlier_yn': True,                    # Outlier Correction
+    'rm_outlier_yn': True,                    # Outlier clipping
     'data_imputation_yn': True,               # Data Imputation
 
     # Feature engineering configuration
-    'rolling_statistics_yn': True,            # Rolling Statistics
-    'representative_sampling_yn': False,      # Add features of representative sampling
+    'rolling_statistics_yn': False,            # Add features of rolling statistics
+    'representative_sampling_yn': True,        # Add features of representative sampling
 
     # Training configuration
     'scaling_yn': False,                      # Data scaling

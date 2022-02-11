@@ -50,13 +50,16 @@ class DataPrep(object):
         self.hrchy_cnt = 0
 
         # Data threshold
+        self.decimal_point = 2
         self.exec_date = None       # Baseline forecast execution date
         self.rm_lvl_cnt = 0         # Data level count filtered by threshold
         self.tot_sp1_sku_cnt = 0    # Total SP1+SKU count
         self.rm_sp1_sku_cnt = 0     # Removed SP1+SKU count
         self.threshold_cnt = int(self.common['filter_threshold_cnt'])          # Threshold count
         self.threshold_recent = int(self.common['filter_threshold_recent'])    # Threshold recent periods
-        self.threshold_sku_period = datetime.timedelta(days=int(self.common['filter_threshold_sku_recent']) * 7)
+        self.threshold_sku_period = datetime.timedelta(
+            days=int(self.common['filter_threshold_sku_recent']) * 7
+        )
 
         # Execute option
         self.imputer = 'knn'           # Imputation method
@@ -73,6 +76,9 @@ class DataPrep(object):
             exg_list = list(idx.lower() for idx in exg['idx_cd'].unique())
         else:
             exg_list = []
+
+        # Initiate feature engineering class
+        fe = FeatureEngineering(common=self.common, exg_list=exg_list)
 
         # Change data type
         for col in self.STR_TYPE_COLS:
@@ -93,13 +99,9 @@ class DataPrep(object):
 
         # Feature engineering
         if self.exec_cfg['feature_selection_yn']:
-            fe = FeatureEngineering(
-                common=self.common,
-                exg_list=exg_list
-            )
             data, exg_list = fe.feature_selection(data=data)
 
-        # Grouping
+        # Group by data level hierarchy
         data_group, hrchy_cnt = util.group(
             hrchy=self.hrchy['apply'],
             hrchy_lvl=self.hrchy_level,
@@ -108,11 +110,10 @@ class DataPrep(object):
 
         # Filter threshold SKU based on recent sales
         if self.exec_cfg['filter_threshold_recent_sku_yn']:
-            # Execute date
+            # Set execute date
             exec_date = self.date['history']['to']
             self.exec_date = datetime.datetime.strptime(exec_date, '%Y%m%d') + datetime.timedelta(days=1)
 
-            # Set
             data_group = util.hrchy_recursion_with_none(
                 hrchy_lvl=self.hrchy_level,
                 fn=self.filter_threshold_recent_sku,
@@ -344,9 +345,9 @@ class DataPrep(object):
         if len(col_agg) > 0:
             resampled = df[col_agg]
             if agg == 'sum':    # Summation
-                resampled = resampled.resample(rule=self.resample_rule).sum()    # resampling
+                resampled = resampled.resample(rule=self.resample_rule).sum().round(self.decimal_point)
             elif agg == 'avg':    # Average
-                resampled = resampled.resample(rule=self.resample_rule).mean()
+                resampled = resampled.resample(rule=self.resample_rule).mean().round(self.decimal_point)
             resampled = resampled.fillna(value=0)  # fill NaN
 
         return resampled

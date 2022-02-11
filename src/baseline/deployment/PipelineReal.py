@@ -161,7 +161,7 @@ class PipelineReal(object):
                 exec_cfg=self.exec_cfg
             )
 
-            # Test code
+            # Todo: Test (number of work days)
             if self.data_cfg['apply_num_work_day']:
                 work_day = self.io.load_object(
                     file_path=os.path.join(self.path_root, 'data', 'work_day.csv'),

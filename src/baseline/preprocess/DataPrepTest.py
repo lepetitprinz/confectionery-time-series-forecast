@@ -44,20 +44,23 @@ class DataPrepTest(object):
         self.hrchy_cnt = 0
 
         # Data threshold
+        self.decimal_point = 2
+        self.exec_date = None
         self.rm_lvl_cnt = 0
         self.tot_sp1_sku_cnt = 0
         self.rm_sp1_sku_cnt = 0
         self.threshold_cnt = int(self.common['filter_threshold_cnt'])
         self.threshold_recent = int(self.common['filter_threshold_recent'])
-        self.exec_date = None
-        self.threshold_sku_period = None
+        self.threshold_sku_period = datetime.timedelta(
+            days=int(self.common['filter_threshold_sku_recent']) * 7
+        )
 
         # Execute option
         self.imputer = 'knn'
-        self.sigma = float(common['outlier_sigma'])
         self.outlier_method = 'std'
         self.quantile_range = 0.02
         self.noise_rate = 0.1
+        self.sigma = float(common['outlier_sigma'])
 
     def preprocess(self, data: pd.DataFrame, exg: pd.DataFrame) -> Tuple[dict, list, int]:
         # Preprocess sales dataset
@@ -76,7 +79,7 @@ class DataPrepTest(object):
         # convert datetime column
         data[self.common['date_col']] = data[self.common['date_col']].astype(np.int64)
 
-        # 2. Preprocess Exogenous dataset
+        # Preprocess Exogenous dataset
         if not self.exec_cfg['decompose_yn']:
             exg = util.prep_exg_all(data=exg)
 
@@ -90,17 +93,18 @@ class DataPrepTest(object):
         if self.exec_cfg['feature_selection_yn']:
             data, exg_list = fe.feature_selection(data=data)
 
-        # Grouping
-        data_group, self.hrchy_cnt = util.group(hrchy=self.hrchy['apply'], hrchy_lvl=self.hrchy_level, data=data)
+        # Group by data level hierarchy
+        data_group, self.hrchy_cnt = util.group(
+            hrchy=self.hrchy['apply'],
+            hrchy_lvl=self.hrchy_level,
+            data=data
+        )
 
         # Filter threshold SKU based on recent sales
         if self.exec_cfg['filter_threshold_recent_sku_yn']:
             # Execute date
             exec_date = self.date['history']['to']
             self.exec_date = datetime.datetime.strptime(exec_date, '%Y%m%d') + datetime.timedelta(days=1)
-
-            # Set
-            self.threshold_sku_period = datetime.timedelta(days=int(self.common['filter_threshold_sku_recent']) * 7)
 
             data_group = util.hrchy_recursion_with_none(
                 hrchy_lvl=self.hrchy_level,
@@ -115,13 +119,17 @@ class DataPrepTest(object):
 
         # Representative sampling
         if self.exec_cfg['representative_sampling_yn']:
+            # Columns of representative sampling are added to aggregates option instance
+            exg_add_list = [self.common['target_col'] + '_' + col for col in fe.repr_sampling_agg_list]
+            exg_list += exg_add_list
+            self.col_agg_map['avg'].extend(exg_add_list)
+
+            # add columns of representative sampling
             data_group = util.hrchy_recursion_with_none(
                 hrchy_lvl=self.hrchy_level,
                 fn=fe.repr_sampling,
                 df=data_group
             )
-            exg_add_list = [self.common['target_col'] + '_' + col for col in fe.repr_sampling_agg_list]
-            exg_list += exg_add_list
 
         # Decomposition
         if self.exec_cfg['decompose_yn']:
@@ -153,13 +161,14 @@ class DataPrepTest(object):
         print('-----------------------------------')
         self.hrchy_cnt -= self.rm_lvl_cnt
 
-        #
+        # Columns of rolling statistics are added to aggregates option instance
         if self.exec_cfg['rolling_statistics_yn']:
             exg_add_list = [self.common['target_col'] + '_' + col for col in fe.rolling_agg_list]
             exg_list += exg_add_list
 
         return data_resample, exg_list, self.hrchy_cnt
 
+    # Merge exogenous variables
     def merge_exg(self, data: pd.DataFrame, exg: dict) -> pd.DataFrame:
         cust_grp_list = list(data['cust_grp_cd'].unique())
 
@@ -344,9 +353,9 @@ class DataPrepTest(object):
         if len(col_agg) > 0:
             resampled = df[col_agg]
             if agg == 'sum':
-                resampled = resampled.resample(rule=self.resample_rule).sum()  # resampling
+                resampled = resampled.resample(rule=self.resample_rule).sum().round(self.decimal_point)  # resampling
             elif agg == 'avg':
-                resampled = resampled.resample(rule=self.resample_rule).mean()
+                resampled = resampled.resample(rule=self.resample_rule).mean().round(self.decimal_point)
             resampled = resampled.fillna(value=0)  # fill NaN
 
         return resampled

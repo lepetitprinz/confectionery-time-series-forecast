@@ -8,14 +8,15 @@ class FeatureEngineering(object):
         self.common = common
         self.target_col = common['target_col']
         self.exg_list = exg_list
+        self.decimal_point = 2
 
         # Feature Selection
         self.feat_select_method = 'spearmanr'    # pearson / spearmanr
         self.n_feature_to_select = 2
 
         # Time series rolling statistics
-        self.rolling_window = 4    # Weekly
-        self.rolling_center = False
+        self.rolling_window = 5
+        self.rolling_center = True
         self.rolling_agg_list = ['min', 'max', 'mean', 'median']
 
         # Representative sampling
@@ -52,44 +53,6 @@ class FeatureEngineering(object):
 
         return drop_exg_list, exg_list
 
-    # Rolling Statistics Function
-    def rolling(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
-        feature = df[feat].copy()
-        for agg in self.rolling_agg_list:
-            feat_agg = None
-            if agg == 'mean':
-                feat_agg = feature.rolling(
-                    window=self.rolling_window,
-                    center=self.rolling_center,
-                    min_periods=1
-                ).mean()
-            elif agg == 'median':
-                feat_agg = feature.rolling(
-                    window=self.rolling_window,
-                    center=self.rolling_center,
-                    min_periods=1
-                ).median()
-            elif agg == 'min':
-                feat_agg = feature.rolling(
-                    window=self.rolling_window,
-                    center=self.rolling_center,
-                    min_periods=1
-                ).min()
-            elif agg == 'max':
-                feat_agg = feature.rolling(
-                    window=self.rolling_window,
-                    center=self.rolling_center,
-                    min_periods=1
-                ).max()
-
-            # Rename column
-            feat_agg.name = feat + '_' + agg
-
-            # concatenate aggregated feature
-            df = pd.concat([df, feat_agg], axis=1)
-
-        return df
-
     # Representative sampling
     def repr_sampling(self, df: pd.DataFrame) -> pd.DataFrame:
         df['yymmdd'] = df.index
@@ -97,9 +60,9 @@ class FeatureEngineering(object):
 
         repr_sample = df.groupby(by=self.repr_sampling_grp_list).agg(
             {self.target_col: self.repr_sampling_agg_list}
-        ).round(3)
+        ).round(self.decimal_point)
 
-        # Reset index
+        # Reset indices
         repr_sample.columns = repr_sample.columns.get_level_values(1)
         repr_sample.columns = [self.target_col + '_' + col for col in repr_sample.columns]
         repr_sample = repr_sample.reset_index()
@@ -111,3 +74,18 @@ class FeatureEngineering(object):
         df = df.set_index('yymmdd')
 
         return df
+
+    # Rolling Statistics Function
+    def rolling(self, df: pd.DataFrame, feat: str) -> pd.DataFrame:
+        df_roll = df.rolling(
+            window=self.rolling_window,
+            center=self.rolling_center,
+            min_periods=1,
+        ).agg({feat: self.rolling_agg_list}).round(self.decimal_point)
+
+        df_roll.columns = df_roll.columns.get_level_values(1)
+        df_roll.columns = [feat + '_' + col for col in df_roll.columns]
+
+        df_roll = pd.merge(df, df_roll, how='inner', left_index=True, right_index=True)
+
+        return df_roll

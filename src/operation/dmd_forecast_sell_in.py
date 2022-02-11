@@ -35,7 +35,7 @@ exec_cfg = {
     'filter_threshold_recent_yn': True,      # Filter data level under threshold recent week
     'filter_threshold_recent_sku_yn': True,  # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,            # Remove forward empty sales
-    'rm_outlier_yn': True,                   # Outlier Correction
+    'rm_outlier_yn': True,                   # Outlier clipping
     'data_imputation_yn': True,              # Data Imputation
 
     # Training configuration
