@@ -7,11 +7,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineReal import PipelineReal
 
 # Root path
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
-# path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 hist_to = '20220123'     # W05(20220130) / W04(20220123)
 
 # Change data type (string -> datetime)

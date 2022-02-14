@@ -53,18 +53,19 @@ pipeline_brand = PipelineDecompCycle(
 pipeline_brand.run()
 print("Time Series Decomposition(Brand Level) is finished.\n")
 
-# Item Level
-pipeline_item = PipelineDecompCycle(
-    data_cfg=data_cfg,
-    exec_cfg=exec_cfg,
-    item_lvl=4,
-    path_root=path_root
-)
-pipeline_item.run()
-print("Time Series Decomposition(Item Level) is finished.\n")
+# # Item Level
+# pipeline_item = PipelineDecompCycle(
+#     data_cfg=data_cfg,
+#     exec_cfg=exec_cfg,
+#     item_lvl=4,
+#     path_root=path_root
+# )
+# pipeline_item.run()
+# print("Time Series Decomposition(Item Level) is finished.\n")
 
 # Check end time
 print("Decomposition End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("")
 
 
 

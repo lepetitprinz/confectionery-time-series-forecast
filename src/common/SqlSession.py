@@ -85,14 +85,15 @@ class SqlSession(object):
             error = str(e)
             return error
 
-    def insert(self, df: pd.DataFrame, tb_name: str):
+    def insert(self, df: pd.DataFrame, tb_name: str, verbose: bool):
         # Get meta information
         table = self.get_table_meta(tb_name=tb_name)
         df.columns = [col.upper() for col in df.columns]
 
         with self.engine.connect() as conn:
             conn.execute(table.insert(), df.to_dict('records'))
-            print(f"Saving {tb_name} table is finished.\n")
+            if verbose:
+                print(f"Saving {tb_name} table is finished.\n")
 
     def delete(self, sql: str):
         statement = text(sql)

@@ -8,6 +8,7 @@ class Rank(object):
         self.similarity = similarity
         self.top_n = top_n
 
+    # Rank similar items for each item
     def ranking(self, item_cd: str):
         rank = self.get_rank(item_cd=item_cd)
         ranks = self.get_rank_item_score(rank=rank)

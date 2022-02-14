@@ -4,11 +4,11 @@ import pandas as pd
 class DataPrep(object):
     def __init__(self, common: dict, data_vrsn_cd: str, data_vrsn_list: pd.DataFrame,
                  item_mst: pd.DataFrame, cal: pd.DataFrame):
-        self.cal = cal    # Calendar dataset
-        self.common = common    # Common information
-        self.col_str = ['sku_cd', 'bom_cd']
+        self.cal = cal              # Calendar dataset
+        self.common = common        # Common information
         self.item_mst = item_mst    # Item master
-        self.data_vrsn_cd = data_vrsn_cd    # Data version code
+        self.data_vrsn_cd = data_vrsn_cd       # Data version code
+        self.col_str = ['sku_cd', 'bom_cd']    # String type columns
         self.data_version_info = data_vrsn_list[data_vrsn_list['data_vrsn_cd'] == data_vrsn_cd]
 
     def preprocess(self, data: pd.DataFrame):
@@ -33,6 +33,7 @@ class DataPrep(object):
 
         return data
 
+    # Convert list to dataframe
     @staticmethod
     def conv_to_df(data: list) -> pd.DataFrame:
         similar = []
@@ -57,8 +58,8 @@ class DataPrep(object):
 
         return merged
 
-    @staticmethod
     # Filter Line list
+    @staticmethod
     def filter_line(data: pd.DataFrame) -> pd.DataFrame:
         data = data[data['item_line_cd'] == data['sim_item_line_cd']]
         data = data.drop(columns=['item_line_cd', 'sim_item_line_cd'])    # Drop unnecessary columns
@@ -67,24 +68,25 @@ class DataPrep(object):
 
         return data
 
+    # Re-rank the filtered ranking
     @staticmethod
     def re_rank(data: pd.DataFrame, filter_n: int) -> pd.DataFrame:
         data['re_rank'] = data.groupby(by='item_cd')['rank'].rank(method='min')
         data['re_rank'] = data['re_rank'].astype(int)    # Change data type(str -> int)
-        data = data.drop(columns=['rank'])    # Drop unnecessary columns
+        data = data.drop(columns=['rank'])               # Drop unnecessary columns
         data = data.rename(columns={'re_rank': 'rank'})
         data = data[data['rank'] <= filter_n]    # Filter top n
-        data = data.reset_index(drop=True)    # Reset index
+        data = data.reset_index(drop=True)       # Reset index
 
         return data
 
     # Add information on the result
     def add_db_info(self, data: pd.DataFrame):
         data['project_cd'] = self.common['project_cd']    # Add project code
-        data['data_vrsn_cd'] = self.data_vrsn_cd    # Add data version
-        data['yymmdd'] = self.data_version_info['exec_date'].values[0]    #
-        data['yy'] = data['yymmdd'].str.slice(stop=4)
-        data['create_user_cd'] = 'SYSTEM'    # User code
+        data['data_vrsn_cd'] = self.data_vrsn_cd          # Add data version
+        data['yymmdd'] = self.data_version_info['exec_date'].values[0]
+        data['yy'] = data['yymmdd'].str.slice(stop=4)     # Add year
+        data['create_user_cd'] = 'SYSTEM'                 # User code
 
         # Merge calendar information
         result = pd.merge(data, self.cal, how='left', on='yymmdd')

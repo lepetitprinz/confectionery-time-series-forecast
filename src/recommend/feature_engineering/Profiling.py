@@ -12,14 +12,17 @@ class Profiling(object):
         self.item_col = item_col
         self.meta_col = meta_col
         self.item_indices = {}
-        self.vectorize_method = {'count_vectorizer': CountVectorizer(),
-                                 'tfidf_vectorizer': TfidfVectorizer()}    # count_vectorizer / tfidf_vectorizer
+        self.vectorize_method = {
+            'count_vectorizer': CountVectorizer(),   # Count Vectorizer
+            'tfidf_vectorizer': TfidfVectorizer()    # TF-IDF Vectorizer
+        }
 
         # Save & Load Configuration
         self.save_steps_yn = save_step_yn
         self.load_step_yn = load_step_yn
         self.save_db_yn = save_db_yn
 
+    # Profile material and calculate the similarity of items
     def profiling(self, data: pd.DataFrame):
         meta_data = self.make_meta_data(data=data)
         matrix = self.vectorize(meta_data=meta_data, method='tfidf_vectorizer')
@@ -27,7 +30,8 @@ class Profiling(object):
 
         return similarity
 
-    def make_meta_data(self, data: pd.DataFrame):
+    # Make the meta data
+    def make_meta_data(self, data: pd.DataFrame) -> pd.DataFrame:
         meta_data = data.groupby(by=[self.item_col]).agg({self.meta_col: lambda x: ' '.join(x)})
         meta_data = meta_data.reset_index(level=0)
         item_indices = self.make_item_indices(items=list(meta_data[self.item_col]))
@@ -41,13 +45,16 @@ class Profiling(object):
 
         return matrix
 
+    # Calculate the similarity
     @staticmethod
     def calc_similarity(matrix):
         similarity = cosine_similarity(matrix, matrix)
 
         return similarity
 
-    def make_item_indices(self, items):
+    # Make item indices
+    @staticmethod
+    def make_item_indices(items):
         item_indices = {item: i for i, item in enumerate(items)}
 
         return item_indices

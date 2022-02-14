@@ -22,7 +22,16 @@ class OpenAPIWeather(object):
         # self.stn_avg_list = [108, 112, 133, 143, 152, 156, 159]    # 서울 / 인천 / 대전 / 대구 / 울산 / 광주 / 부산
         self.exg_list = ['temp_min', 'temp_max', 'temp_avg', 'rhm_min', 'rhm_avg', 'gsr_sum', 'rain_sum']
 
-    def set_date_range(self):
+    # Get API information from DB
+    def get_api_info(self) -> None:
+        self.info = self.io.get_dict_from_db(
+            sql=self.sql_conf.sql_comm_master(),
+            key='OPTION_CD',
+            val='OPTION_VAL'
+        )
+
+    # Set date period information
+    def set_date_range(self) -> None:
         today = datetime.date.today()
         prev_monday = today - datetime.timedelta(days=today.weekday() + 8)   # sunday before 2 weeks
         prev_sunday = today - datetime.timedelta(days=today.weekday() + 1)   # Previous sunday
@@ -33,13 +42,7 @@ class OpenAPIWeather(object):
         self.date = {'from': prev_monday, 'to': prev_sunday}
         # self.date = {'from': '20190101', 'to': '20191231'}
 
-    def get_api_info(self) -> None:
-        self.info = self.io.get_dict_from_db(
-            sql=self.sql_conf.sql_comm_master(),
-            key='OPTION_CD',
-            val='OPTION_VAL'
-        )
-
+    # Get the dataset from API call
     def get_api_dataset(self) -> list:
         data_list = []
         for stn_id in self.stn_list:
@@ -57,27 +60,15 @@ class OpenAPIWeather(object):
 
         return data_list
 
-    def save_avg_weather(self) -> None:
-        avg_info = {'api_start_day': self.date['from'], 'api_end_day': self.date['to']}
-        weather_avg = self.io.get_df_from_db(sql=self.sql_conf.sql_weather_avg(**avg_info))
-        stn_info = {
-            'idx_dtl_cd': 999,
-            'api_start_day': self.date['from'],
-            'api_end_day': self.date['to']
-        }
-        for exg in self.exg_list:
-            stn_info['idx_cd'] = exg
-            temp = weather_avg[weather_avg['idx_cd'] == exg]
-            self.io.delete_from_db(self.sql_conf.del_openapi(**stn_info))
-            self.io.insert_to_db(df=temp, tb_name=self.table_nm)
+    # Day count
+    def count_date_range(self) -> int:
+        date_from = self.date['from']
+        date_to = self.date['to']
+        dates = pd.date_range(date_from, date_to)
 
-    def save_result_on_db(self, data) -> None:
-        for stn_data, stn_info in data:
-            for exg_data, exg_id in stn_data:
-                stn_info['idx_cd'] = exg_id
-                self.io.delete_from_db(self.sql_conf.del_openapi(**stn_info))
-                self.io.insert_to_db(df=exg_data, tb_name=self.table_nm)
+        return len(dates)
 
+    # Open API URL
     def open_url(self, num_rows, stn_id) -> ET:
         query_params = f'?serviceKey={self.info["wea_service_key"]}&numOfRows={num_rows}&pageNo=' \
                        f'{self.info["wea_page"]}&dataCd=ASOS&dateCd=DAY&startDt=' \
@@ -109,12 +100,12 @@ class OpenAPIWeather(object):
 
         return pd.DataFrame(rows)
 
-    def count_date_range(self) -> int:
-        date_from = self.date['from']
-        date_to = self.date['to']
-        dates = pd.date_range(date_from, date_to)
-
-        return len(dates)
+    def save_result_on_db(self, data: list) -> None:
+        for stn_data, stn_info in data:
+            for exg_data, exg_id in stn_data:
+                stn_info['idx_cd'] = exg_id
+                self.io.delete_from_db(self.sql_conf.del_openapi(**stn_info))
+                self.io.insert_to_db(df=exg_data, tb_name=self.table_nm, verbose=False)
 
     def conv_data_to_db(self, data: pd.DataFrame) -> list:
         # fill na
@@ -134,3 +125,17 @@ class OpenAPIWeather(object):
             converted_list.append((data_exg, exg.upper()))
 
         return converted_list
+
+    # def save_avg_weather(self) -> None:
+    #     avg_info = {'api_start_day': self.date['from'], 'api_end_day': self.date['to']}
+    #     weather_avg = self.io.get_df_from_db(sql=self.sql_conf.sql_weather_avg(**avg_info))
+    #     stn_info = {
+    #         'idx_dtl_cd': 999,
+    #         'api_start_day': self.date['from'],
+    #         'api_end_day': self.date['to']
+    #     }
+    #     for exg in self.exg_list:
+    #         stn_info['idx_cd'] = exg
+    #         temp = weather_avg[weather_avg['idx_cd'] == exg]
+    #         self.io.delete_from_db(self.sql_conf.del_openapi(**stn_info))
+    #         self.io.insert_to_db(df=temp, tb_name=self.table_nm)

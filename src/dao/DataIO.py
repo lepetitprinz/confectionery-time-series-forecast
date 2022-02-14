@@ -11,12 +11,14 @@ class DataIO(object):
         self.session = SqlSession()
         self.session.init()
 
+    # Read sql and converted to dataframe
     def get_df_from_db(self, sql, dtype=None) -> pd.DataFrame:
         df = self.session.select(sql=sql, dtype=dtype)
         df.columns = [col.lower() for col in df.columns]
 
         return df
 
+    # Read sql and converted to dictionary
     def get_dict_from_db(self, sql, key, val, dtype=None) -> dict:
         df = self.session.select(sql=sql, dtype=dtype)
         df[key] = df[key].apply(str.lower)
@@ -24,19 +26,23 @@ class DataIO(object):
 
         return result
 
-    def insert_to_db(self, df: pd.DataFrame, tb_name: str) -> None:
-        self.session.insert(df=df, tb_name=tb_name)
+    # Insert dataframe on DB
+    def insert_to_db(self, df: pd.DataFrame, tb_name: str, verbose=True) -> None:
+        self.session.insert(df=df, tb_name=tb_name, verbose=verbose)
 
-    def delete_from_db(self, sql: str):
+    # Delete from DB
+    def delete_from_db(self, sql: str) -> None:
         self.session.delete(sql=sql)
 
-    def update_from_db(self, sql: str):
+    # Update on DB
+    def update_from_db(self, sql: str) -> None:
         self.session.update(sql=sql)
 
+    # Save the object
     @staticmethod
     def save_object(data, data_type: str, file_path: str) -> None:
         """
-        :param data
+        :param data: Saving dataset
         :param data_type: csv / binary
         :param file_path: file path
         """
@@ -48,8 +54,7 @@ class DataIO(object):
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 handle.close()
 
-        # print("Data is saved\n")
-
+    # Load the object
     @staticmethod
     def load_object(file_path: str, data_type: str):
         data = None

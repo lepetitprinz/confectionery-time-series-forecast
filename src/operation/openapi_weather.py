@@ -30,3 +30,4 @@ api_weather.save_result_on_db(data=data_weather)
 
 # Check end time
 print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("")
