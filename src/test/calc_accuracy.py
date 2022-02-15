@@ -40,10 +40,10 @@ opt_cfg = {
 }
 
 data_cfg = {
-    # 'root_path': os.path.join('..', '..'),
-    'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
-    'item_lvl': 3,
-    'division': 'SELL_IN',  # SELL_IN / SELL_OUT
+    'root_path': os.path.join('..', '..'),
+    # 'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
+    'item_lvl': 5,
+    'division': 'SELL_OUT',  # SELL_IN / SELL_OUT
     'load_option': 'db',  # db / csv
     'item_attr01_cd': 'P1'
 }

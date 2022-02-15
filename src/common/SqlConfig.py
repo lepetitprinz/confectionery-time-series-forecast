@@ -845,6 +845,92 @@ class SqlConfig(object):
 
         return sql
 
+    @staticmethod
+    def sql_accuracy_by_line(**kwargs):
+        sql = f"""
+            SELECT ACC_GRP
+                 , COUNT
+                 , SUM(COUNT) OVER(ORDER BY ACC_GRP) AS CUM_COUNT
+              FROM (
+                    SELECT ACC_GRP
+                         , COUNT(ACC_GRP) AS COUNT
+                      FROM (
+                            SELECT CASE WHEN ACCURACY BETWEEN 0.75 AND 1.25 THEN 'A'
+                                        WHEN ACCURACY BETWEEN 0.6 AND 1.4 THEN 'B'
+                                        WHEN ACCURACY BETWEEN 0.5 AND 1.5 THEN 'C'
+                                        ELSE 'F'
+                                         END AS ACC_GRP
+                              FROM (
+                                    SELECT CASE WHEN SALES = PRED THEN 1
+                                                -- WHEN SALES = 0 THEN 0
+                                                WHEN PRED = 0 THEN 0
+                                                ELSE SALES / PRED
+                                                 END AS ACCURACY
+                                      FROM (
+                                            SELECT ISNULL(SALES.SALES, 0) AS SALES
+                                                 , PRED.PRED
+                                              FROM (
+                                                    SELECT DIVISION_CD
+                                                         , CUST_GRP_CD
+                                                         , ITEM_CD
+                                                         , RESULT_SALES AS PRED
+                                                         , YYMMDD
+                                                      FROM M4S_O110600
+                                                     WHERE DIVISION_CD = '{kwargs['division']}'
+                                                       AND DATA_VRSN_CD = '{kwargs['data_vrsn']}'
+                                                       AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                       AND LEFT(FKEY, 5) = 'C1-P5'
+                                                       AND YYMMDD = '{kwargs['yymmdd']}'
+                                                       AND ITEM_CD IN (
+                                                                       SELECT ITEM_CD
+                                                                         FROM (
+                                                                               SELECT ITEM_ATTR01_CD
+                                                                                    , ITEM_CD
+                                                                                    , AVG(RST_SALES_QTY) AS AVG_QTY
+                                                                                 FROM (
+                                                                                       SELECT CUST_GRP_CD
+                                                                                            , ITEM_ATTR01_CD
+                                                                                            , ITEM_CD
+                                                                                            , RST_SALES_QTY
+                                                                                         FROM M4S_I002175
+                                                                                        WHERE DIVISION_CD = '{kwargs['division']}'
+                                                                                          AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                                                          AND RST_SALES_QTY > 0
+                                                                                          AND START_WEEK_DAY = '{kwargs['yymmdd_comp']}'
+                                                                                      ) SALES
+                                                                                GROUP BY CUST_GRP_CD
+                                                                                       , ITEM_ATTR01_CD
+                                                                                       , ITEM_CD
+                                                                              ) RSLT
+                                                                        WHERE AVG_QTY >= {kwargs['threshold']}
+                                                                          AND RSLT.ITEM_ATTR01_CD = '{kwargs['line']}'
+                                                                      )
+                                                   ) PRED
+                                              LEFT OUTER JOIN (
+                                                               SELECT DIVISION_CD
+                                                                    , CUST_GRP_CD
+                                                                    , ITEM_CD
+                                                                    , RST_SALES_QTY  AS SALES
+                                                                    , START_WEEK_DAY AS YYMMDD
+                                                                 FROM M4S_I002175
+                                                                WHERE DIVISION_CD = '{kwargs['division']}'
+                                                                  AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                                  AND START_WEEK_DAY = '{kwargs['yymmdd_comp']}'
+                                                              ) SALES
+                                                ON PRED.DIVISION_CD = SALES.DIVISION_CD
+                                               AND PRED.CUST_GRP_CD = SALES.CUST_GRP_CD
+                                               AND PRED.ITEM_CD = SALES.ITEM_CD
+                                           ) RSLT
+                                     WHERE SALES <> 0
+                                   ) RSLT
+                           ) RSLT
+                     GROUP BY ACC_GRP
+                 ) CNT
+        
+        """
+
+        return sql
+
     # Sell-Out Monthly Group
     @staticmethod
     def sql_sell_out_month_grp_test(**kwargs):
