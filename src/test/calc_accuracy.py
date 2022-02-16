@@ -26,7 +26,7 @@ compare_to = datetime.datetime.strftime(compare_to, '%Y%m%d')
 exec_cfg = {
     'cls_prep': True,     # Preprocessing
     'cls_comp': True,     # Compare result
-    'cls_top_n': True,    # Choose top N
+    'cls_top_n': False,    # Choose top N
     'cls_graph': False    # Draw graph
 }
 

@@ -14,6 +14,7 @@ class AccuracyByLine(object):
             'P1': ['1065', '1073']
         }
     }
+    grade_map = {'A': '75', 'B': '60', 'C': '50', 'F': 'ECC'}
 
     def __init__(self, monday: str):
         self.io = DataIO()
@@ -54,7 +55,11 @@ class AccuracyByLine(object):
                         'sp1': sp1
                     }
                     acc_by_line_df = self.io.get_df_from_db(sql=self.sql_cfg.sql_accuracy_by_line(**sql_info))
-                    print("")
+                    acc_by_line_df['total'] = sum(acc_by_line_df['count'])
+                    acc_by_line_df['rate'] = acc_by_line_df['cum_count'] / sum(acc_by_line_df['count'])
+                    acc_by_line_df = acc_by_line_df[acc_by_line_df['acc_grp'] != 'F']
+                    acc_by_line_df['acc_grp'] = acc_by_line_df['acc_grp'].apply(lambda x: self.grade_map[x])
+                    acc_by_line_df = acc_by_line_df[['acc_grp', 'rate', 'total']]
 
 acc_by_line = AccuracyByLine(monday='20220131')
 acc_by_line.run()

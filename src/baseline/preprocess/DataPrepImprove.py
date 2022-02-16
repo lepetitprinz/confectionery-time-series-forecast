@@ -13,7 +13,7 @@ from typing import Tuple, Union
 from sklearn.impute import KNNImputer
 
 
-class DataPrepTest(object):
+class DataPrepImprove(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 

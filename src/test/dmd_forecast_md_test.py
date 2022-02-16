@@ -3,7 +3,7 @@ import sys
 import time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineMiddleOutTest import PipelineMiddleOutTest
+from middle_out.PipelineMiddleOutTest import PipelineMiddleOutTest
 
 
 # Root path

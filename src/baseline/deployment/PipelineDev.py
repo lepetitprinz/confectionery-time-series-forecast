@@ -4,10 +4,10 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
-from baseline.preprocess.DataPrepTest import DataPrepTest
+from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
-from baseline.model.Train import Train
-from baseline.model.Predict import Predict
+from baseline.model.TrainDev import TrainDev
+from baseline.model.PredictDev import PredictDev
 from baseline.middle_out.MiddleOut import MiddleOut
 
 import os
@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-class PipelineReal(object):
+class PipelineDev(object):
     def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
         """
         :param data_cfg: Data Configuration
@@ -153,31 +153,13 @@ class PipelineReal(object):
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
             # Initiate data preprocessing class
-            preprocess = DataPrepTest(
+            preprocess = DataPrep(
                 date=self.date,
                 common=self.common,
                 hrchy=self.hrchy,
                 data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
-
-            # Todo: Test (number of work days)
-            if self.data_cfg['apply_num_work_day']:
-                work_day = self.io.load_object(
-                    file_path=os.path.join(self.path_root, 'data', 'work_day.csv'),
-                    data_type='csv'
-                )
-                work_day.columns = [col.lower() for col in work_day.columns]
-                work_day['yy'] = work_day['yy'].astype(str)
-                work_day = work_day[['yy', 'week', 'num_work_day']]
-
-                sales['yy'] = sales['yymmdd'].astype(str).str.slice(0, 4)
-                sales = pd.merge(
-                    sales,
-                    work_day,
-                    on=['yy', 'week'],
-                    how='inner'
-                )
 
             # Preprocessing the dataset
             data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
@@ -204,7 +186,7 @@ class PipelineReal(object):
                 self.hrchy['cnt'] = hrchy_cnt
 
             # Initiate train class
-            training = Train(
+            training = TrainDev(
                 data_vrsn_cd=self.data_vrsn_cd,    # Data version code
                 division=self.division,            # Division code
                 hrchy=self.hrchy,                  # Hierarchy
@@ -278,14 +260,15 @@ class PipelineReal(object):
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
 
             # Initiate predict class
-            predict = Predict(
+            predict = PredictDev(
                 division=self.division,
                 mst_info=mst_info, date=self.date,
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
                 hrchy=self.hrchy,
                 common=self.common,
-                data_cfg=self.data_cfg
+                data_cfg=self.data_cfg,
+                exec_cfg=self.exec_cfg
             )
 
             # Forecast the model

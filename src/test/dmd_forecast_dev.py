@@ -4,7 +4,7 @@ import time
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineReal import PipelineReal
+from baseline.deployment.PipelineDev import PipelineDev
 
 # Root path
 # path_root = os.path.join('/', 'opt', 'DF', 'fcst')
@@ -12,7 +12,7 @@ path_root = os.path.join('..', '..')
 
 # Sales Data configuration
 division = 'SELL_OUT'    # SELL_IN / SELL_OUT
-hist_to = '20220123'     # W05(20220130) / W04(20220123)
+hist_to = '20220130'     # W05(20220130) / W04(20220123)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -29,9 +29,9 @@ md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
+    'cls_prep': False,
+    'cls_train': False,
+    'cls_pred': False,
     'cls_mdout': True
 }
 
@@ -60,6 +60,7 @@ exec_cfg = {
     # Training configuration
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
+    'voting_yn': True                         # Add voting algorithm
 }
 
 # Data Configuration
@@ -75,22 +76,15 @@ data_cfg = {
             'from': md_from,
             'to': hist_to
         }
-    },
-    'apply_num_work_day': False
+    }
 }
 
-pipeline = PipelineReal(
+pipeline = PipelineDev(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
     path_root=path_root
 )
 
-start_time = time.time()
-
 # Execute Baseline Forecast
 pipeline.run()
-
-end_time = time.time()
-
-print('running time: ', end_time - start_time)

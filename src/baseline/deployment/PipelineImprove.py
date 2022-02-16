@@ -1,0 +1,516 @@
+from dao.DataIO import DataIO
+from common.SqlConfig import SqlConfig
+from baseline.preprocess.Init import Init
+from baseline.preprocess.DataLoad import DataLoad
+from baseline.preprocess.DataPrepImprove import DataPrepImprove
+from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
+from baseline.model.Train import Train
+from baseline.model.Predict import Predict
+from baseline.middle_out.MiddleOut import MiddleOut
+from baseline.analysis.CalcAccuracy import CalcAccuracy
+
+import os
+import warnings
+import datetime
+import pandas as pd
+warnings.filterwarnings("ignore")
+
+
+class PipelineImprove(object):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
+        """
+        :param data_cfg: Data Configuration
+        :param exec_cfg: Data I/O Configuration
+        :param step_cfg: Execute Configuration
+        """
+        # Hierarchy Level
+        self.item_lvl = 3    # Fixed
+
+        # I/O & Execution Configuration
+        self.data_cfg = data_cfg
+        self.step_cfg = step_cfg
+        self.exec_cfg = exec_cfg
+        self.path_root = path_root
+
+        # Class Configuration
+        self.io = DataIO()
+        self.sql_conf = SqlConfig()
+        self.common = self.io.get_dict_from_db(
+            sql=SqlConfig.sql_comm_master(),
+            key='OPTION_CD',
+            val='OPTION_VAL'
+        )
+
+        # Data Configuration
+        self.division = data_cfg['division']
+        self.data_vrsn_cd = ''
+        self.hrchy = {}
+        self.level = {}
+        self.path = {}
+        self.date = {}
+
+    def run(self):
+        # ================================================================================================= #
+        # 1. Initiate basic setting
+        # ================================================================================================= #
+        init = Init(
+            data_cfg=self.data_cfg,
+            exec_cfg=self.exec_cfg,
+            common=self.common,
+            division=self.division,
+            path_root=self.path_root
+        )
+        init.run(cust_lvl=1, item_lvl=self.item_lvl)
+
+        # Set initialized object
+        self.date = init.date
+        self.data_vrsn_cd = init.data_vrsn_cd
+        self.level = init.level
+        self.hrchy = init.hrchy
+        self.path = init.path
+
+        # ================================================================================================= #
+        # 2. Load the dataset
+        # ================================================================================================= #
+        sales = None
+        load = DataLoad(
+            io=self.io,
+            sql_conf=self.sql_conf,
+            date=self.date,
+            division=self.division,
+            data_vrsn_cd=self.data_vrsn_cd
+        )
+
+        if self.step_cfg['cls_load']:
+            print("Step 1: Load the dataset\n")
+            # Check data version
+            # if self.exec_cfg['save_db_yn']:
+            #     load.check_data_version()
+
+            # Load sales dataset
+            sales = load.load_sales()
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
+
+            print("Data load is finished\n")
+
+        # Load master dataset
+        mst_info = load.load_mst()
+
+        # ================================================================================================= #
+        # 2. Check Consistency
+        # ================================================================================================= #
+        if self.step_cfg['cls_cns']:
+            print("Step 2: Check Consistency \n")
+            if not self.step_cfg['cls_load']:
+                sales = self.io.load_object(file_path=self.path['load'], data_type='csv')
+
+            # Load error information
+            err_grp_map = self.io.get_dict_from_db(
+                sql=self.sql_conf.sql_err_grp_map(),
+                key='COMM_DTL_CD',
+                val='ATTR01_VAL'
+            )
+
+            # Initiate consistency check class
+            cns = ConsistencyCheck(
+                data_vrsn_cd=self.data_vrsn_cd,
+                division=self.division,
+                common=self.common,
+                hrchy=self.hrchy,
+                mst_info=mst_info,
+                exec_cfg=self.exec_cfg,
+                err_grp_map=err_grp_map,
+                path_root=self.path_root
+            )
+
+            # Execute Consistency check
+            sales = cns.check(df=sales)
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=sales, file_path=self.path['cns'], data_type='csv')
+
+            print("Consistency check is finished\n")
+
+        # ================================================================================================= #
+        # 3. Data Preprocessing
+        # ================================================================================================= #
+        data_prep = None
+        exg_list = None
+        # Exogenous dataset
+        exg_info = {
+            'partial_yn': 'N',
+            'from': self.date['history']['from'],
+            'to': self.date['history']['to']
+        }
+        exg = load.load_exog(info=exg_info)
+
+        if self.step_cfg['cls_prep']:
+            print("Step 3: Data Preprocessing\n")
+            if not self.step_cfg['cls_cns']:
+                sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
+
+            # Initiate data preprocessing class
+            preprocess = DataPrepImprove(
+                date=self.date,
+                common=self.common,
+                hrchy=self.hrchy,
+                data_cfg=self.data_cfg,
+                exec_cfg=self.exec_cfg
+            )
+
+            # Todo: Test (number of work days)
+            if self.data_cfg['apply_num_work_day']:
+                work_day = self.io.load_object(
+                    file_path=os.path.join(self.path_root, 'data', 'work_day.csv'),
+                    data_type='csv'
+                )
+                work_day.columns = [col.lower() for col in work_day.columns]
+                work_day['yy'] = work_day['yy'].astype(str)
+                work_day = work_day[['yy', 'week', 'num_work_day']]
+
+                sales['yy'] = sales['yymmdd'].astype(str).str.slice(0, 4)
+                sales = pd.merge(
+                    sales,
+                    work_day,
+                    on=['yy', 'week'],
+                    how='inner'
+                )
+
+            # Preprocessing the dataset
+            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
+            self.hrchy['cnt'] = hrchy_cnt
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(
+                    data=(data_prep, exg_list, hrchy_cnt),
+                    file_path=self.path['prep'],
+                    data_type='binary'
+                )
+
+            print("Data preprocessing is finished\n")
+
+        # ================================================================================================= #
+        # 4. Training
+        # ================================================================================================= #
+        scores_best = None
+        if self.step_cfg['cls_train']:
+            print("Step 4: Train\n")
+            if not self.step_cfg['cls_prep']:
+                data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                self.hrchy['cnt'] = hrchy_cnt
+
+            # Initiate train class
+            training = Train(
+                data_vrsn_cd=self.data_vrsn_cd,    # Data version code
+                division=self.division,            # Division code
+                hrchy=self.hrchy,                  # Hierarchy
+                common=self.common,                # Common information
+                mst_info=mst_info,                 # Master information
+                exg_list=exg_list,                 # Exogenous variable list
+                data_cfg=self.data_cfg,            # Data configuration
+                exec_cfg=self.exec_cfg             # Execute configuration
+            )
+
+            # Train the models
+            scores = training.train(df=data_prep)
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
+
+            # Save best parameters
+            if self.exec_cfg['grid_search_yn']:
+                training.save_best_params(scores=scores)
+
+            # Make score result
+            # All scores
+            scores_db, score_info = training.make_score_result(
+                data=scores,
+                hrchy_key=self.hrchy['key'],
+                fn=training.score_to_df
+            )
+            # Best scores
+            scores_best, score_best_info = training.make_score_result(
+                data=scores,
+                hrchy_key=self.hrchy['key'],
+                fn=training.make_best_score_df
+            )
+
+            scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
+            scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
+
+            # Save best scores
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
+
+            if self.exec_cfg['save_db_yn']:
+                # Save best of the training scores on the DB table
+                print("Save training all scores on DB")
+                table_nm = 'M4S_I110410'
+                score_info['table_nm'] = table_nm
+                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
+                self.io.insert_to_db(df=scores_db, tb_name=table_nm)
+
+                # Save best of the training scores on the DB table
+                print("Save training best scores on DB")
+                table_nm = 'M4S_O110610'
+                score_best_info['table_nm'] = table_nm
+                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_best_info))
+                self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
+
+            print("Training is finished\n")
+
+        # ================================================================================================= #
+        # 5. Forecast
+        # ================================================================================================= #
+        pred_best = None
+        if self.step_cfg['cls_pred']:
+            print("Step 5: Forecast\n")
+            if not self.step_cfg['cls_prep']:
+                data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
+                self.hrchy['cnt'] = hrchy_cnt
+
+            if not self.step_cfg['cls_train']:
+                scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
+
+            # Initiate predict class
+            predict = Predict(
+                division=self.division,
+                mst_info=mst_info, date=self.date,
+                data_vrsn_cd=self.data_vrsn_cd,
+                exg_list=exg_list,
+                hrchy=self.hrchy,
+                common=self.common,
+                data_cfg=self.data_cfg
+            )
+
+            # Forecast the model
+            prediction = predict.forecast(df=data_prep)
+
+            # Save Step result
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=prediction, file_path=self.path['pred'], data_type='binary')
+
+            # Make database format
+            pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
+            pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
+
+            pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
+            pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
+
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=pred_best, file_path=self.path['pred_best'], data_type='binary')
+
+            # Save the forecast results on the db table
+            if self.exec_cfg['save_db_yn']:
+                # Save prediction of all algorithms
+                print("Save all of prediction results on DB")
+                table_pred_all = 'M4S_I110400'
+                pred_info['table_nm'] = table_pred_all
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_all(**pred_info))
+                self.io.insert_to_db(df=pred_all, tb_name=table_pred_all)
+
+                # Save prediction of best algorithm
+                print("Save best of prediction results on DB")
+                table_pred_best = 'M4S_O110600'
+                pred_info['table_nm'] = table_pred_best
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**pred_info))
+                self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
+
+            print("Forecast is finished\n")
+
+        # ================================================================================================= #
+        # 6. Middle Out
+        # ================================================================================================= #
+        if self.step_cfg['cls_mdout']:
+            print("Step 6: Middle Out\n")
+            # Load item master
+            item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
+
+            md_out = MiddleOut(
+                common=self.common,
+                division=self.division,
+                data_vrsn=self.data_vrsn_cd,
+                hrchy=self.hrchy,
+                ratio_lvl=5,
+                item_mst=item_mst
+            )
+            # Load compare dataset
+            date_recent = {
+                'from': self.date['middle_out']['from'],
+                'to': self.date['middle_out']['to']
+            }
+
+            # Load dataset
+            sales_recent = None
+            if self.division == 'SELL_IN':    # Sell-In Dataset
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
+            elif self.division == 'SELL_OUT':    # Sell-Out Dataset
+                sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
+
+            # Load prediction
+            if not self.step_cfg['cls_pred']:
+                pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
+
+            # Run middle-out
+            middle_out_db, middle_out = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
+
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(
+                    data=middle_out, file_path=self.path['middle_out'], data_type='csv')
+                self.io.save_object(
+                    data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
+
+            if self.exec_cfg['save_db_yn']:
+                middle_info = md_out.add_del_information()
+                # Save middle-out prediction of best algorithm to prediction table
+                print("Save middle-out results on all result table")
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**middle_info))
+                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
+
+                # Save middle-out prediction of best algorithm to recent prediction table
+                print("Save middle-out results on recent result table")
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**{'division_cd': self.division}))
+                self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
+
+            print("Middle-out is finished\n")
+
+        # ================================================================================================= #
+        # 7. Calculate accuracy
+        # ================================================================================================= #
+        if self.step_cfg['cls_acc']:
+            hist_to = '20220130'  # W05(20220130) / W04(20220123)
+
+            # Change data type (string -> datetime)
+            hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
+
+            # Add dates
+            hist_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(
+                weeks=156) + datetime.timedelta(days=1)
+            # compare_from = hist_to_datetime + datetime.timedelta(days=1)
+            # compare_to = hist_to_datetime + datetime.timedelta(days=7)
+            compare_from = hist_to_datetime + datetime.timedelta(days=8)
+            compare_to = hist_to_datetime + datetime.timedelta(days=14)
+
+            # Change data type (datetime -> string)
+            hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')
+            compare_from = datetime.datetime.strftime(compare_from, '%Y%m%d')
+            compare_to = datetime.datetime.strftime(compare_to, '%Y%m%d')
+
+            data_cfg = {
+                'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
+                'item_lvl': 5,
+                'division': 'SELL_IN',  # SELL_IN / SELL_OUT
+                'load_option': 'csv',  # db / csv
+                'item_attr01_cd': 'P1'
+            }
+
+            date_cfg = {
+                'cycle_yn': False,
+                'date': {
+                    'hist': {
+                        'from': hist_from,
+                        'to': hist_to
+                    },
+                    'compare': {
+                        'from': compare_from,  # 20220110
+                        'to': compare_to  # 20220116
+                    }
+                },
+                'data_vrsn_cd': hist_from + '-' + hist_to
+            }
+
+            exec_cfg = {
+                'cls_prep': True,  # Preprocessing
+                'cls_comp': True,  # Compare result
+                'cls_top_n': True,  # Choose top N
+                'cls_graph': False  # Draw graph
+            }
+
+            opt_cfg = {
+                'rm_zero_yn': True,  # Remove zeros
+                'calc_acc_by_sp1_item_yn': True,  # Calculate accuracy on SP1 items
+                'filter_sales_threshold_yn': True,  # Filter based on sales threshold
+                'filter_specific_acc_yn': False,  # Filter Specific accuracy range
+                'pick_specific_biz_yn': True,  # Pick Specific business code
+                'pick_specific_sp1_yn': False,  # Pick Specific sp1 list
+            }
+
+            calc_accuracy = CalcAccuracy(
+                exec_cfg=exec_cfg,
+                opt_cfg=opt_cfg,
+                date_cfg=date_cfg,
+                data_cfg=data_cfg
+            )
+            calc_accuracy.run()
+
+        # ================================================================================================= #
+        # 7. Report result
+        # ================================================================================================= #
+        # if self.step_cfg['cls_rpt']:
+        #     print("Step 7: Report result\n")
+        #     test_vrsn_cd = self.test_vrsn_cd
+        #
+        #     if self.level['middle_out']:
+        #         pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
+        #         test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
+        #     else:
+        #         if not self.step_cfg['cls_pred']:
+        #             pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
+        #
+        #     # Load compare dataset
+        #     date_compare = {
+        #         'from': self.date['evaluation']['from'],
+        #         'to': self.date['evaluation']['to']
+        #     }
+        #     date_recent = {
+        #         'from': self.date['middle_out']['from'],
+        #         'to': self.date['middle_out']['to']
+        #     }
+        #
+        #     sales_comp = None
+        #     sales_recent = None
+        #     # Sell-In dataset
+        #     if self.division == 'SELL_IN':
+        #         sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_compare))
+        #         sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
+        #
+        #     # Sell-Out dataset
+        #     elif self.division == 'SELL_OUT':
+        #         if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
+        #             sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_compare))
+        #             sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
+        #
+        #     # Load item master
+        #     item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
+        #
+        #     report = ResultSummary(
+        #         data_vrsn=self.data_vrsn_cd,
+        #         division=self.division,
+        #         common=self.common,
+        #         date=self.date,
+        #         test_vrsn=test_vrsn_cd,
+        #         hrchy=self.hrchy,
+        #         item_mst=item_mst,
+        #         lvl_cfg=self.level
+        #     )
+        #     result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
+        #     result, result_info = report.make_db_format(data=result)
+        #
+        #     if self.exec_cfg['save_step_yn']:
+        #         self.io.save_object(data=result, file_path=self.path['report'], data_type='csv')
+        #
+        #     if self.exec_cfg['save_db_yn']:
+        #         print("Save prediction results on DB")
+        #         self.io.delete_from_db(sql=self.sql_conf.del_compare_result(**result_info))
+        #         self.io.insert_to_db(df=result, tb_name='M4S_O110620')
+        #
+        #     # Close DB session
+        #     self.io.session.close()
+        #
+        #     print("Report results is finished\n")
