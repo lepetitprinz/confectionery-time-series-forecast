@@ -178,8 +178,10 @@ def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrc
     return temp
 
 
-def make_path_baseline(path: str, module: str, division: str, data_vrsn: str, hrchy_lvl: str, step: str, extension: str):
-    path = os.path.join(path, module, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step + '.' + extension)
+def make_path_baseline(path: str, module: str, exec_kind: str, division: str, data_vrsn: str, hrchy_lvl: str,
+                       step: str, extension: str):
+    path = os.path.join(path, module, exec_kind, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step +
+                        '.' + extension)
 
     return path
 

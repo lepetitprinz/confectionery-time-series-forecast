@@ -2,7 +2,7 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
-from baseline.preprocess.DataPrepImprove import DataPrepImprove
+from baseline.preprocess.DataPrepVerify import DataPrepVerify
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
@@ -16,7 +16,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 
-class PipelineImprove(object):
+class PipelineVerify(object):
     def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
         """
         :param data_cfg: Data Configuration
@@ -27,6 +27,7 @@ class PipelineImprove(object):
         self.item_lvl = 3    # Fixed
 
         # I/O & Execution Configuration
+        self.exec_kind = 'verify'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -58,7 +59,8 @@ class PipelineImprove(object):
             exec_cfg=self.exec_cfg,
             common=self.common,
             division=self.division,
-            path_root=self.path_root
+            path_root=self.path_root,
+            exec_kind=self.exec_kind
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)
 
@@ -154,7 +156,7 @@ class PipelineImprove(object):
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
             # Initiate data preprocessing class
-            preprocess = DataPrepImprove(
+            preprocess = DataPrepVerify(
                 date=self.date,
                 common=self.common,
                 hrchy=self.hrchy,
@@ -381,75 +383,6 @@ class PipelineImprove(object):
             print("Middle-out is finished\n")
 
         # ================================================================================================= #
-        # 7. Calculate accuracy
-        # ================================================================================================= #
-        if self.step_cfg['cls_acc']:
-            hist_to = '20220130'  # W05(20220130) / W04(20220123)
-
-            # Change data type (string -> datetime)
-            hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
-
-            # Add dates
-            hist_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(
-                weeks=156) + datetime.timedelta(days=1)
-            # compare_from = hist_to_datetime + datetime.timedelta(days=1)
-            # compare_to = hist_to_datetime + datetime.timedelta(days=7)
-            compare_from = hist_to_datetime + datetime.timedelta(days=8)
-            compare_to = hist_to_datetime + datetime.timedelta(days=14)
-
-            # Change data type (datetime -> string)
-            hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')
-            compare_from = datetime.datetime.strftime(compare_from, '%Y%m%d')
-            compare_to = datetime.datetime.strftime(compare_to, '%Y%m%d')
-
-            data_cfg = {
-                'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
-                'item_lvl': 5,
-                'division': 'SELL_IN',  # SELL_IN / SELL_OUT
-                'load_option': 'csv',  # db / csv
-                'item_attr01_cd': 'P1'
-            }
-
-            date_cfg = {
-                'cycle_yn': False,
-                'date': {
-                    'hist': {
-                        'from': hist_from,
-                        'to': hist_to
-                    },
-                    'compare': {
-                        'from': compare_from,  # 20220110
-                        'to': compare_to  # 20220116
-                    }
-                },
-                'data_vrsn_cd': hist_from + '-' + hist_to
-            }
-
-            exec_cfg = {
-                'cls_prep': True,  # Preprocessing
-                'cls_comp': True,  # Compare result
-                'cls_top_n': True,  # Choose top N
-                'cls_graph': False  # Draw graph
-            }
-
-            opt_cfg = {
-                'rm_zero_yn': True,  # Remove zeros
-                'calc_acc_by_sp1_item_yn': True,  # Calculate accuracy on SP1 items
-                'filter_sales_threshold_yn': True,  # Filter based on sales threshold
-                'filter_specific_acc_yn': False,  # Filter Specific accuracy range
-                'pick_specific_biz_yn': True,  # Pick Specific business code
-                'pick_specific_sp1_yn': False,  # Pick Specific sp1 list
-            }
-
-            calc_accuracy = CalcAccuracy(
-                exec_cfg=exec_cfg,
-                opt_cfg=opt_cfg,
-                date_cfg=date_cfg,
-                data_cfg=data_cfg
-            )
-            calc_accuracy.run()
-
-        # ================================================================================================= #
         # 7. Report result
         # ================================================================================================= #
         # if self.step_cfg['cls_rpt']:
@@ -489,7 +422,7 @@ class PipelineImprove(object):
         #     # Load item master
         #     item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         #
-        #     report = ResultSummary(
+        #     verify = ResultSummary(
         #         data_vrsn=self.data_vrsn_cd,
         #         division=self.division,
         #         common=self.common,
@@ -499,11 +432,11 @@ class PipelineImprove(object):
         #         item_mst=item_mst,
         #         lvl_cfg=self.level
         #     )
-        #     result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
-        #     result, result_info = report.make_db_format(data=result)
+        #     result = verify.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
+        #     result, result_info = verify.make_db_format(data=result)
         #
         #     if self.exec_cfg['save_step_yn']:
-        #         self.io.save_object(data=result, file_path=self.path['report'], data_type='csv')
+        #         self.io.save_object(data=result, file_path=self.path['verify'], data_type='csv')
         #
         #     if self.exec_cfg['save_db_yn']:
         #         print("Save prediction results on DB")

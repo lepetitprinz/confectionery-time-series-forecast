@@ -41,10 +41,10 @@ class ResultSummary(object):
         )
         self.save_path = {
             'all': util.make_path_baseline(
-                path=self.common['path_local'], module='report', division=division, data_vrsn=data_vrsn,
+                path=self.common['path_local'], module='verify', division=division, data_vrsn=data_vrsn,
                 hrchy_lvl=hrchy['key'], step='all', extension='csv'),
             'summary': util.make_path_baseline(
-                path=self.common['path_local'], module='report', division=division, data_vrsn=data_vrsn,
+                path=self.common['path_local'], module='verify', division=division, data_vrsn=data_vrsn,
                 hrchy_lvl=hrchy['key'], step='summary', extension='csv')
         }
 

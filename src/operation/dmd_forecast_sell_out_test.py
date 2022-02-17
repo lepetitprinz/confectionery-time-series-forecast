@@ -25,7 +25,7 @@ exec_cfg = {
     'cycle': True,                            # Prediction cycle
 
     # save configuration
-    'save_step_yn': False,                    # Save each step result to object or csv
+    'save_step_yn': True,                    # Save each step result to object or csv
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration

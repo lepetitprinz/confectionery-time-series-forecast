@@ -5,8 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.analysis.CalcAccuracy import CalcAccuracy
 
-# hist_from = '20190204'    # W05(20190204) / W04(20190128)
-hist_to = '20220130'        # W05(20220130) / W04(20220123)
+hist_to = '20220130'    # W06(20220130) /W05(20220130) / W04(20220123)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -32,7 +31,7 @@ exec_cfg = {
 
 opt_cfg = {
     'rm_zero_yn': True,                   # Remove zeros
-    'calc_acc_by_sp1_item_yn': True,      # Calculate accuracy on SP1 items
+    'calc_acc_by_sp1_item_yn': False,     # Calculate accuracy on SP1 items
     'filter_sales_threshold_yn': True,    # Filter based on sales threshold
     'filter_specific_acc_yn': False,      # Filter Specific accuracy range
     'pick_specific_biz_yn': True,         # Pick Specific business code
@@ -65,8 +64,8 @@ date_cfg = {
 
 # Initialize class
 comp = CalcAccuracy(
-    exec_cfg=exec_cfg,
-    opt_cfg=opt_cfg,
+    step_cfg=exec_cfg,
+    exec_cfg=opt_cfg,
     date_cfg=date_cfg,
     data_cfg=data_cfg
 )

@@ -26,11 +26,10 @@ class PipelineReal(object):
         )
 
         # Data Configuration
-        self.division = 'SELL_IN'
-        self.date = date
-        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
         self.path_root = path_root
-        self.threshold = 10
+        self.division = 'SELL_IN'
+        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
+        self.date = date
 
         # Data Level Configuration
         self.hrchy = {
@@ -40,6 +39,7 @@ class PipelineReal(object):
             'list': self.common['hrchy_cust'].split(',') + self.common['hrchy_item'].split(',')
         }
         self.lag = lag
+        self.threshold = 20
 
         # Path Configuration
         self.path = {
@@ -71,8 +71,8 @@ class PipelineReal(object):
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**date))
 
             # Save Step result
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
+            # if self.exec_cfg['save_step_yn']:
+            #     self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
 
         # ================================================================================================= #
         # 2. Data Preprocessing
@@ -139,5 +139,5 @@ class PipelineReal(object):
                 exec_cfg=self.exec_cfg,
                 path_root=self.path_root
             )
-            train.init(params={})
+            train.init(params=best_params)
             train.train(data=data_prep)

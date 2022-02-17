@@ -9,12 +9,11 @@ import datetime
 import numpy as np
 import pandas as pd
 
-import matplotlib
 import matplotlib.pyplot as plt
 # import matplotlib.font_manager as fm
 # font_path = r'C:\Windows\Fonts\malgun.ttf'
 # font_name = fm.FontProperties(fname=font_path).get_name()
-matplotlib.rc('font', family='Malgun Gothic')
+# matplotlib.rc('font', family='Malgun Gothic')
 plt.style.use('fivethirtyeight')
 
 
@@ -36,38 +35,41 @@ class CalcAccuracy(object):
         }
     }
 
-    def __init__(self, exec_cfg: dict, opt_cfg: dict, date_cfg: dict, data_cfg: dict):
+    def __init__(self, exec_kind: str, step_cfg: dict, exec_cfg: dict, date_cfg: dict, data_cfg: dict):
+        # Object instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.root_path = data_cfg['root_path']
+        self.save_path = data_cfg['save_path']
         self.common = self.io.get_dict_from_db(
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-
-        # Data configuration
+        # Execution instance attribute
+        self.exec_kind = exec_kind
+        self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
-        self.opt_cfg = opt_cfg
         self.date_cfg = date_cfg
         self.data_cfg = data_cfg
+
+        # Data instance attribute
+        self.level = {}
+        self.hrchy = {}
         self.division = data_cfg['division']
+        self.cust_map = {}
+        self.item_info = None
         self.date_sales = {}
         self.data_vrsn_cd = ''
         self.hist_date_range = []
-        self.level = {}
-        self.hrchy = {}
-        self.item_info = None
-        self.cust_map = {}
 
-        self.filter_sales_threshold_standard = 'recent'    # hist / recent
-
-        # Evaluation configuration
+        # Evaluation instance attribute
         self.week_compare = 1             # Compare week range
         self.sales_threshold = 5          # Minimum sales quantity
         self.eval_threshold = 0.5         # Accuracy: Success or not
-        self.filter_top_n_threshold = 1   # Filter top N
         self.filter_acc_rate = 2          # Filter accuracy rate
+        self.filter_top_n_threshold = 1   # Filter top N
+        self.filter_sales_threshold_standard = 'recent'    # hist / recent
 
     def run(self) -> None:
         # Initialize information
@@ -77,36 +79,36 @@ class CalcAccuracy(object):
         sales_compare, sales_hist, pred = self.load_dataset()
 
         # Preprocess the dataset
-        if self.exec_cfg['cls_prep']:
+        if self.step_cfg['cls_prep']:
             sales_hist, sales_compare = self.preprocessing(sales_hist=sales_hist, sales_compare=sales_compare)
 
         # Compare result
         result = None
-        if self.exec_cfg['cls_comp']:
+        if self.step_cfg['cls_comp']:
             result = self.compare_result(sales=sales_compare, pred=pred)
 
-            if self.opt_cfg['filter_specific_acc_yn']:
-                self.filter_specific_accuracy(data=result)
-
-        # Convert
+        # Change data type (string to datetime)
         sales_hist = self.conv_to_datetime(data=sales_hist, col='start_week_day')
         result = self.conv_to_datetime(data=result, col='start_week_day')
 
-        if self.opt_cfg['pick_specific_biz_yn']:
+        if self.exec_cfg['pick_specific_biz_yn']:
             result = result[result['item_attr01_cd'] == self.data_cfg['item_attr01_cd']]
 
         # Accuracy rate bu SP1 + item level
-        if self.opt_cfg['calc_acc_by_sp1_item_yn']:
-            self.calc_acc_by_sp1_line(data=result, sp1_list=self.pick_sp1[self.data_cfg['item_attr01_cd']])
+        # if self.exec_cfg['calc_acc_by_sp1_item_yn']:
+        #     self.calc_acc_by_sp1_line(data=result, sp1_list=self.pick_sp1[self.data_cfg['item_attr01_cd']])
 
-        if self.exec_cfg['cls_top_n']:
-            if self.opt_cfg['pick_specific_sp1_yn']:
+        # Execute on top N accuracy
+        if self.step_cfg['cls_top_n']:
+            # Execute on specific sp1 list
+            if self.exec_cfg['pick_specific_sp1_yn']:
                 result_pick = self.pick_specific_sp1(data=result)
                 for sp1, data in result_pick.items():
                     # Filter n by accuracy
                     data_filter_n = self.filter_n_by_accuracy(data=data)
+
                     # Draw plots
-                    if self.exec_cfg['cls_graph']:
+                    if self.step_cfg['cls_graph']:
                         self.draw_plot(result=data_filter_n, sales=sales_hist)
 
             else:
@@ -114,35 +116,25 @@ class CalcAccuracy(object):
                 result = self.filter_n_by_accuracy(data=result)
 
                 # Draw plots
-                if self.exec_cfg['cls_graph']:
+                if self.step_cfg['cls_graph']:
                     self.draw_plot(result=result, sales=sales_hist)
 
-    def calc_acc_by_sp1_line(self, data: pd.DataFrame, sp1_list=None) -> None:
-        if sp1_list is not None:
-            data = data[data['cust_grp_cd'].isin(sp1_list)]
-
-        grp_col = ['cust_grp_cd', 'item_attr01_cd', 'item_attr02_cd']
-        grp_avg = data.groupby(by=grp_col)['success'].mean().reset_index()
-        grp_avg_pivot = grp_avg.pivot(
-            index=['item_attr01_cd', 'item_attr02_cd'],
-            columns='cust_grp_cd',
-            values='success')
-
-        path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd, 'result',
-                            self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) +
-                            '_' + self.data_cfg['item_attr01_cd'] + '_pivot.csv')
-
-        grp_avg_pivot.to_csv(path)
-
-    def filter_specific_accuracy(self, data: pd.DataFrame) -> None:
-        # Filter result by accuracy
-        filtered = data[data['accuracy'] < self.filter_acc_rate]
-
-        # Save the result
-        path = os.path.join(self.root_path, 'analysis', 'accuracy',
-                            self.data_vrsn_cd, 'filter', self.data_vrsn_cd + '_' + self.division +
-                            '_' + str(self.hrchy['lvl']['item']) + '_' + str(self.filter_acc_rate) + '.csv')
-        filtered.to_csv(path, index=False, encoding='cp949')
+    # def calc_acc_by_sp1_line(self, data: pd.DataFrame, sp1_list=None) -> None:
+    #     if sp1_list is not None:
+    #         data = data[data['cust_grp_cd'].isin(sp1_list)]
+    #
+    #     grp_col = ['cust_grp_cd', 'item_attr01_cd', 'item_attr02_cd']
+    #     grp_avg = data.groupby(by=grp_col)['success'].mean().reset_index()
+    #     grp_avg_pivot = grp_avg.pivot(
+    #         index=['item_attr01_cd', 'item_attr02_cd'],
+    #         columns='cust_grp_cd',
+    #         values='success')
+    #
+    #     path = os.path.join(self.save_path, self.data_vrsn_cd,
+    #                         self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) +
+    #                         '_' + self.data_cfg['item_attr01_cd'] + '_pivot.csv')
+    #
+    #     grp_avg_pivot.to_csv(path)
 
     def preprocessing(self, sales_hist: pd.DataFrame, sales_compare: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         # Resample data
@@ -150,11 +142,11 @@ class CalcAccuracy(object):
         sales_hist = self.resample_sales(data=sales_hist)
 
         # remove zero quantity
-        if self.opt_cfg['rm_zero_yn']:
+        if self.exec_cfg['rm_zero_yn']:
             print("Remove zero sales quantities")
             sales_compare = self.filter_zeros(data=sales_compare, col='sales')
 
-        if self.opt_cfg['filter_sales_threshold_yn']:
+        if self.exec_cfg['filter_sales_threshold_yn']:
             print(f"Filter sales under {self.sales_threshold} quantity")
             sales_compare = self.filter_sales_threshold(hist=sales_hist, recent=sales_compare)
 
@@ -168,13 +160,13 @@ class CalcAccuracy(object):
         data_pick = data_pick.sort_values(by=['cust_grp_cd', 'accuracy'])
 
         # split by sp1
-        splited = {}
+        split = {}
         for sp1 in pick_sp1:
             temp = data_pick[data_pick['cust_grp_cd'] == sp1]
             if len(temp) > 0:
-                splited[sp1] = temp.reset_index(drop=True)
+                split[sp1] = temp.reset_index(drop=True)
 
-        return splited
+        return split
 
     def filter_sales_threshold(self, hist: pd.DataFrame, recent: pd.DataFrame) -> pd.DataFrame:
         recent_filtered = None
@@ -285,12 +277,12 @@ class CalcAccuracy(object):
         self.hrchy['apply'] = self.hrchy['list']['cust'] + self.hrchy['list']['item']
 
     def make_dir(self) -> None:
-        path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd)
+        path = os.path.join(self.save_path, self.data_vrsn_cd)
         if not os.path.isdir(path):
             os.mkdir(path=path)
-            os.mkdir(path=os.path.join(path, 'result'))
-            os.mkdir(path=os.path.join(path, 'plot'))
-            os.mkdir(path=os.path.join(path, 'filter'))
+            # os.mkdir(path=os.path.join(path, 'result'))
+            if self.step_cfg['cls_graph']:
+                os.mkdir(path=os.path.join(path, 'plot'))
 
     def calc_sales_date(self) -> Dict[str, Dict[str, str]]:
         today = datetime.date.today()
@@ -358,7 +350,7 @@ class CalcAccuracy(object):
             pred = self.io.get_df_from_db(sql=self.sql_conf.sql_pred_best(**info_pred))
 
         elif self.data_cfg['load_option'] == 'csv':
-            path = os.path.join('..', '..', 'prediction', self.division + '_' + self.data_vrsn_cd +
+            path = os.path.join(self.root_path, 'prediction', self.exec_kind, self.division + '_' + self.data_vrsn_cd +
                                 '_C1-P3-' + self.pred_csv_map['name'][self.hrchy['key'][:-1]])
             pred = pd.read_csv(path, encoding=self.pred_csv_map['encoding'][self.hrchy['key'][:-1]])
             pred.columns = [col.lower() for col in pred.columns]
@@ -427,15 +419,11 @@ class CalcAccuracy(object):
         # Add item names
         data = pd.merge(data, self.item_info, how='left', on=self.hrchy['list']['item'])
 
-        # item_lvl_cd = self.hrchy['apply'][-1]
-        # item_lvl_nm = item_lvl_cd[:-2] + 'nm'
-        # data[item_lvl_nm] = [self.item_info.get(code, code) for code in data[item_lvl_cd].values]
-
         view_col = ['cust_grp_cd', 'cust_grp_nm'] + list(self.item_info.columns) + ['sales', 'pred', 'accuracy']
         data_save = data[view_col]
 
-        path = os.path.join(self.root_path, 'analysis', 'accuracy', self.data_vrsn_cd, 'result',
-                            self.data_vrsn_cd + '_' + self.division + '_' + str(self.hrchy['lvl']['item']) + '.csv')
+        path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
+                            '_' + str(self.hrchy['lvl']['item']) + '.csv')
         data_save.to_csv(path, index=False, encoding='cp949')
 
         return data

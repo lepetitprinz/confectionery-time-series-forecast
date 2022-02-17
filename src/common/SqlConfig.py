@@ -102,7 +102,8 @@ class SqlConfig(object):
                  , VARIATE
               FROM M4S_I103010
              WHERE USE_YN = 'Y'
-               AND DIVISION_CD = '{kwargs['division']}'           
+               AND DIVISION_CD = '{kwargs['division']}'
+               AND STAT_CD <> 'VOTING'  -- Exception           
             """
         return sql
 
@@ -846,7 +847,7 @@ class SqlConfig(object):
         return sql
 
     @staticmethod
-    def sql_accuracy_by_line(**kwargs):
+    def sql_acc_by_sp1(**kwargs):
         sql = f"""
             SELECT ACC_GRP
                  , COUNT
@@ -903,7 +904,7 @@ class SqlConfig(object):
                                                                                        , ITEM_CD
                                                                               ) RSLT
                                                                         WHERE AVG_QTY >= {kwargs['threshold']}
-                                                                          AND RSLT.ITEM_ATTR01_CD = '{kwargs['line']}'
+                                                                          AND RSLT.ITEM_ATTR01_CD = '{kwargs['biz']}'
                                                                       )
                                                    ) PRED
                                               LEFT OUTER JOIN (
@@ -928,6 +929,92 @@ class SqlConfig(object):
                  ) CNT
         
         """
+
+        return sql
+
+    @staticmethod
+    def sql_acc_by_line(**kwargs):
+        sql = f"""
+            SELECT ITEM_ATTR02_CD
+                 , ROUND(ACC_S * 1.0 / (ACC_S + ACC_F), 2) AS RESULT
+              FROM (
+                    SELECT ITEM_ATTR02_CD
+                         , ISNULL(SUM(CASE WHEN ACC_GRP = 'S' THEN 1 END), 0) AS ACC_S
+                         , ISNULL(SUM(CASE WHEN ACC_GRP = 'F' THEN 1 END), 0) AS ACC_F
+                      FROM (
+                            SELECT ITEM_ATTR02_CD
+                                 , IIF(ACCURACY BETWEEN 0.5 AND 1.5, 'S', 'F') AS ACC_GRP
+                              FROM (
+                                    SELECT ITEM_ATTR02_CD
+                                         , CASE WHEN SALES = PRED THEN 1
+                                                WHEN PRED = 0 THEN 0
+    --                                         ELSE PRED / SALES
+                                          ELSE SALES / PRED
+                                           END AS ACCURACY
+                                      FROM (
+                                            SELECT PRED.ITEM_ATTR02_CD
+                                                 , ISNULL(SALES.SALES, 0) AS SALES
+                                                 , PRED.PRED
+                                              FROM (
+                                                    SELECT DIVISION_CD
+                                                         , CUST_GRP_CD
+                                                         , ITEM_ATTR02_CD
+                                                         , ITEM_CD
+                                                         , RESULT_SALES AS PRED
+                                                         , YYMMDD
+                                                      FROM M4S_O110600
+                                                     WHERE DIVISION_CD = '{kwargs['division']}'
+                                                       AND DATA_VRSN_CD = '{kwargs['data_vrsn']}'
+                                                       AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                       AND LEFT(FKEY, 5) = 'C1-P5'
+                                                       AND YYMMDD = '{kwargs['yymmdd']}'
+                                                       AND ITEM_CD IN (
+                                                                       SELECT ITEM_CD
+                                                                         FROM (
+                                                                               SELECT ITEM_ATTR01_CD
+                                                                                    , ITEM_CD
+                                                                                    , AVG(RST_SALES_QTY) AS AVG_QTY
+                                                                                 FROM (
+                                                                                       SELECT CUST_GRP_CD
+                                                                                            , ITEM_ATTR01_CD
+                                                                                            , ITEM_CD
+                                                                                            , RST_SALES_QTY
+                                                                                       FROM M4S_I002175
+                                                                                       WHERE DIVISION_CD = '{kwargs['division']}'
+                                                                                         AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                                                         AND RST_SALES_QTY > 0
+                                                                                         AND START_WEEK_DAY = '{kwargs['yymmdd_comp']}'
+                                                                                      ) SALES
+                                                                                GROUP BY CUST_GRP_CD
+                                                                                       , ITEM_ATTR01_CD
+                                                                                       , ITEM_CD
+                                                                              ) RSLT
+                                                                        WHERE AVG_QTY >= {kwargs['threshold']}
+                                                                          AND RSLT.ITEM_ATTR01_CD = '{kwargs['biz']}'
+                                                                      )
+                                                   ) PRED
+                                              LEFT OUTER JOIN (
+                                                               SELECT DIVISION_CD
+                                                                    , CUST_GRP_CD
+                                                                    , ITEM_ATTR02_CD
+                                                                    , ITEM_CD
+                                                                    , RST_SALES_QTY  AS SALES
+                                                                    , START_WEEK_DAY AS YYMMDD
+                                                                 FROM M4S_I002175
+                                                                WHERE DIVISION_CD = '{kwargs['division']}'
+                                                                  AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                                  AND START_WEEK_DAY = '{kwargs['yymmdd_comp']}'
+                                                               ) SALES
+                                                ON PRED.DIVISION_CD = SALES.DIVISION_CD
+                                               AND PRED.CUST_GRP_CD = SALES.CUST_GRP_CD
+                                               AND PRED.ITEM_CD = SALES.ITEM_CD
+                                               AND PRED.ITEM_ATTR02_CD = SALES.ITEM_ATTR02_CD
+                                        ) RSLT
+                                     WHERE SALES <> 0
+                                    ) RSLT
+                             ) RSLT
+                    GROUP BY ITEM_ATTR02_CD
+                ) RSLT """
 
         return sql
 

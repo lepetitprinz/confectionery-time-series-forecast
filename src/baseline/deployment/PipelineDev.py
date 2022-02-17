@@ -1,5 +1,3 @@
-import pandas as pd
-
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
@@ -10,7 +8,6 @@ from baseline.model.TrainDev import TrainDev
 from baseline.model.PredictDev import PredictDev
 from baseline.middle_out.MiddleOut import MiddleOut
 
-import os
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -26,6 +23,7 @@ class PipelineDev(object):
         self.item_lvl = 3    # Fixed
 
         # I/O & Execution Configuration
+        self.exec_kind = 'dev'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -57,7 +55,8 @@ class PipelineDev(object):
             exec_cfg=self.exec_cfg,
             common=self.common,
             division=self.division,
-            path_root=self.path_root
+            path_root=self.path_root,
+            exec_kind=self.exec_kind
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)
 
@@ -402,7 +401,7 @@ class PipelineDev(object):
         #     # Load item master
         #     item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         #
-        #     report = ResultSummary(
+        #     verify = ResultSummary(
         #         data_vrsn=self.data_vrsn_cd,
         #         division=self.division,
         #         common=self.common,
@@ -412,11 +411,11 @@ class PipelineDev(object):
         #         item_mst=item_mst,
         #         lvl_cfg=self.level
         #     )
-        #     result = report.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
-        #     result, result_info = report.make_db_format(data=result)
+        #     result = verify.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
+        #     result, result_info = verify.make_db_format(data=result)
         #
         #     if self.exec_cfg['save_step_yn']:
-        #         self.io.save_object(data=result, file_path=self.path['report'], data_type='csv')
+        #         self.io.save_object(data=result, file_path=self.path['verify'], data_type='csv')
         #
         #     if self.exec_cfg['save_db_yn']:
         #         print("Save prediction results on DB")

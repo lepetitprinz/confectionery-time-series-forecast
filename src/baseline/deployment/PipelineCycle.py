@@ -27,13 +27,14 @@ class PipelineCycle(object):
         """
         self.item_lvl = 3    # Brand Level (Fixed)
 
-        # I/O & Execution Configuration
+        # I/O & Execution instance attribute
+        self.exec_kind = 'batch'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
         self.path_root = path_root
 
-        # Class Configuration
+        # Object instance attribute
         self.io = DataIO()    # Data In/Out class
         self.sql_conf = SqlConfig()    # DB Query class
         self.common: dict = self.io.get_dict_from_db(    # common information dictionary
@@ -42,7 +43,7 @@ class PipelineCycle(object):
             val='OPTION_VAL'
         )
 
-        # Data Configuration
+        # Data instance attribute
         self.division = data_cfg['division']    # division (SELL-IN/SELL-OUT)
         self.data_vrsn_cd = ''    # Data version
         self.hrchy = {}    # Data hierarchy for customer & item
@@ -59,7 +60,8 @@ class PipelineCycle(object):
             exec_cfg=self.exec_cfg,
             common=self.common,
             division=self.division,
-            path_root=self.path_root
+            path_root=self.path_root,
+            exec_kind=self.exec_kind
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)
 

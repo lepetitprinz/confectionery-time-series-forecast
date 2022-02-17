@@ -10,7 +10,7 @@ path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Configuration
 exec_cfg = {
-    'save_step_yn': False,
+    'save_step_yn': True,
     'scaling_yn': False,     # Data scaling
     'grid_search_yn': False,    # Grid Search
     'filter_threshold_week_yn': True    # Filter threshold week

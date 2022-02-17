@@ -29,9 +29,9 @@ md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': False,
-    'cls_train': False,
-    'cls_pred': False,
+    'cls_prep': True,
+    'cls_train': True,
+    'cls_pred': True,
     'cls_mdout': True
 }
 
@@ -40,7 +40,7 @@ exec_cfg = {
     'cycle': False,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': True,                     # Save each step result to object or csv
+    'save_step_yn': False,                     # Save each step result to object or csv
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration

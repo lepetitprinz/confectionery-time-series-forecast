@@ -64,8 +64,8 @@ class PipelineCycle(object):
                 sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**date))
 
             # Save load step result
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
+            # if self.exec_cfg['save_step_yn']:
+            #     self.io.save_object(data=sales, file_path=self.path['load'], data_type='csv')
 
         # ================================================================================================= #
         # 3. Data Preprocessing
