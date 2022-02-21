@@ -198,12 +198,12 @@ class CalcAccuracy(object):
         return merged
 
     def init(self) -> None:
-        self.set_date()    # Set date
+        self.set_date()         # Set date
         self.set_level(item_lvl=self.data_cfg['item_lvl'])
-        self.set_hrchy()
-        self.get_item_info()
-        self.get_cust_info()
-        self.make_dir()
+        self.set_hrchy()        # Set the hierarchy
+        self.get_item_info()    # Get item information
+        self.get_cust_info()    # Get customer information
+        self.make_dir()         # Make the directory
 
     def get_cust_info(self) -> None:
         cust_info = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
@@ -236,7 +236,8 @@ class CalcAccuracy(object):
 
     def set_date(self) -> None:
         if self.date_cfg['cycle_yn']:
-            self.date_sales = self.calc_sales_date()
+            self.date_sales = self.date_cfg['date']
+            # self.date_sales = self.calc_sales_date()
             self.data_vrsn_cd = self.date_sales['hist']['from'] + '-' + self.date_sales['hist']['to']
             self.hist_date_range = pd.date_range(
                 start=self.date_sales['hist']['from'],
@@ -280,7 +281,6 @@ class CalcAccuracy(object):
         path = os.path.join(self.save_path, self.data_vrsn_cd)
         if not os.path.isdir(path):
             os.mkdir(path=path)
-            # os.mkdir(path=os.path.join(path, 'result'))
             if self.step_cfg['cls_graph']:
                 os.mkdir(path=os.path.join(path, 'plot'))
 
@@ -422,6 +422,7 @@ class CalcAccuracy(object):
         view_col = ['cust_grp_cd', 'cust_grp_nm'] + list(self.item_info.columns) + ['sales', 'pred', 'accuracy']
         data_save = data[view_col]
 
+        # Save the result
         path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
                             '_' + str(self.hrchy['lvl']['item']) + '.csv')
         data_save.to_csv(path, index=False, encoding='cp949')

@@ -1,12 +1,13 @@
 import os
 import sys
+import time
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineDev import PipelineDev
+from baseline.deployment.PipelineCycle import PipelineCycle
 
 # Root path
-# path_root = os.path.join('..', '..')
+
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
@@ -59,7 +60,7 @@ exec_cfg = {
     # Training configuration
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
-    'voting_yn': True                         # Add voting algorithm
+    'voting_yn': False                         # Add voting algorithm
 }
 
 # Data Configuration
@@ -78,7 +79,7 @@ data_cfg = {
     }
 }
 
-pipeline = PipelineDev(
+pipeline = PipelineCycle(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,

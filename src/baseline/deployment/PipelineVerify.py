@@ -7,11 +7,9 @@ from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.Train import Train
 from baseline.model.Predict import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
-from baseline.analysis.CalcAccuracy import CalcAccuracy
 
 import os
 import warnings
-import datetime
 import pandas as pd
 warnings.filterwarnings("ignore")
 

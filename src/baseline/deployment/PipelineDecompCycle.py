@@ -19,6 +19,7 @@ class PipelineDecompCycle(object):
         self.item_lvl = item_lvl
 
         # I/O & Execution Configuration
+        self.exec_kind = 'batch'
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
 
@@ -52,7 +53,8 @@ class PipelineDecompCycle(object):
             exec_cfg=self.exec_cfg,
             common=self.common,
             division=self.division,
-            path_root=self.path_root
+            path_root=self.path_root,
+            exec_kind=self.exec_kind
         )
         init.run(cust_lvl=self.cust_lvl, item_lvl=self.item_lvl)    # Todo : Exception
 

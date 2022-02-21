@@ -6,10 +6,10 @@ from baseline.deployment.PipelineAccuracy import PipelineAccuracy
 
 division_list = ['SELL_IN', 'SELL_OUT']
 item_lvl_list = [3, 5]
-pred_load_option = 'db'
 exec_kind = 'batch'
+pred_load_option = 'db'    # db / csv
 root_path = os.path.join('/', 'opt', 'DF', 'fcst')
-save_path = os.path.join(root_path, 'analysis', 'accuracy', 'batch')
+save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 step_cfg = {
     'cls_prep': True,     # Preprocessing

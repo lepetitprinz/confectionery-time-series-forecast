@@ -5,7 +5,10 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.analysis.CalcAccuracy import CalcAccuracy
 
-hist_to = '20220130'    # W06(20220130) /W05(20220130) / W04(20220123)
+hist_to = '20220130'    # W07(20220206) / W06(20220130)
+exec_kind = 'batch'
+root_path = os.path.join('..', '..')
+save_path = os.path.join(root_path, 'analysis', 'accuracy', 'batch')
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -34,16 +37,17 @@ opt_cfg = {
     'calc_acc_by_sp1_item_yn': False,     # Calculate accuracy on SP1 items
     'filter_sales_threshold_yn': True,    # Filter based on sales threshold
     'filter_specific_acc_yn': False,      # Filter Specific accuracy range
-    'pick_specific_biz_yn': True,         # Pick Specific business code
+    'pick_specific_biz_yn': False,         # Pick Specific business code
     'pick_specific_sp1_yn': False,        # Pick Specific sp1 list
 }
 
 data_cfg = {
     'root_path': os.path.join('..', '..'),
+    'save_path': os.path.join(root_path, 'analysis', 'accuracy', 'batch'),
     # 'root_path':  os.path.join('/', 'opt', 'DF', 'fcst'),
-    'item_lvl': 5,
+    'item_lvl': 3,
     'division': 'SELL_OUT',  # SELL_IN / SELL_OUT
-    'load_option': 'db',  # db / csv
+    'load_option': 'csv',  # db / csv
     'item_attr01_cd': 'P1'
 }
 
@@ -67,7 +71,8 @@ comp = CalcAccuracy(
     step_cfg=exec_cfg,
     exec_cfg=opt_cfg,
     date_cfg=date_cfg,
-    data_cfg=data_cfg
+    data_cfg=data_cfg,
+    exec_kind=exec_kind
 )
 
 # run

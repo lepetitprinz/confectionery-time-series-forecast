@@ -4,6 +4,8 @@ import datetime
 
 
 class PipelineAccuracy(object):
+    item_lvl_map = {3: 'BRAND', 5: 'SKU'}
+
     def __init__(self, exec_kind: str, step_cfg: dict, exec_cfg: dict, root_path: str, save_path: str,
                  pred_load_option: str, division_list: list, item_lvl_list: list, hist_to=''):
         # Execution instance attribute
@@ -27,7 +29,7 @@ class PipelineAccuracy(object):
         self.comp_to_period = 14
 
     def run(self):
-        # Set date information
+        # Set necessary information for calculating accuracy
         self.init()
 
         for division in self.division_list:
@@ -42,6 +44,12 @@ class PipelineAccuracy(object):
                     date_cfg=self.date_cfg,
                     data_cfg=data_cfg
                 )
+                print("---------------------------------")
+                print("Calculate Accuracy")
+                print(f"Division: {division} / Level: {self.item_lvl_map[item_lvl]}")
+                print("---------------------------------")
+
+                # Calculate accuracy
                 acc.run()
 
     def init(self):
@@ -103,9 +111,9 @@ class PipelineAccuracy(object):
 
     def get_data_cfg(self, division: str, item_lvl: int):
         data_cfg = {
-            'division': division,  # SELL_IN / SELL_OUT
+            'division': division,    # SELL_IN / SELL_OUT
             'item_lvl': item_lvl,
-            'load_option': self.pred_load_option,  # db / csv
+            'load_option': self.pred_load_option,
             'root_path': self.root_path,
             'save_path': self.save_path
         }

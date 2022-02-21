@@ -4,14 +4,14 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineAccuracy import PipelineAccuracy
 
-hist_to = '20220130'
-exec_kind = 'dev'
+hist_to = '20220130'    # W07(20220206) / W06(20220130)
+exec_kind = 'batch'
 pred_load_option = 'csv'
 item_lvl_list = [3, 5]
 division_list = ['SELL_IN']    # ['SELL_OUT']
-root_path = os.path.join('..', '..')
-save_path = os.path.join(root_path, 'analysis', 'accuracy', 'dev')
-# root_path = os.path.join('/', 'opt', 'DF', 'fcst')
+root_path = os.path.join('/', 'opt', 'DF', 'fcst')
+# root_path = os.path.join('..', '..')
+save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 step_cfg = {
     'cls_prep': True,     # Preprocessing
@@ -23,7 +23,6 @@ step_cfg = {
 exec_cfg = {
     'cycle_yn': False,
     'rm_zero_yn': True,                   # Remove zeros
-    'calc_acc_by_sp1_item_yn': False,     # Calculate accuracy on SP1 items
     'filter_sales_threshold_yn': True,    # Filter based on sales threshold
     'pick_specific_biz_yn': False,         # Pick Specific business code
     'pick_specific_sp1_yn': False,        # Pick Specific sp1 list

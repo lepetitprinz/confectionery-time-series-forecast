@@ -6,7 +6,7 @@ import datetime
 import pandas as pd
 
 
-class CalcAccBySp1(object):
+class CalcAccByCustomer(object):
     grade_map = {'A': '75', 'B': '60', 'C': '50', 'F': 'ECC'}
 
     def __init__(self, biz_code, div_sp1_map: dict, root_path: str):

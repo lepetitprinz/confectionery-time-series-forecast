@@ -452,11 +452,11 @@ class SqlConfig(object):
                  , YYMMDD AS START_WEEK_DAY
                  , WEEK
                  , RESULT_SALES AS PRED
-            FROM M4S_O110600
-           WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
-             AND DIVISION_CD = '{kwargs['division_cd']}'
-             AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
-             AND YYMMDD = '{kwargs['yymmdd']}'
+             FROM M4S_O110600
+            WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+              AND DIVISION_CD = '{kwargs['division_cd']}'
+              AND LEFT(FKEY, 5) = '{kwargs['fkey']}'
+              AND YYMMDD = '{kwargs['yymmdd']}'
         """
         return sql
 
@@ -721,9 +721,9 @@ class SqlConfig(object):
                            , CREATE_DATE
                         FROM M4S_I002170_TEST
                        WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-                       AND RST_SALES_QTY > 0 
-                       AND SOLD_CUST_GRP_CD = '{kwargs['cust_grp_cd']}',
-                       AND ITEM_CD = '{kwargs['item_cd']}'
+                         AND RST_SALES_QTY > 0 
+                         AND SOLD_CUST_GRP_CD = '{kwargs['cust_grp_cd']}',
+                         AND ITEM_CD = '{kwargs['item_cd']}'
                        --and SOLD_CUST_GRP_CD = '1033' -- exception
                       ) SALES
                INNER JOIN (
@@ -948,9 +948,9 @@ class SqlConfig(object):
                                     SELECT ITEM_ATTR02_CD
                                          , CASE WHEN SALES = PRED THEN 1
                                                 WHEN PRED = 0 THEN 0
-    --                                         ELSE PRED / SALES
-                                          ELSE SALES / PRED
-                                           END AS ACCURACY
+    --                                          ELSE PRED / SALES
+                                           ELSE SALES / PRED
+                                            END AS ACCURACY
                                       FROM (
                                             SELECT PRED.ITEM_ATTR02_CD
                                                  , ISNULL(SALES.SALES, 0) AS SALES
@@ -969,7 +969,7 @@ class SqlConfig(object):
                                                        AND LEFT(FKEY, 5) = 'C1-P5'
                                                        AND YYMMDD = '{kwargs['yymmdd']}'
                                                        AND ITEM_CD IN (
-                                                                       SELECT ITEM_CD
+                                                                        SELECT ITEM_CD
                                                                          FROM (
                                                                                SELECT ITEM_ATTR01_CD
                                                                                     , ITEM_CD
@@ -979,11 +979,11 @@ class SqlConfig(object):
                                                                                             , ITEM_ATTR01_CD
                                                                                             , ITEM_CD
                                                                                             , RST_SALES_QTY
-                                                                                       FROM M4S_I002175
-                                                                                       WHERE DIVISION_CD = '{kwargs['division']}'
-                                                                                         AND CUST_GRP_CD = '{kwargs['sp1']}'
-                                                                                         AND RST_SALES_QTY > 0
-                                                                                         AND START_WEEK_DAY = '{kwargs['yymmdd_comp']}'
+                                                                                         FROM M4S_I002175
+                                                                                        WHERE DIVISION_CD = '{kwargs['division']}'
+                                                                                          AND CUST_GRP_CD = '{kwargs['sp1']}'
+                                                                                          AND RST_SALES_QTY > 0
+                                                                                          AND START_WEEK_DAY = '{kwargs['yymmdd_comp']}'
                                                                                       ) SALES
                                                                                 GROUP BY CUST_GRP_CD
                                                                                        , ITEM_ATTR01_CD
@@ -1009,7 +1009,7 @@ class SqlConfig(object):
                                                AND PRED.CUST_GRP_CD = SALES.CUST_GRP_CD
                                                AND PRED.ITEM_CD = SALES.ITEM_CD
                                                AND PRED.ITEM_ATTR02_CD = SALES.ITEM_ATTR02_CD
-                                        ) RSLT
+                                           ) RSLT
                                      WHERE SALES <> 0
                                     ) RSLT
                              ) RSLT
