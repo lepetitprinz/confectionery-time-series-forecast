@@ -350,8 +350,9 @@ class CalcAccuracy(object):
             pred = self.io.get_df_from_db(sql=self.sql_conf.sql_pred_best(**info_pred))
 
         elif self.data_cfg['load_option'] == 'csv':
-            path = os.path.join(self.root_path, 'prediction', self.exec_kind, self.division + '_' + self.data_vrsn_cd +
-                                '_C1-P3-' + self.pred_csv_map['name'][self.hrchy['key'][:-1]])
+            path = os.path.join(self.root_path, 'prediction', self.exec_kind, self.data_vrsn_cd,
+                                self.division + '_' + self.data_vrsn_cd + '_C1-P3-'
+                                + self.pred_csv_map['name'][self.hrchy['key'][:-1]])
             pred = pd.read_csv(path, encoding=self.pred_csv_map['encoding'][self.hrchy['key'][:-1]])
             pred.columns = [col.lower() for col in pred.columns]
             pred = pred.rename(columns={'yymmdd': 'start_week_day', 'result_sales': 'pred'})

@@ -30,7 +30,7 @@ class Init(object):
         self.path = {}     # Save & Load path
 
     def run(self, cust_lvl: int, item_lvl: int) -> None:
-        self.set_date()    # Set date information
+        self.set_date()     # Set date information
         self.set_data_version()    # Set data version
         self.set_level(cust_lvl=cust_lvl, item_lvl=item_lvl)    # Set data hierarchy level
         self.set_hrchy()    # Set data hierarchy
