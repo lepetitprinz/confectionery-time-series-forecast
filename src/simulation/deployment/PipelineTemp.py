@@ -8,7 +8,7 @@ from simulation.preprocess.DataPrep import DataPrep
 from simulation.model.Train import Train
 
 
-class PipelineReal(object):
+class PipelineTemp(object):
     def __init__(self, lag: str, date: dict, path_root: str, step_cfg: dict, exec_cfg: dict):
         # Class Configuration
         self.io = DataIO()
@@ -28,8 +28,8 @@ class PipelineReal(object):
         # Data Configuration
         self.path_root = path_root
         self.division = 'SELL_IN'
-        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
         self.date = date
+        self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
 
         # Data Level Configuration
         self.hrchy = {

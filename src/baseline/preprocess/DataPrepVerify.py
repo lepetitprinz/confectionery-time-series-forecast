@@ -22,7 +22,7 @@ class DataPrepVerify(object):
         self.common = common
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
-        self.resample_rule = data_cfg['cycle']
+        self.resample_rule = common['resample_rule']
         self.col_agg_map = {
             'sum': common['agg_sum'].split(','),
             'avg': common['agg_avg'].split(',')

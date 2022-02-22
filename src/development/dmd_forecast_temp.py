@@ -6,12 +6,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineCycle import PipelineCycle
 
-# Root path
-
+# Path configuration
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 hist_to = '20220130'     # W07(20220206) / W06(20220130) / W05(20220123)
 
 # Change data type (string -> datetime)
@@ -48,7 +47,7 @@ exec_cfg = {
     'feature_selection_yn': False,            # Feature Selection
     'filter_threshold_cnt_yn': False,         # Filter data level under threshold count
     'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
-    'filter_threshold_recent_sku_yn': False,  # Filter SKU level under threshold recent week
+    'filter_threshold_recent_sku_yn': True,   # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
     'rm_outlier_yn': True,                    # Outlier clipping
     'data_imputation_yn': True,               # Data Imputation
@@ -60,13 +59,12 @@ exec_cfg = {
     # Training configuration
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
-    'voting_yn': False                         # Add voting algorithm
+    'voting_yn': False                        # Add voting algorithm
 }
 
 # Data Configuration
 data_cfg = {
     'division': division,
-    'cycle': 'w',
     'date': {
         'history': {
             'from': hist_from,

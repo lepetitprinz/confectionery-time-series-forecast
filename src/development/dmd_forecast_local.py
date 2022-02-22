@@ -1,18 +1,16 @@
 import os
 import sys
-import time
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineDev import PipelineDev
 
-# Root path
-# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+# Path configuration
 path_root = os.path.join('..', '..')
 
 # Sales Data configuration
 division = 'SELL_OUT'    # SELL_IN / SELL_OUT
-hist_to = '20220130'     # W05(20220130) / W04(20220123)
+hist_to = '20220130'     # W07(20220206) / W06(20220130) / W05(20220123)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -40,7 +38,7 @@ exec_cfg = {
     'cycle': False,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': False,                     # Save each step result to object or csv
+    'save_step_yn': True,                    # Save each step result to object or csv
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration
@@ -54,8 +52,8 @@ exec_cfg = {
     'data_imputation_yn': True,               # Data Imputation
 
     # Feature engineering configuration
-    'rolling_statistics_yn': False,            # Add features of rolling statistics
-    'representative_sampling_yn': True,        # Add features of representative sampling
+    'rolling_statistics_yn': False,           # Add features of rolling statistics
+    'representative_sampling_yn': False,      # Add features of representative sampling
 
     # Training configuration
     'scaling_yn': False,                      # Data scaling
@@ -66,7 +64,6 @@ exec_cfg = {
 # Data Configuration
 data_cfg = {
     'division': division,
-    'cycle': 'w',
     'date': {
         'history': {
             'from': hist_from,

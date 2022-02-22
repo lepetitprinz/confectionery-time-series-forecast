@@ -69,6 +69,7 @@ class Train(object):
         self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
+        self.decimal_point = 3
         self.fixed_n_test = 4
         self.err_val = float(10 ** 5 - 1)    # set error values or clip outlier values
         self.validation_method = 'train_test'    # Train-test / Walk-forward
@@ -237,40 +238,41 @@ class Train(object):
         # evaluation
         acc = 0
         if self.model_info[model]['variate'] == 'univ':
-            length = len(train)
+            len_train = len(train)
+            len_test = len(test)
         else:
-            length = len(train['endog'])
+            len_train = len(train['endog'])
+            len_test = len(test['endog'])
 
-        if length > self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
+        err = self.err_val
+        diff = [self.err_val] * len_test
+        if len_train > self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
             try:
                 yhat = self.estimators[model](
-                    history=train,
-                    cfg=params,
-                    pred_step=n_test
+                    history=train,    # Train dataset
+                    cfg=params,       # Hyper-parameter
+                    pred_step=n_test  # Prediction range
                 )
 
                 if yhat is not None:
-                    err = 0
+                    if len_test < n_test:
+                        yhat = yhat[:len_test]
                     if self.model_info[model]['variate'] == 'univ':
-                        err = round(mean_squared_error(test, yhat, squared=False), 2)
-                        # acc = round(self.calc_accuracy(test=test, pred=yhat), 2)
+                        err = round(mean_squared_error(test, yhat, squared=False), self.decimal_point)
+                        # acc = round(self.calc_accuracy(test=test, pred=yhat), self.decimal_point)
                         acc = 0
 
                     elif self.model_info[model]['variate'] == 'multi':
-                        err = round(mean_squared_error(test['endog'], yhat, squared=False), 2)
-                        # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), 2)
+                        err = round(mean_squared_error(test['endog'], yhat, squared=False),self.decimal_point)
+                        # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), self.decimal_point)
                         acc = 0
 
-                    # Exception
+                    # Clip error values
                     if err > self.err_val:
-                        err = self.err_val    # Clip error values
-                else:
-                    err = self.err_val    # Non-solvable problem
+                        err = self.err_val
 
             except ValueError:
-                err = self.err_val    # Non-solvable problem
-        else:
-            err = self.err_val
+                pass    # Non-solvable problem
 
         return err, acc
 

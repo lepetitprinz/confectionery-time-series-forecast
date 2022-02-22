@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import Dict, List
 from copy import deepcopy
 from datetime import datetime, date, timedelta
 from collections import defaultdict
@@ -180,10 +179,12 @@ def hrchy_recursion_extend_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrc
 
 def make_path_baseline(path: str, module: str, exec_kind: str, division: str, data_vrsn: str, hrchy_lvl: str,
                        step: str, extension: str):
-    path = os.path.join(path, module, exec_kind, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step +
-                        '.' + extension)
+    path_dir = os.path.join(path, module, exec_kind, data_vrsn)
+    if not os.path.isdir(path_dir):
+        os.mkdir(path_dir)
+    path_file = os.path.join(path_dir, division + '_' + data_vrsn + '_' + str(hrchy_lvl) + step + '.' + extension)
 
-    return path
+    return path_file
 
 
 def make_path_sim(path: str, module: str, division: str, data_vrsn: str, step: str, extension: str):
@@ -255,16 +256,6 @@ def prep_exg_all_bak(data: pd.DataFrame):
     result = result.fillna(0)
 
     return result
-
-
-def prep_exg_partial(data: pd.DataFrame) -> pd.DataFrame:
-    item_cust = data['idx_dtl_cd'].str.split('_', 1, expand=True)
-    item_cust.columns = ['sku_cd', 'cust_grp_cd']
-
-    exg_partial = pd.concat([data, item_cust], axis=1)
-    exg_partial = exg_partial.drop(columns=['idx_cd', 'idx_dtl_cd'])
-
-    return exg_partial
 
 
 def make_data_version(data_version: str) -> pd.DataFrame:
@@ -354,3 +345,13 @@ def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
     data[col] = acc
 
     return data
+
+
+# def prep_exg_partial(data: pd.DataFrame) -> pd.DataFrame:
+#     item_cust = data['idx_dtl_cd'].str.split('_', 1, expand=True)
+#     item_cust.columns = ['sku_cd', 'cust_grp_cd']
+#
+#     exg_partial = pd.concat([data, item_cust], axis=1)
+#     exg_partial = exg_partial.drop(columns=['idx_cd', 'idx_dtl_cd'])
+#
+#     return exg_partial

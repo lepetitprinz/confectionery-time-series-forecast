@@ -2,12 +2,16 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from simulation.deployment.PipelineReal import PipelineReal
+from simulation.deployment.PipelineTemp import PipelineTemp
 
 # Root path
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
-# path_root = os.path.join('..', '..')
-date = {'history': {'from': '20190211', 'to': '20220206'}}
+date = {
+    'history': {
+        'from': '20190211',
+        'to': '20220206'
+    }
+}
 lag = 'w1'
 
 # Configuration
@@ -25,7 +29,7 @@ step_cfg = {
     'cls_sim_train': True     # Training
 }
 
-pipeline = PipelineReal(
+pipeline = PipelineTemp(
     lag=lag,
     date=date,
     path_root=path_root,

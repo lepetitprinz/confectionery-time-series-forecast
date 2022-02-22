@@ -23,7 +23,7 @@ class Init(object):
 
         # Setting
         self.data_vrsn_cd = ''    # Data version
-        self.middle_out: bool = True    # Apply middle-out or not
+        self.middle_out = True    # Apply middle-out or not
         self.date = {}     # Date information (History / Middle-out)
         self.hrchy = {}    # Data hierarchy for customer & item
         self.level = {}    # Data hierarchy level for customer & item
@@ -61,16 +61,15 @@ class Init(object):
         # Data version : [sales history(start)]-[sales history(end)]
         self.data_vrsn_cd = self.date['history']['from'] + '-' + self.date['history']['to']
 
-    def set_level(self, cust_lvl: int, item_lvl: int):
-        level = {
+    def set_level(self, cust_lvl: int, item_lvl: int) -> None:
+        self.level = {
             'cust_lvl': cust_lvl,    # Customer level
             'item_lvl': item_lvl,    # Item level
             'middle_out': self.middle_out    # Execute Middle-out or not (True/False)
         }
-        self.level = level
 
-    def set_hrchy(self):
-        hrchy = {
+    def set_hrchy(self) -> None:
+        self.hrchy = {
             'cnt': 0,    # Data level counts
             # Hierarchy Key (Format: C#-P#)
             # ex) C1-P5 -> Customer Level: 1 / Item Level: 5
@@ -89,10 +88,9 @@ class Init(object):
             'apply': self.common['hrchy_cust'].split(',')[:self.level['cust_lvl']] +
                      self.common['hrchy_item'].split(',')[:self.level['item_lvl']]
         }
-        self.hrchy = hrchy
 
-    def set_path(self):
-        path = {
+    def set_path(self) -> None:
+        self.path = {
             # History sales (csv)
             'load': util.make_path_baseline(
                 path=self.path_root, module='data', exec_kind='batch', division=self.division,
@@ -155,14 +153,13 @@ class Init(object):
             'middle_out_db': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
-            'report': util.make_path_baseline(
-                path=self.path_root, module='report', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='report', extension='csv'),
+            # 'report': util.make_path_baseline(
+            #     path=self.path_root, module='report', exec_kind=self.exec_kind, division=self.division,
+            #     data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='report', extension='csv'),
             'decompose': util.make_path_baseline(
-                path=self.path_root, module='data', exec_kind=self.exec_kind, division=self.division,
+                path=self.path_root, module='data', exec_kind='batch', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose', extension='csv'),
             'decompose_db': util.make_path_baseline(
-                path=self.path_root, module='data', exec_kind=self.exec_kind, division=self.division,
+                path=self.path_root, module='data', exec_kind='batch', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'),
         }
-        self.path = path
