@@ -8,7 +8,7 @@ from baseline.deployment.PipelineCycle import PipelineCycle
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Data Configuration
-data_cfg = {'division': 'SELL_OUT', 'cycle': 'w'}
+data_cfg = {'division': 'SELL_OUT'}
 
 # Execute Configuration
 step_cfg = {
@@ -33,7 +33,7 @@ exec_cfg = {
     'feature_selection_yn': False,            # Feature Selection
     'filter_threshold_cnt_yn': False,         # Filter data level under threshold count
     'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
-    'filter_threshold_recent_sku_yn': True,  # Filter SKU level under threshold recent week
+    'filter_threshold_recent_sku_yn': True,   # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
     'rm_outlier_yn': True,                    # Outlier clipping
     'data_imputation_yn': True,               # Data Imputation
@@ -41,6 +41,7 @@ exec_cfg = {
     # Training configuration
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
+    'voting_yn': True                         # Add voting algorithm
 }
 
 print('------------------------------------------------')

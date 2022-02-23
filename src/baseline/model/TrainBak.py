@@ -9,7 +9,7 @@ import ast
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Sequence
+from typing import List, Tuple
 from itertools import product
 from collections import defaultdict
 from sklearn.metrics import mean_squared_error
@@ -18,7 +18,7 @@ from sklearn.preprocessing import MinMaxScaler
 warnings.filterwarnings('ignore')
 
 
-class TrainDev(object):
+class Train(object):
     estimators = {
         'ar': Algorithm.ar,
         'arima': Algorithm.arima,
@@ -102,27 +102,14 @@ class TrainDev(object):
         models = []
         for model in self.model_candidates:
             # Validation
-            score, diff, params = self.validation(
+            score = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
                 model=model)
-            models.append([model, score, diff, params])
 
-        if self.exec_cfg['voting_yn']:
-            score = self.voting(models=models)
-            models.append(['voting', score, [], {}])
-
+            models.append([model, score[0], score[1], score[2]])
         models = sorted(models, key=lambda x: x[1])
 
         return models
-
-    def voting(self, models: list) -> float:
-        score = self.err_val
-        try:
-            score = np.sqrt(np.mean((np.array([score[2] for score in models]).sum(axis=0) / len(models))**2, axis=0))
-        except ValueError:
-            pass
-
-        return round(score, self.decimal_point)
 
     # Split univariate / multivariate features
     def select_feature_by_variable(self, df: pd.DataFrame) -> dict:
@@ -136,7 +123,7 @@ class TrainDev(object):
         return feature_by_variable
 
     # Validation
-    def validation(self, data, model: str) -> Tuple[float, Sequence, dict]:
+    def validation(self, data, model: str) -> Tuple[float, float, dict]:
         # Train / Test Split method
         if self.validation_method == 'train_test':
             score = self.train_test_validation(data=data, model=model)
@@ -150,7 +137,7 @@ class TrainDev(object):
 
         return score
 
-    def train_test_validation(self, model: str, data) -> Tuple[float, Sequence, dict]:
+    def train_test_validation(self, model: str, data) -> Tuple[float, float, dict]:
         # Set test length
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
@@ -164,7 +151,7 @@ class TrainDev(object):
                 test=data_test
             )
 
-        diff = None
+        acc = 0
         best_params = {}
         if self.grid_search_yn:
             # Grid Search
@@ -177,7 +164,7 @@ class TrainDev(object):
 
         else:
             # Evaluation
-            err, diff = self.evaluation(
+            err, acc = self.evaluation(
                 model=model,
                 params=self.param_grid[model],
                 train=data_train,
@@ -185,7 +172,7 @@ class TrainDev(object):
                 n_test=n_test
             )
 
-        return err, diff, best_params
+        return err, acc, best_params
 
     def split_train_test(self, data: pd.DataFrame, model: str, n_test: int) -> Tuple[dict, dict]:
         data_length = len(data)
@@ -231,24 +218,25 @@ class TrainDev(object):
 
         return data_train, data_test
 
+    @staticmethod
     # Calculate accuracy
-    def calc_accuracy(self, test, pred) -> float:
+    def calc_accuracy(test, pred) -> float:
         pred = np.where(pred < 0, 0, pred)    # change minus values to zero
         arr_acc = np.array([test, pred]).T
         arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
 
         if len(arr_acc_marked) != 0:
             acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
-            acc = round(acc, self.decimal_point)
+            acc = round(acc, 2)
         else:
             # acc = np.nan
-            acc = self.err_val
+            acc = 10**5 - 1
 
         return acc
 
-    # evaluation
-    def evaluation(self, model, params, train, test, n_test) -> Tuple[float, Sequence]:
-        # get the length of train dataset
+    def evaluation(self, model, params, train, test, n_test) -> Tuple[float, float]:
+        # evaluation
+        acc = 0
         if self.model_info[model]['variate'] == 'univ':
             len_train = len(train)
             len_test = len(test)
@@ -258,35 +246,35 @@ class TrainDev(object):
 
         err = self.err_val
         diff = [self.err_val] * len_test
-        if len_train >= self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
+        if len_train > self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
             try:
                 yhat = self.estimators[model](
                     history=train,    # Train dataset
                     cfg=params,       # Hyper-parameter
                     pred_step=n_test  # Prediction range
                 )
+
                 if yhat is not None:
                     if len_test < n_test:
                         yhat = yhat[:len_test]
                     if self.model_info[model]['variate'] == 'univ':
                         err = round(mean_squared_error(test, yhat, squared=False), self.decimal_point)
-                        diff = test - yhat
-                        diff = diff.values
                         # acc = round(self.calc_accuracy(test=test, pred=yhat), self.decimal_point)
+                        acc = 0
 
                     elif self.model_info[model]['variate'] == 'multi':
-                        err = round(mean_squared_error(test['endog'], yhat, squared=False), self.decimal_point)
-                        diff = test['endog'] - yhat
+                        err = round(mean_squared_error(test['endog'], yhat, squared=False),self.decimal_point)
                         # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), self.decimal_point)
+                        acc = 0
 
                     # Clip error values
                     if err > self.err_val:
                         err = self.err_val
 
             except ValueError:
-                pass
+                pass    # Non-solvable problem
 
-        return err, diff
+        return err, acc
 
     def grid_search(self, model, train, test, n_test) -> Tuple[tuple, dict]:
         # get hyper-parameter grid for current algorithm
@@ -400,9 +388,8 @@ class TrainDev(object):
     # Count best hyper-parameters
     def count_best_params(self, data) -> None:
         for algorithm in data:
-            if algorithm[0] != 'voting':
-                model, score, diff, params = algorithm
-                self.best_params_cnt[model][str(params)] += 1
+            model, score, accuracy, params = algorithm
+            self.best_params_cnt[model][str(params)] += 1
 
     def make_score_result(self, data: dict, hrchy_key: str, fn) -> Tuple[pd.DataFrame, dict]:
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -410,9 +397,8 @@ class TrainDev(object):
 
         # Convert to dataframe
         result = pd.DataFrame(result)
-        cols = self.hrchy['apply'] + ['stat_cd', 'rmse', 'diff']
+        cols = self.hrchy['apply'] + ['stat_cd', 'rmse', 'accuracy']
         result.columns = cols
-        result = result.drop(columns=['diff'])
 
         # Add information
         result['project_cd'] = self.common['project_cd']    # Project code

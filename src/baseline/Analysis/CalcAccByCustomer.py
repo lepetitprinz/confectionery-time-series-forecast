@@ -9,19 +9,20 @@ import pandas as pd
 class CalcAccByCustomer(object):
     grade_map = {'A': '75', 'B': '60', 'C': '50', 'F': 'ECC'}
 
-    def __init__(self, biz_code, div_sp1_map: dict, root_path: str):
+    def __init__(self, biz_code, div_sp1_map: dict, root_path: str, cycle=True, pred_exec_day='', exec_kind='batch'):
         # Object instance attribute
         self.io = DataIO()
         self.sql_cfg = SqlConfig()
 
         # Data instance attribute
         self.root_path = root_path
-        self.save_path = os.path.join(root_path, 'analysis', 'accuracy', 'batch')
+        self.save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
         self.data_version = ''
         self.start_monday_comp = ''
         self.biz_code = biz_code
-        self.pred_exec_day = ''
+        self.pred_exec_day = pred_exec_day
         self.div_sp1_map = div_sp1_map
+        self.cycle = cycle
 
         # Option instance attribute
         self.threshold = 5
@@ -46,21 +47,22 @@ class CalcAccByCustomer(object):
         # Set comparing start day
         self.set_comp_start_day()
 
-    def set_pred_exec_day(self):
-        today = datetime.date.today()
-        this_monday = today - datetime.timedelta(days=today.weekday())
-        pred_exec_day = this_monday - datetime.timedelta(days=self.pred_exec_range)
-        self.pred_exec_day = datetime.date.strftime(pred_exec_day, '%Y%m%d')
-
-    def set_data_version(self):
-        data_vrsn_df = self.io.get_df_from_db(sql=self.sql_cfg.sql_data_version())
-        data_vrsn_df = data_vrsn_df[data_vrsn_df['exec_date'] == self.pred_exec_day]
-        self.data_version = data_vrsn_df['data_vrsn_cd'].values[0]
+    def set_pred_exec_day(self) -> None:
+        if self.cycle:
+            today = datetime.date.today()
+            this_monday = today - datetime.timedelta(days=today.weekday())
+            pred_exec_day = this_monday - datetime.timedelta(days=self.pred_exec_range)
+            self.pred_exec_day = datetime.date.strftime(pred_exec_day, '%Y%m%d')
 
     def set_comp_start_day(self) -> None:
         comp_monday = datetime.datetime.strptime(self.pred_exec_day, '%Y%m%d')
         comp_monday = comp_monday + datetime.timedelta(days=7)
         self.start_monday_comp = datetime.datetime.strftime(comp_monday, '%Y%m%d')
+
+    def set_data_version(self):
+        data_vrsn_df = self.io.get_df_from_db(sql=self.sql_cfg.sql_data_version())
+        data_vrsn_df = data_vrsn_df[data_vrsn_df['exec_date'] == self.pred_exec_day]
+        self.data_version = data_vrsn_df['data_vrsn_cd'].values[0]
 
     def make_acc_by_sp1(self):
         temp = pd.DataFrame()

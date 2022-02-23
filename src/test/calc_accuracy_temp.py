@@ -25,14 +25,14 @@ hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')
 compare_from = datetime.datetime.strftime(compare_from, '%Y%m%d')
 compare_to = datetime.datetime.strftime(compare_to, '%Y%m%d')
 
-exec_cfg = {
+step_cfg = {
     'cls_prep': True,     # Preprocessing
     'cls_comp': True,     # Compare result
     'cls_top_n': False,    # Choose top N
     'cls_graph': False    # Draw graph
 }
 
-opt_cfg = {
+exec_cfg = {
     'rm_zero_yn': True,                   # Remove zeros
     'calc_acc_by_sp1_item_yn': False,     # Calculate accuracy on SP1 items
     'filter_sales_threshold_yn': True,    # Filter based on sales threshold
@@ -68,8 +68,8 @@ date_cfg = {
 
 # Initialize class
 comp = CalcAccuracy(
-    step_cfg=exec_cfg,
-    exec_cfg=opt_cfg,
+    step_cfg=step_cfg,
+    exec_cfg=exec_cfg,
     date_cfg=date_cfg,
     data_cfg=data_cfg,
     exec_kind=exec_kind

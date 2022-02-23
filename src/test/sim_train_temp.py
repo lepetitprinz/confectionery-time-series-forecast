@@ -8,8 +8,8 @@ from simulation.deployment.PipelineTemp import PipelineTemp
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 date = {
     'history': {
-        'from': '20190211',
-        'to': '20220206'
+        'from': '20190204',
+        'to': '20220130'
     }
 }
 lag = 'w1'

@@ -8,7 +8,7 @@ from baseline.deployment.PipelineCycle import PipelineCycle
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Data Configuration
-data_cfg = {'division': 'SELL_IN', 'cycle': 'w'}
+data_cfg = {'division': 'SELL_IN'}
 
 # Execute Configuration
 step_cfg = {
@@ -41,6 +41,7 @@ exec_cfg = {
     # Training configuration
     'scaling_yn': False,                     # Data scaling
     'grid_search_yn': False,                 # Grid Search
+    'voting_yn': True                        # Add voting algorithm
 }
 
 print('------------------------------------------------')

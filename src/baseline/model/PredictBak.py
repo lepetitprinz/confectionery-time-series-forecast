@@ -20,7 +20,7 @@ class Predict(object):
     }
 
     def __init__(self, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list):
+                 data_cfg: dict, mst_info: dict, exg_list: list):
         """
         :param date: Date information
         :param division: Division (SELL-IN/SELl-OUT)
@@ -37,11 +37,11 @@ class Predict(object):
         # Data Configuration
         self.date = date                    # Date information
         self.data_cfg = data_cfg            # Data configuration
-        self.exec_cfg = exec_cfg
         self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.division = division            # SELL-IN / SELL-OUT
         self.target_col = common['target_col']          # Target features
         # self.exo_col_list = exg_list + ['discount']    # Exogenous features
+        # self.exo_col_list = exg_list + ['discount', 'num_work_day']    # Todo : Test columns
         self.exo_col_list = exg_list + common['exg_fixed'].split(',')
         self.cust_grp = mst_info['cust_grp']            # Customer group master
         self.item_mst = mst_info['item_mst']            # Item master
@@ -62,9 +62,6 @@ class Predict(object):
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
-
-        self.decimal_point = 3
-        self.voting_opt = 'mean'
 
     def forecast(self, df):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -102,8 +99,9 @@ class Predict(object):
                         cfg=self.param_grid[model],
                         pred_step=n_test
                     )
-                    # Clip results & Round results
-                    prediction = np.round(np.clip(prediction, 0, self.max_val).tolist(), self.decimal_point)
+
+                    prediction = np.clip(prediction, 0, self.max_val).tolist()    # Clip results
+                    prediction = np.round(prediction, 3)    # Round results
 
                 except ValueError:
                     prediction = [self.err_val] * n_test
@@ -111,18 +109,7 @@ class Predict(object):
                 prediction = [self.err_val] * n_test
             models.append(hrchy + [model.upper(), prediction])
 
-        if self.exec_cfg['voting_yn']:
-            prediction = self.ensemble_voting(models=models)
-            models.append(hrchy + ['VOTING', prediction])
-
         return models
-
-    def ensemble_voting(self, models: list):
-        ensemble = None
-        if self.voting_opt == 'mean':
-            ensemble = np.array([pred[5] for pred in models]).mean(axis=0).round(self.decimal_point)
-
-        return ensemble
 
     def select_feature_by_variable(self, df: pd.DataFrame):
         feature_by_variable = {'univ': df[self.target_col],
