@@ -91,11 +91,7 @@ class Predict(object):
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
-            if self.model_info[model]['variate'] == 'univ':
-                length = len(data)
-            else:
-                length = len(data['endog'])
-            if length > self.fixed_n_test:
+            if len(df) > self.fixed_n_test:
                 try:
                     prediction = self.estimators[model](
                         history=data,

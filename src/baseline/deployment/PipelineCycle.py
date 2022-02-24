@@ -276,7 +276,8 @@ class PipelineCycle(object):
                 exg_list=exg_list,
                 hrchy=self.hrchy,
                 common=self.common,
-                data_cfg=self.data_cfg
+                data_cfg=self.data_cfg,
+                exec_cfg=self.exec_cfg
             )
 
             # Forecast

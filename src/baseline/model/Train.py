@@ -168,7 +168,7 @@ class Train(object):
         best_params = {}
         if self.grid_search_yn:
             # Grid Search
-            err, best_params = self.grid_search(
+            err, diff, best_params = self.grid_search(
                 model=model,
                 train=data_train,
                 test=data_test,
@@ -288,23 +288,23 @@ class Train(object):
 
         return err, diff
 
-    def grid_search(self, model, train, test, n_test) -> Tuple[tuple, dict]:
+    def grid_search(self, model, train, test, n_test) -> Tuple[float, Sequence, dict]:
         # get hyper-parameter grid for current algorithm
         param_grid_list = self.get_param_list(model=model)
 
         err_list = []
         for params in param_grid_list:
-            err = self.evaluation(
+            err, diff = self.evaluation(
                 model=model,
                 params=params,
                 train=train,
                 test=test,
                 n_test=n_test
             )
-            err_list.append((err, params))
+            err_list.append((err, diff, params))
 
         err_list = sorted(err_list, key=lambda x: x[0])    # Sort result based on error score
-        best_result = err_list[0]    # Get best result
+        best_result = err_list[0]    # Get the best result of grid search
 
         return best_result
 

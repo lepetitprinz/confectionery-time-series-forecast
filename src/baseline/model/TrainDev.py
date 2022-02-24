@@ -5,6 +5,7 @@ from common.SqlConfig import SqlConfig
 from baseline.model.Algorithm import Algorithm
 # from baseline.model.ModelDL import Models
 
+import os
 import ast
 import warnings
 import numpy as np
@@ -29,7 +30,7 @@ class TrainDev(object):
     }
 
     def __init__(self, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list):
+                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list, path_root: str):
         """
         :param division: Division (SELL-IN/SELl-OUT)
         :param data_vrsn_cd: Data version code
@@ -45,6 +46,7 @@ class TrainDev(object):
         self.sql_conf = SqlConfig()
 
         # Data Configuration
+        self.path_root = path_root
         self.common = common    # Common information
         self.data_cfg = data_cfg    # Data configuration
         self.exec_cfg = exec_cfg    # Execute configuration
@@ -58,22 +60,24 @@ class TrainDev(object):
         self.cust_grp = mst_info['cust_grp']    # Customer group master
         self.item_mst = mst_info['item_mst']    # Item master
 
-        # Data Level Configuration
+        # Data Configuration
         self.cnt = 0    # Data level count
         self.hrchy = hrchy    # Hierarchy information
+        self.err_val = float(10 ** 5 - 1)    # set error values or clip outlier values
+        self.decimal_point = int(common['decimal_point'])    # Float type decimal point
 
         # Algorithm Configuration
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
+        self.param_grid_map = {}
+        self.model_param_by_data_lvl_map = {}
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
         self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
-        self.decimal_point = 3
         self.fixed_n_test = 4
-        self.err_val = float(10 ** 5 - 1)    # set error values or clip outlier values
         self.validation_method = 'train_test'    # Train-test / Walk-forward
-        self.grid_search_yn: bool = exec_cfg['grid_search_yn']    # Execute grid search or not
+        self.grid_search_option = common['grid_search_option']  # Grid search option (best / each)
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
         # After processing configuration
@@ -166,9 +170,9 @@ class TrainDev(object):
 
         diff = None
         best_params = {}
-        if self.grid_search_yn:
+        if self.exec_cfg['grid_search_yn'] :
             # Grid Search
-            err, best_params = self.grid_search(
+            err, diff, best_params = self.grid_search(
                 model=model,
                 train=data_train,
                 test=data_test,
@@ -288,23 +292,24 @@ class TrainDev(object):
 
         return err, diff
 
-    def grid_search(self, model, train, test, n_test) -> Tuple[tuple, dict]:
-        # get hyper-parameter grid for current algorithm
-        param_grid_list = self.get_param_list(model=model)
+    # Grid search
+    def grid_search(self, model, train, test, n_test) -> Tuple[float, Sequence, dict]:
+        # Get hyper-parameter grid for current algorithm
+        param_grid_list = self.param_grid_map[model]
 
         err_list = []
         for params in param_grid_list:
-            err = self.evaluation(
+            err, diff = self.evaluation(
                 model=model,
                 params=params,
                 train=train,
                 test=test,
                 n_test=n_test
             )
-            err_list.append((err, params))
+            err_list.append((err, diff, params))
 
         err_list = sorted(err_list, key=lambda x: x[0])    # Sort result based on error score
-        best_result = err_list[0]    # Get best result
+        best_result = err_list[0]    # Get the best result of grid search
 
         return best_result
 
@@ -366,6 +371,21 @@ class TrainDev(object):
 
         return param_df, info
 
+    def set_param_grid_map(self) -> None:
+        param_grid_map = {}
+        for model, param_grid in self.param_grid_list.items():
+            params = list(param_grid.keys())
+            values = param_grid.values()
+            values_combine_list = list(product(*values))
+
+            values_combine_map_list = []
+            for values_combine in values_combine_list:
+                values_combine_map_list.append(dict(zip(params, values_combine)))
+
+            param_grid_map[model] = values_combine_map_list
+
+        self.param_grid_map = param_grid_map
+
     def get_param_list(self, model) -> List[dict]:
         param_grids = self.param_grid_list[model]    # Hyper-parameter list
         params = list(param_grids.keys())    # Hyper-parameter options
@@ -377,6 +397,35 @@ class TrainDev(object):
             values_combine_map_list.append(dict(zip(params, values_combine)))
 
         return values_combine_map_list
+
+    def save_params(self, scores) -> None:
+        if self.grid_search_option == 'best':
+            self.save_best_params(scores=scores)
+
+        elif self.grid_search_option == 'each':
+            self.save_each_params(scores=scores)
+
+    def save_each_params(self, scores) -> None:
+        # Count best params for each data level
+        util.hrchy_recursion_with_key(
+            hrchy_lvl=self.hrchy['lvl']['total'] - 1,
+            fn=self.make_model_param_map,
+            df=scores
+        )
+        file_path = os.path.join(
+            self.path_root, 'parameter', 'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.csv'
+        )
+        self.io.save_object(data=self.model_param_by_data_lvl_map, data_type='binary', file_path=file_path)
+
+    # Make the mapping dictionary
+    def make_model_param_map(self, hrchy, data):
+        model_param_map = {}
+        for eval_result in data:
+            if eval_result[0] != 'voting':
+                model, _, _, params = eval_result
+                model_param_map[model] = params
+
+        self.model_param_by_data_lvl_map['_'.join(hrchy)] = model_param_map
 
     # Save best hyper-parameter based on counting
     def save_best_params(self, scores) -> None:

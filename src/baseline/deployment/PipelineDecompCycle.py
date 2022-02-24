@@ -82,13 +82,6 @@ class PipelineDecompCycle(object):
         sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
         decomposed, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=pd.DataFrame())
 
-        # Save the result
-        if self.exec_cfg['save_step_yn']:
-            self.io.save_object(data=decomposed, file_path=self.path['decompose'], data_type='binary')
-
-        else:
-            decomposed = self.io.load_object(file_path=self.path['decompose'], data_type='binary')
-
         decomposed_list = util.hrchy_recursion_extend_key(
             hrchy_lvl=self.hrchy['lvl']['total']-1,
             df=decomposed,

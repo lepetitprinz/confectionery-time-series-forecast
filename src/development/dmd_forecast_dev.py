@@ -6,11 +6,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineDev import PipelineDev
 
 # Root path
-# path_root = os.path.join('..', '..')
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 hist_to = '20220130'     # W07(20220206) / W06(20220130) / W05(20220123)
 
 # Change data type (string -> datetime)
@@ -28,10 +28,10 @@ md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
-    'cls_train': True,
+    'cls_prep': False,
+    'cls_train': False,
     'cls_pred': True,
-    'cls_mdout': True
+    'cls_mdout': False
 }
 
 # Configuration
@@ -47,7 +47,7 @@ exec_cfg = {
     'feature_selection_yn': False,            # Feature Selection
     'filter_threshold_cnt_yn': False,         # Filter data level under threshold count
     'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
-    'filter_threshold_recent_sku_yn': False,  # Filter SKU level under threshold recent week
+    'filter_threshold_recent_sku_yn': True,   # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
     'rm_outlier_yn': True,                    # Outlier clipping
     'data_imputation_yn': True,               # Data Imputation

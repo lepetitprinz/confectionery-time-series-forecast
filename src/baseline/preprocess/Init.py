@@ -6,13 +6,16 @@ class Init(object):
     """
     Time series setting class
     """
-    def __init__(self, data_cfg: dict, exec_cfg: dict, common: dict, division: str, path_root: str, exec_kind: str):
+    def __init__(self, data_cfg: dict, exec_cfg: dict, common: dict,
+                 division: str, path_root: str, exec_kind: str, resample_rule='w'):
         """
         :param data_cfg: Data configuration
         :param exec_cfg: Execution configuration
-        :param common: common information
-        :param division: division code (SELL-IN/SELL-OUT)
-        :path_root: root path for baseline forecast
+        :param common: Common information
+        :param division: Division code (SELL-IN/SELL-OUT)
+        :param path_root: Root path for baseline forecast
+        :param exec_kind: Kinds of execution (batch/verify/dev)
+        :param resample_rule: Rule of data resampling
         """
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
@@ -20,6 +23,7 @@ class Init(object):
         self.division = division
         self.path_root = path_root
         self.exec_kind = exec_kind
+        self.resample_rule = resample_rule
 
         # Setting
         self.data_vrsn_cd = ''    # Data version
@@ -38,7 +42,7 @@ class Init(object):
 
     def set_date(self) -> None:
         if self.exec_cfg['cycle']:  # Executing demand forecast on weekly basis
-            cycle = Cycle(common=self.common, rule=self.data_cfg['cycle'])
+            cycle = Cycle(common=self.common, rule=self.resample_rule)
             cycle.calc_period()
             self.date = {
                 'history': {    # Sales history period for forecast fitting
@@ -139,9 +143,6 @@ class Init(object):
             'pred_best_csv': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv'),
-            'middle_out': util.make_path_baseline(
-                path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out', extension='csv'),
             # Middle-out result of all (csv)
             'middle_out_all': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
@@ -153,12 +154,6 @@ class Init(object):
             'middle_out_db': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
-            # 'report': util.make_path_baseline(
-            #     path=self.path_root, module='report', exec_kind=self.exec_kind, division=self.division,
-            #     data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='report', extension='csv'),
-            'decompose': util.make_path_baseline(
-                path=self.path_root, module='data', exec_kind='batch', division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose', extension='csv'),
             'decompose_db': util.make_path_baseline(
                 path=self.path_root, module='data', exec_kind='batch', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'),

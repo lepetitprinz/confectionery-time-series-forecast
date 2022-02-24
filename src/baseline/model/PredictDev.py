@@ -1,7 +1,9 @@
 import common.util as util
 import common.config as config
+from dao.DataIO import DataIO
 from baseline.model.Algorithm import Algorithm
 
+import os
 import ast
 from datetime import datetime
 from datetime import timedelta
@@ -20,7 +22,7 @@ class PredictDev(object):
     }
 
     def __init__(self, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list):
+                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list, path_root: str):
         """
         :param date: Date information
         :param division: Division (SELL-IN/SELl-OUT)
@@ -32,39 +34,53 @@ class PredictDev(object):
         :param exg_list: Exogenous variable list
         """
         # Class Configuration
+        self.io = DataIO()
         self.algorithm = Algorithm()
 
         # Data Configuration
+        self.path_root = path_root
         self.date = date                    # Date information
         self.data_cfg = data_cfg            # Data configuration
         self.exec_cfg = exec_cfg
         self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.division = division            # SELL-IN / SELL-OUT
-        self.target_col = common['target_col']          # Target features
-        # self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        self.exo_col_list = exg_list + common['exg_fixed'].split(',')
+        self.target_col: str = common['target_col']     # Target features
+        self.exo_col_list: list = exg_list + common['exg_fixed'].split(',')
         self.cust_grp = mst_info['cust_grp']            # Customer group master
         self.item_mst = mst_info['item_mst']            # Item master
         self.cal_mst = mst_info['cal_mst']              # Calendar master
 
-        # Data Level Configuration
+        # Data Configuration
         self.cnt = 0          # Data level count
         self.hrchy = hrchy    # Hierarchy information
+        self.err_val = 0      # Setting value for prediction error
+        self.max_val = float(10 ** 5 - 1)    # Clipping value for outlier
+        self.decimal_point: int = int(common['decimal_point'])
 
-        # Algorithms
-        self.err_val = 0    # Setting value for prediction error
-        self.fixed_n_test = 4
-        self.max_val = float(10 ** 5 - 1)           # Clipping value for outlier
+        # Algorithm Configuration
         self.model_info = mst_info['model_mst']     # Algorithm master
-        self.param_grid = mst_info['param_grid']    # Hyper-parameter master
+        self.param_grid = {}    # Hyper-parameter master
         self.cand_models = list(self.model_info.keys())
+
+        # Prediction Configuration
+        self.fixed_n_test = 4
+        self.voting_method = common['voting_method']
+        self.grid_search_option: str = common['grid_search_option']  # Grid search option (best / each)
 
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
-        self.decimal_point = 3
-        self.voting_opt = 'mean'
+        self._init(mst_info)
+
+    def _init(self, mst_info: dict):
+        self.param_grid['best'] = mst_info['param_grid']
+        if self.grid_search_option == 'each':
+            file_path = os.path.join(
+                self.path_root, 'parameter',
+                'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.csv'
+            )
+            self.param_grid['each'] = self.io.load_object(file_path=file_path, data_type='binary')
 
     def forecast(self, df):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -76,7 +92,7 @@ class PredictDev(object):
 
         return prediction
 
-    def forecast_model(self, hrchy, df):
+    def forecast_model(self, hrchy, df: pd.DataFrame):
         # Show prediction progress
         self.cnt += 1
         if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
@@ -85,21 +101,24 @@ class PredictDev(object):
         # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=df)
 
+        # Set algorithm hyper-parameter
+        param_grid = {}
+        if self.grid_search_option == 'best':
+            param_grid = self.param_grid['best']
+        elif self.grid_search_option == 'each':
+            param_grid = self.param_grid['each'].get('_'.join(hrchy), self.param_grid['best'])
+
         models = []
         for model in self.cand_models:
             data = feature_by_variable[self.model_info[model]['variate']]
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
-            if self.model_info[model]['variate'] == 'univ':
-                length = len(data)
-            else:
-                length = len(data['endog'])
-            if length > self.fixed_n_test:
+            if len(df) > self.fixed_n_test:
                 try:
                     prediction = self.estimators[model](
                         history=data,
-                        cfg=self.param_grid[model],
+                        cfg=param_grid[model],
                         pred_step=n_test
                     )
                     # Clip results & Round results
@@ -119,14 +138,16 @@ class PredictDev(object):
 
     def ensemble_voting(self, models: list):
         ensemble = None
-        if self.voting_opt == 'mean':
+        if self.voting_method == 'mean':
             ensemble = np.array([pred[5] for pred in models]).mean(axis=0).round(self.decimal_point)
 
         return ensemble
 
     def select_feature_by_variable(self, df: pd.DataFrame):
-        feature_by_variable = {'univ': df[self.target_col],
-                               'multi': df[self.exo_col_list + [self.target_col]]}
+        feature_by_variable = {
+            'univ': df[self.target_col],
+            'multi': df[self.exo_col_list + [self.target_col]]
+        }
 
         return feature_by_variable
 

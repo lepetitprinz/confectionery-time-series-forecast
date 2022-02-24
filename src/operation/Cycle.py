@@ -2,7 +2,7 @@ import datetime
 
 
 class Cycle(object):
-    def __init__(self, common: dict, rule):
+    def __init__(self, common: dict, rule='w'):
         self.common = common
         self.rule = rule    # w / m
 
