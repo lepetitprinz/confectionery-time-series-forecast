@@ -1,6 +1,6 @@
 import numpy as np
 
-# # Database Configuration (Operation)
+# Database Configuration (Operation)
 RDMS = 'mssql+pymssql'
 HOST = '10.109.2.143'      # Ops Database IP address
 # HOST = '10.109.6.62'     # Dev Database IP address
@@ -9,9 +9,46 @@ PORT = '1433'
 USER = 'matrix'            # User name
 PASSWORD = 'Diam0nd123!'   # User password
 
-# Data filtering threshold
-threshold_cnt = 4
-threshold_recent = 12
+# Data configuration
+project_cd = 'ENT001'    # Project code
+decimal_point = 3
+
+agg_avg = ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min', 'num_work_day']
+agg_sum = ['qty']
+
+date_col = 'yymmdd'
+db_hrchy_item_cd = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd']
+db_hrchy_item_nm = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
+
+drop_col = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week', 'cust_cd']
+exg_fixe = 'discount'
+
+filter_threshold_cnt = 8
+filter_threshold_recent = 13
+filter_threshold_sku_recent = 13
+
+grid_search_option = 'best'    # best / each
+
+hrchy_cust = 'cust_grp_cd'
+hrchy_item = ['biz_cd', 'line_cd', 'brand_cd', 'item_cd', 'sku_cd']
+
+outlier_sigma = 2
+
+resample_rule = 'w'
+target_col = 'qty'
+
+unit_cd = ['box', 'ea', 'bol']
+validation_method = 'train_test'
+voting_method = 'mean'
+
+# Exogenous Variable
+web_page = 1
+wea_service_key = 'UYRNns1wVRWz8MIyaMqUcL%2BHhIsbY0xjNyzRyvBNZRwh9zefraNj4lh9eBLgOw%2B2c8lBV%2Fh1SbzyNV96aO3DUw%3D%3D'
+wea_url = 'http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList'
+
+week_eval = 13
+week_hist = 156
+week_pred = 13
 
 # Model Hyper-parameters
 # 1.Time Series Forecast
@@ -33,7 +70,8 @@ PARAM_GRIDS_FCST = {
         'gamma': [0.1, 0.2, 0.3],
     },
     'var': {
-        'trend': ['c', 't', 'ct'],
+        'maxlags': [4],
+        'trend': ['c', 'ct', 'ctt'],
         'ic': [None, 'bic']
     }
 }

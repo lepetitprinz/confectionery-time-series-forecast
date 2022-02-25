@@ -85,6 +85,10 @@ class TrainDev(object):
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def train(self, df) -> dict:
+        #
+        if self.exec_cfg['grid_search_yn']:
+            self.set_param_grid_map()
+
         # Evaluate each algorithm
         scores = util.hrchy_recursion(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
@@ -97,7 +101,7 @@ class TrainDev(object):
     def train_model(self, df) -> List[List[np.array]]:
         # Print training progress
         self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         # Set features by models (univ/multi)

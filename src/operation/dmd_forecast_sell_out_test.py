@@ -12,8 +12,8 @@ data_cfg = {'division': 'SELL_OUT'}
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': True,
-    'cls_cns': True,
+    'cls_load': False,
+    'cls_cns': False,
     'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,

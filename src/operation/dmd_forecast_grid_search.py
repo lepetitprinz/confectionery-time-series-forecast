@@ -3,9 +3,10 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineCycle import PipelineCycle
+from baseline.deployment.PipelineDev import PipelineDev
 
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Execute Configuration
 step_cfg = {
@@ -19,10 +20,10 @@ step_cfg = {
 
 # Configuration
 exec_cfg = {
-    'cycle': True,                            # Prediction cycle
+    'cycle': True,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': False,                    # Save each step result to object or csv
+    'save_step_yn': False,                   # Save each step result to object or csv
     'save_db_yn': False,                     # Save each step result to Database
 
     # Data preprocessing configuration
@@ -37,7 +38,7 @@ exec_cfg = {
 
     # Training configuration
     'scaling_yn': False,                     # Data scaling
-    'grid_search_yn': False,                 # Grid Search
+    'grid_search_yn': True,                  # Grid Search
     'voting_yn': False                       # Add voting algorithm
 }
 
@@ -51,7 +52,7 @@ print("Grid Search Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S
 # Data Configuration
 data_cfg = {'division': 'SELL_IN'}
 
-pipeline = PipelineCycle(
+pipeline = PipelineDev(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
@@ -75,7 +76,7 @@ print("Grid Search Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S
 # Data Configuration
 data_cfg = {'division': 'SELL_OUT'}
 
-pipeline = PipelineCycle(
+pipeline = PipelineDev(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
