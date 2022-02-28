@@ -1,5 +1,3 @@
-import numpy as np
-
 # Database Configuration (Operation)
 RDMS = 'mssql+pymssql'
 HOST = '10.109.2.143'      # Ops Database IP address
@@ -10,9 +8,6 @@ USER = 'matrix'            # User name
 PASSWORD = 'Diam0nd123!'   # User password
 
 # Data configuration
-project_cd = 'ENT001'    # Project code
-decimal_point = 3
-
 agg_avg = ['discount', 'gsr_sum', 'rhm_avg', 'temp_avg', 'temp_max', 'temp_min', 'num_work_day']
 agg_sum = ['qty']
 
@@ -56,15 +51,15 @@ PARAM_GRIDS_FCST = {
     'ar': {
         'lags': ['2', '3', '4'],
         'period': ['2', '3', '4'],
-        'seasonal': [True, False],
-        'trend': ['t', 'ct']
+        'seasonal': [True],
+        'trend': ['c', 't', 'ct']
     },
     'hw': {
-        'damped_trend': [True],
+        'damped_trend': [True, False],
         'remove_bias': [True],
         'seasonal_period': ['2', '3', '4'],
-        'seasonal': ['add'],
-        'trend': ['add'],
+        'seasonal': ['add', 'mul'],
+        'trend': ['add', 'mul'],
         'alpha': [0.1, 0.2, 0.3],
         'beta': [0.1, 0.2, 0.3],
         'gamma': [0.1, 0.2, 0.3],
@@ -72,31 +67,31 @@ PARAM_GRIDS_FCST = {
     'var': {
         'maxlags': [4],
         'trend': ['c', 'ct', 'ctt'],
-        'ic': [None, 'bic']
+        'ic': [None, 'aic', 'hqic', 'bic']
     }
 }
 
 # 2.What-If Simulation
 PARAM_GRIDS_SIM = {
     'rf': {  # Random Forest
-        'n_estimators': list(np.arange(100, 500, 100)),
+        'n_estimators': [100, 200, 300, 400],
         'criterion': ['squared_error'],
-        'min_samples_split': list(np.arange(2, 6, 1)),  # minimum number of samples required to split inner node
-        'min_samples_leaf': list(np.arange(1, 6, 1)),   # have the effect of smoothing the model
+        'min_samples_split': [2, 3, 4, 5],  # minimum number of samples required to split inner node
+        'min_samples_leaf': [1, 2, 3, 4, 5],   # have the effect of smoothing the model
         'max_features': ['auto']
     },
     'gb': {  # Gradient Boost
-        'n_estimators': list(np.arange(100, 500, 100)),
+        'n_estimators': [100, 200, 300, 400],
         'criterion': ['friedman_mse'],
-        'min_samples_split': list(np.arange(2, 6, 1)),  # minimum number of samples required to split inner node
-        'min_samples_leaf': list(np.arange(1, 6, 1)),   # have the effect of smoothing the model
+        'min_samples_split': [2, 3, 4, 5],  # minimum number of samples required to split inner node
+        'min_samples_leaf': [1, 2, 3, 4, 5],   # have the effect of smoothing the model
         'max_features': ['auto']
     },
     'et': {  # Extremely Randomized Trees
-        'n_estimators': list(np.arange(100, 500, 100)),
+        'n_estimators': [100, 200, 300, 400],
         'criterion': ['squared_error'],
-        'min_samples_split': list(np.arange(2, 6, 1)),  # minimum number of samples required to split inner node
-        'min_samples_leaf': list(np.arange(1, 6, 1)),   # have the effect of smoothing the model
+        'min_samples_split': [2, 3, 4, 5],  # minimum number of samples required to split inner node
+        'min_samples_leaf': [1, 2, 3, 4, 5],   # have the effect of smoothing the model
         'max_features': ['auto']
     },
     'mlp': {  # Multi-layer Perceptron

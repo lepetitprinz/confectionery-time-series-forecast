@@ -3,7 +3,6 @@ import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.model.Algorithm import Algorithm
-# from baseline.model.ModelDL import Models
 
 import os
 import ast
@@ -68,11 +67,14 @@ class TrainDev(object):
 
         # Algorithm Configuration
         self.model_info = mst_info['model_mst']    # Algorithm master
-        self.param_grid = mst_info['param_grid']    # Hyper-parameter master
+        self.model_candidates = list(self.model_info.keys())    # Model candidates list
+        self.hyper_parameter = mst_info['param_grid']    # Hyper-parameter master
         self.param_grid_map = {}
         self.model_param_by_data_lvl_map = {}
-        self.model_candidates = list(self.model_info.keys())    # Model candidates list
-        self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
+        self.param_grid_list = util.conv_json_to_dict(
+            path=os.path.join(self.path_root, 'config', 'param_grid_fcst.json')
+        )
+        # self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
         self.fixed_n_test = 4
@@ -187,7 +189,7 @@ class TrainDev(object):
             # Evaluation
             err, diff = self.evaluation(
                 model=model,
-                params=self.param_grid[model],
+                params=self.hyper_parameter[model],
                 train=data_train,
                 test=data_test,
                 n_test=n_test
@@ -330,7 +332,7 @@ class TrainDev(object):
         n_test = ast.literal_eval(self.model_info[model]['label_width'])    # Change data type
         predictions = []
         for train, test in dataset:
-            yhat = self.estimators[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
+            yhat = self.estimators[model](history=train, cfg=self.hyper_parameter[model], pred_step=n_test)
             yhat = np.nan_to_num(yhat)
             err = mean_squared_error(test, yhat, squared=False)
             predictions.append(err)

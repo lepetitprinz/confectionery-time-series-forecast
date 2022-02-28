@@ -1,8 +1,9 @@
 import os
+import json
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 from collections import defaultdict
 
 
@@ -347,11 +348,9 @@ def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
     return data
 
 
-# def prep_exg_partial(data: pd.DataFrame) -> pd.DataFrame:
-#     item_cust = data['idx_dtl_cd'].str.split('_', 1, expand=True)
-#     item_cust.columns = ['sku_cd', 'cust_grp_cd']
-#
-#     exg_partial = pd.concat([data, item_cust], axis=1)
-#     exg_partial = exg_partial.drop(columns=['idx_cd', 'idx_dtl_cd'])
-#
-#     return exg_partial
+def conv_json_to_dict(path: str) -> dict:
+    # Opening JSON file
+    with open(path) as json_file:
+        data = json.load(json_file)
+
+    return data

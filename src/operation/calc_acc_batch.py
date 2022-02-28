@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineAccuracy import PipelineAccuracy
@@ -26,6 +27,13 @@ exec_cfg = {
     'pick_specific_sp1_yn': False,        # Pick Specific sp1 list
 }
 
+print('------------------------------------------------')
+print(f'Calculate Accuracy')
+print('------------------------------------------------')
+
+# Check start time
+print("Calculation Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
 pipe_acc = PipelineAccuracy(
     exec_kind=exec_kind,
     step_cfg=step_cfg,
@@ -38,3 +46,7 @@ pipe_acc = PipelineAccuracy(
 )
 
 pipe_acc.run()
+
+# Check end time
+print("Calculation End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("")

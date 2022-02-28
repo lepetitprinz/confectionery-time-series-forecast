@@ -14,7 +14,7 @@ data_cfg = {'division': 'SELL_IN'}
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
+    'cls_prep': False,
     'cls_train': True,
     'cls_pred': True,
     'cls_mdout': True

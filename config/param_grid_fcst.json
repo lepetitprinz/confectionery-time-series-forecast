@@ -1,0 +1,75 @@
+{
+    "ar": {
+        "lags": [
+            "2",
+            "3",
+            "4"
+        ],
+        "period": [
+            "2",
+            "3",
+            "4"
+        ],
+        "seasonal": [
+            true
+        ],
+        "trend": [
+            "c",
+            "t",
+            "ct"
+        ]
+    },
+    "hw": {
+        "damped_trend": [
+            true,
+            false
+        ],
+        "remove_bias": [
+            true
+        ],
+        "seasonal_period": [
+            "2",
+            "3",
+            "4"
+        ],
+        "seasonal": [
+            "add",
+            "mul"
+        ],
+        "trend": [
+            "add",
+            "mul"
+        ],
+        "alpha": [
+            0.1,
+            0.2,
+            0.3
+        ],
+        "beta": [
+            0.1,
+            0.2,
+            0.3
+        ],
+        "gamma": [
+            0.1,
+            0.2,
+            0.3
+        ]
+    },
+    "var": {
+        "maxlags": [
+            4
+        ],
+        "trend": [
+            "c",
+            "ct",
+            "ctt"
+        ],
+        "ic": [
+            null,
+            "aic",
+            "hqic",
+            "bic"
+        ]
+    }
+}

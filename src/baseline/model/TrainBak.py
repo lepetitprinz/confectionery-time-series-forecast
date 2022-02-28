@@ -3,7 +3,6 @@ import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.model.Algorithm import Algorithm
-# from baseline.model.ModelDL import Models
 
 import ast
 import warnings
@@ -66,7 +65,7 @@ class Train(object):
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
-        self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
+        # self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
         self.decimal_point = 3

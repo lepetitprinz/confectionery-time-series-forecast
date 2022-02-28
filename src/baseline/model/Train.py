@@ -119,6 +119,8 @@ class Train(object):
         score = self.err_val
         try:
             score = np.sqrt(np.mean((np.array([score[2] for score in models]).sum(axis=0) / len(models))**2, axis=0))
+            if score > self.err_val:
+                score = self.err_val
         except ValueError:
             pass
 
