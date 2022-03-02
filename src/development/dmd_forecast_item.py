@@ -37,6 +37,7 @@ exec_cfg = {
     # Training configuration
     'scaling_yn': False,                     # Data scaling
     'grid_search_yn': False,                 # Grid Search
+    'voting_yn': True                        # Add voting algorithm
 }
 
 print('------------------------------------------------')

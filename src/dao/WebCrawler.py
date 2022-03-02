@@ -20,6 +20,7 @@ class WebCrawler(object):
         self.url = url
         self.monthly_range = 3
         self.sleep_time = 1
+        self.ad_frame = 10
         self.wea_col = ['year', 'month', 'day', 'temp_low', 'temp_high', 'weather']
 
     def init(self):
@@ -114,6 +115,7 @@ class WebCrawler(object):
         try:
             year = int(''.join(re.findall("\d+", driver.find_elements_by_css_selector(
                 css_selector=self.css_selector_get_year)[0].text)))
+
         except ConnectionError:
             driver.refresh()
             driver.find_element_by_css_selector(self.css_selector_move_to_month).click()
@@ -125,10 +127,6 @@ class WebCrawler(object):
     def get_data_month(self, driver: webdriver) -> int:
         data_month = int(''.join(re.findall("\d+", driver.find_elements_by_css_selector(
             self.css_selector_get_month)[0].text)))
-
-        # data_month = driver.find_elements_by_css_selector(
-        # "div.monthly-dropdowns > div:nth-child(1) > div.map-dropdown-toggle > h2"
-        # )[0].text
 
         return data_month
 
@@ -173,20 +171,18 @@ class WebCrawler(object):
     def save_result(self, data: pd.DataFrame, area: str) -> None:
         data.to_csv(os.path.join(self.path_save, f'weather_{area}.csv'), index=False)
 
-    @staticmethod
-    def check_ad(driver):
+    def check_ad(self, driver):
         all_iframe = driver.find_elements_by_tag_name("iframe")
-        if len(all_iframe) > 10:
+        if len(all_iframe) > self.ad_frame:
             print("Ad Found\n")
-            driver.execute_script("""
-                var elems = document.getElementsByTagName("iframe"); 
-                for(var i = 0, max = elems.length; i < max; i++)
-                     {
-                         elems[i].hidden=true;
-                     }
-                                  """)
-            print('Total Ads: ' + str(len(all_iframe)))
+            # driver.execute_script("""
+            #     var elems = document.getElementsByTagName("iframe");
+            #     for(var i = 0, max = elems.length; i < max; i++)
+            #          {
+            #              elems[i].hidden=true;
+            #          }
+            #                       """)
             return True
         else:
-            print('No frames found')
+            print('No Ad found')
             return False
