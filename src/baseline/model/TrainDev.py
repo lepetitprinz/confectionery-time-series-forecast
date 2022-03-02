@@ -174,9 +174,8 @@ class TrainDev(object):
                 test=data_test
             )
 
-        diff = None
         best_params = {}
-        if self.exec_cfg['grid_search_yn'] :
+        if self.exec_cfg['grid_search_yn']:
             # Grid Search
             err, diff, best_params = self.grid_search(
                 model=model,
@@ -419,9 +418,10 @@ class TrainDev(object):
             df=scores
         )
         file_path = os.path.join(
-            self.path_root, 'parameter', 'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.csv'
+            self.path_root, 'parameter', 'data_lvl_model_param_' + self.division + '_' +
+                                         self.hrchy['key'][:-1] + '.json'
         )
-        self.io.save_object(data=self.model_param_by_data_lvl_map, data_type='binary', file_path=file_path)
+        self.io.save_object(data=self.model_param_by_data_lvl_map, data_type='json', file_path=file_path)
 
     # Make the mapping dictionary
     def make_model_param_map(self, hrchy, data):

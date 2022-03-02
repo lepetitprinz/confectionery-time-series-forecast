@@ -1,6 +1,7 @@
 from common.SqlSession import SqlSession
 from common.SqlConfig import SqlConfig
 
+import json
 import pickle
 import pandas as pd
 
@@ -54,6 +55,10 @@ class DataIO(object):
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 handle.close()
 
+        elif data_type == 'json':
+            with open(file_path, 'w') as handle:
+                json.dump(data, handle, indent=4)
+
     # Load the object
     @staticmethod
     def load_object(file_path: str, data_type: str):
@@ -65,5 +70,9 @@ class DataIO(object):
         elif data_type == 'binary':
             with open(file_path, 'rb') as handle:
                 data = pickle.load(handle)
+
+        elif data_type == 'json':
+            with open(file_path, 'r') as handle:
+                data = json.load(handle)
 
         return data

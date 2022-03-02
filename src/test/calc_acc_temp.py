@@ -7,8 +7,8 @@ from baseline.analysis.CalcAccuracy import CalcAccuracy
 
 hist_to = '20220213'    # W08(20220213) / W07(20220206) / W06(20220130)
 exec_kind = 'dev'
-# root_path = os.path.join('..', '..')
-root_path = os.path.join('/', 'opt', 'DF', 'fcst')
+root_path = os.path.join('..', '..')
+# root_path = os.path.join('/', 'opt', 'DF', 'fcst')
 save_path = os.path.join(root_path, 'analysis', 'accuracy', 'batch')
 
 # Change data type (string -> datetime)
