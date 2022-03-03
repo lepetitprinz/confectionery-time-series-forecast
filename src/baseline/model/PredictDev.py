@@ -59,13 +59,14 @@ class PredictDev(object):
 
         # Algorithm Configuration
         self.model_info = mst_info['model_mst']     # Algorithm master
-        self.param_grid = {}    # Hyper-parameter master
         self.cand_models = list(self.model_info.keys())
+        self.hyper_parameter = {}    # Hyper-parameter master
 
         # Prediction Configuration
         self.fixed_n_test = 4
         self.voting_method = common['voting_method']
-        self.grid_search_option: str = common['grid_search_option']  # Grid search option (best / each)
+        self.hyper_param_apply_option = 'each'
+        # self.hyper_param_apply_option = common['hyper_param_apply_option']    # Grid search option (best / each)
 
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
@@ -74,13 +75,13 @@ class PredictDev(object):
         self._init(mst_info)
 
     def _init(self, mst_info: dict):
-        self.param_grid['best'] = mst_info['param_grid']
-        if self.grid_search_option == 'each':
+        self.hyper_parameter['best'] = mst_info['param_grid']
+        if self.hyper_param_apply_option == 'each':
             file_path = os.path.join(
                 self.path_root, 'parameter',
-                'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.csv'
+                'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.json'
             )
-            self.param_grid['each'] = self.io.load_object(file_path=file_path, data_type='binary')
+            self.hyper_parameter['each'] = self.io.load_object(file_path=file_path, data_type='json')
 
     def forecast(self, df):
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -94,19 +95,13 @@ class PredictDev(object):
 
     def forecast_model(self, hrchy, df: pd.DataFrame):
         # Show prediction progress
-        self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+        self.show_progress()
 
         # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=df)
 
-        # Set algorithm hyper-parameter
-        param_grid = {}
-        if self.grid_search_option == 'best':
-            param_grid = self.param_grid['best']
-        elif self.grid_search_option == 'each':
-            param_grid = self.param_grid['each'].get('_'.join(hrchy), self.param_grid['best'])
+        # Get algorithm hyper-parameter
+        param_grid = self.get_hyper_parameter(hrchy=hrchy)
 
         models = []
         for model in self.cand_models:
@@ -135,6 +130,22 @@ class PredictDev(object):
             models.append(hrchy + ['VOTING', prediction])
 
         return models
+
+    def show_progress(self) -> None:
+        # Show prediction progress
+        self.cnt += 1
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+
+    def get_hyper_parameter(self, hrchy: list):
+        # Get algorithm hyper-parameter
+        param_grid = {}
+        if self.hyper_param_apply_option == 'best':
+            param_grid = self.hyper_parameter['best']
+        elif self.hyper_param_apply_option == 'each':
+            param_grid = self.hyper_parameter['each'].get('_'.join(hrchy), self.hyper_parameter['best'])
+
+        return param_grid
 
     def ensemble_voting(self, models: list):
         ensemble = None

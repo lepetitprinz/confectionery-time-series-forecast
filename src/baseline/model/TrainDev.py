@@ -68,23 +68,41 @@ class TrainDev(object):
         # Algorithm Configuration
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
-        self.hyper_parameter = mst_info['param_grid']    # Hyper-parameter master
-        self.param_grid_map = {}
-        self.model_param_by_data_lvl_map = {}
-        self.param_grid_list = util.conv_json_to_dict(
-            path=os.path.join(self.path_root, 'config', 'param_grid_fcst.json')
+
+        # Hyper-parameter Configuration
+        self.hyper_param_apply_option = 'each'
+        # self.hyper_param_apply_option = common['hyper_param_apply_option']    # Grid search option (best / each)
+        self.hyper_parameter = {}    # Hyper-parameter master
+        self.grid_search_space_dict = {}
+        self.grid_search_space = util.conv_json_to_dict(
+            path=os.path.join(self.path_root, 'config', 'grid_search_space_fcst.json')
         )
-        # self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
+        self.grid_search_best_param_cnt = defaultdict(lambda: defaultdict(int))
+        self.model_param_by_data_lvl_map = {}
 
         # Training Configuration
         self.fixed_n_test = 4
         self.validation_method = 'train_test'    # Train-test / Walk-forward
-        self.grid_search_option = common['grid_search_option']  # Grid search option (best / each)
-        self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
+
+        # Initialize
+        self._init(mst_info=mst_info)
+
+    def _init(self, mst_info: dict):
+        if not self.exec_cfg['grid_search_yn']:
+            self.set_hyper_parameter(mst_info=mst_info)
+
+    def set_hyper_parameter(self, mst_info: dict):
+        self.hyper_parameter['best'] = mst_info['param_grid']
+        if self.hyper_param_apply_option == 'each':
+            file_path = os.path.join(
+                self.path_root, 'parameter',
+                'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.json'
+            )
+            self.hyper_parameter['each'] = self.io.load_object(file_path=file_path, data_type='json')
 
     def train(self, df) -> dict:
         #
@@ -300,7 +318,7 @@ class TrainDev(object):
     # Grid search
     def grid_search(self, model, train, test, n_test) -> Tuple[float, Sequence, dict]:
         # Get hyper-parameter grid for current algorithm
-        param_grid_list = self.param_grid_map[model]
+        param_grid_list = self.grid_search_space_dict[model]
 
         err_list = []
         for params in param_grid_list:
@@ -378,7 +396,7 @@ class TrainDev(object):
 
     def set_param_grid_map(self) -> None:
         param_grid_map = {}
-        for model, param_grid in self.param_grid_list.items():
+        for model, param_grid in self.grid_search_space.items():
             params = list(param_grid.keys())
             values = param_grid.values()
             values_combine_list = list(product(*values))
@@ -389,10 +407,10 @@ class TrainDev(object):
 
             param_grid_map[model] = values_combine_map_list
 
-        self.param_grid_map = param_grid_map
+        self.grid_search_space_dict = param_grid_map
 
     def get_param_list(self, model) -> List[dict]:
-        param_grids = self.param_grid_list[model]    # Hyper-parameter list
+        param_grids = self.grid_search_space[model]    # Hyper-parameter list
         params = list(param_grids.keys())    # Hyper-parameter options
         values = param_grids.values()    # Hyper-parameter values
         values_combine_list = list(product(*values))
@@ -404,10 +422,10 @@ class TrainDev(object):
         return values_combine_map_list
 
     def save_params(self, scores) -> None:
-        if self.grid_search_option == 'best':
+        if self.hyper_param_apply_option == 'best':
             self.save_best_params(scores=scores)
 
-        elif self.grid_search_option == 'each':
+        elif self.hyper_param_apply_option == 'each':
             self.save_each_params(scores=scores)
 
     def save_each_params(self, scores) -> None:
@@ -442,7 +460,7 @@ class TrainDev(object):
             df=scores
         )
 
-        for model, count in self.best_params_cnt.items():
+        for model, count in self.grid_search_best_param_cnt.items():
             params = [(val, key) for key, val in count.items()]
             params = sorted(params, key=lambda x: x[0], reverse=True)
             best_params = eval(params[0][1])
@@ -457,7 +475,7 @@ class TrainDev(object):
         for algorithm in data:
             if algorithm[0] != 'voting':
                 model, score, diff, params = algorithm
-                self.best_params_cnt[model][str(params)] += 1
+                self.grid_search_best_param_cnt[model][str(params)] += 1
 
     def make_score_result(self, data: dict, hrchy_key: str, fn) -> Tuple[pd.DataFrame, dict]:
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1

@@ -10,8 +10,8 @@ path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
-    'cls_train': True,
+    'cls_prep': False,
+    'cls_train': False,
     'cls_pred': True,
     'cls_mdout': True
 }
@@ -55,7 +55,7 @@ pipeline = PipelineItem(
 )
 
 # Execute Baseline Forecast
-pipeline.run()
+# pipeline.run()
 
 print('------------------------------------------------')
 print('Demand Forecast - SELL-OUT')
