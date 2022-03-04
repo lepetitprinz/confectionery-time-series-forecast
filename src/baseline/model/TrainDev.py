@@ -70,7 +70,7 @@ class TrainDev(object):
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
 
         # Hyper-parameter Configuration
-        self.hyper_param_apply_option = 'each'
+        self.hyper_param_apply_option = 'each'    # each / best
         # self.hyper_param_apply_option = common['hyper_param_apply_option']    # Grid search option (best / each)
         self.hyper_parameter = {}    # Hyper-parameter master
         self.grid_search_space_dict = {}
@@ -109,8 +109,15 @@ class TrainDev(object):
         if self.exec_cfg['grid_search_yn']:
             self.set_param_grid_map()
 
+        # # Evaluate each algorithm
+        # scores = util.hrchy_recursion(
+        #     hrchy_lvl=self.hrchy['lvl']['total'] - 1,
+        #     fn=self.train_model,
+        #     df=df
+        # )
+
         # Evaluate each algorithm
-        scores = util.hrchy_recursion(
+        scores = util.hrchy_recursion_add_key(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
             fn=self.train_model,
             df=df
@@ -118,11 +125,9 @@ class TrainDev(object):
 
         return scores
 
-    def train_model(self, df) -> List[List[np.array]]:
-        # Print training progress
-        self.cnt += 1
-        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+    def train_model(self, hrchy, df) -> List[List[np.array]]:
+        # Show prediction progress
+        self.show_progress()
 
         # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=df)
@@ -132,7 +137,9 @@ class TrainDev(object):
             # Validation
             score, diff, params = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
-                model=model)
+                model=model,
+                hrchy=hrchy
+            )
             models.append([model, score, diff, params])
 
         if self.exec_cfg['voting_yn']:
@@ -142,6 +149,12 @@ class TrainDev(object):
         models = sorted(models, key=lambda x: x[1])
 
         return models
+
+    def show_progress(self) -> None:
+        # Show prediction progress
+        self.cnt += 1
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
     def voting(self, models: list) -> float:
         score = self.err_val
@@ -164,10 +177,10 @@ class TrainDev(object):
         return feature_by_variable
 
     # Validation
-    def validation(self, data, model: str) -> Tuple[float, Sequence, dict]:
+    def validation(self, data, model: str, hrchy: list) -> Tuple[float, Sequence, dict]:
         # Train / Test Split method
         if self.validation_method == 'train_test':
-            score = self.train_test_validation(data=data, model=model)
+            score = self.train_test_validation(data=data, model=model, hrchy=hrchy)
 
         # Walk-forward method
         elif self.validation_method == 'walk_forward':
@@ -178,12 +191,26 @@ class TrainDev(object):
 
         return score
 
-    def train_test_validation(self, model: str, data) -> Tuple[float, Sequence, dict]:
+    def get_hyper_parameter(self, hrchy: list):
+        hyper_parameter = {}
+        if self.hyper_param_apply_option == 'best':
+            hyper_parameter = self.hyper_parameter['best']
+        elif self.hyper_param_apply_option == 'each':
+            hyper_parameter = self.hyper_parameter['each'].get(
+                '_'.join(hrchy),
+                self.hyper_parameter['best']
+            )
+
+        return hyper_parameter
+
+    def train_test_validation(self, model: str, data, hrchy: list) -> Tuple[float, Sequence, dict]:
         # Set test length
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
         # Split train & test dataset
         data_train, data_test = self.split_train_test(data=data, model=model, n_test=n_test)
+
+        hyper_parameter = self.get_hyper_parameter(hrchy=hrchy)
 
         # Data Scaling
         if self.exec_cfg['scaling_yn']:
@@ -206,7 +233,7 @@ class TrainDev(object):
             # Evaluation
             err, diff = self.evaluation(
                 model=model,
-                params=self.hyper_parameter[model],
+                params=hyper_parameter[model],
                 train=data_train,
                 test=data_test,
                 n_test=n_test
@@ -423,7 +450,7 @@ class TrainDev(object):
 
     def save_params(self, scores) -> None:
         if self.hyper_param_apply_option == 'best':
-            self.save_best_params(scores=scores)
+            self.save_most_cnt_params(scores=scores)
 
         elif self.hyper_param_apply_option == 'each':
             self.save_each_params(scores=scores)
@@ -451,8 +478,8 @@ class TrainDev(object):
 
         self.model_param_by_data_lvl_map['_'.join(hrchy)] = model_param_map
 
-    # Save best hyper-parameter based on counting
-    def save_best_params(self, scores) -> None:
+    # Save the most counted hyper-parameter set
+    def save_most_cnt_params(self, scores) -> None:
         # Count best params for each data level
         util.hrchy_recursion(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
@@ -509,18 +536,21 @@ class TrainDev(object):
         # Merge information
         # 1.Item code & name
         if self.hrchy['lvl']['item'] > 0:
-            result = pd.merge(result,
-                              self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
-                              on=self.hrchy['list']['item'][:self.hrchy['lvl']['item']],
-                              how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+            result = pd.merge(
+                result,
+                self.item_mst[config.COL_ITEM[: 2 * self.hrchy['lvl']['item']]].drop_duplicates(),
+                on=self.hrchy['list']['item'][:self.hrchy['lvl']['item']],
+                how='left', suffixes=('', '_DROP')
+            ).filter(regex='^(?!.*_DROP)')
 
         # 2.SP1 code & name
         if self.hrchy['lvl']['cust'] > 0:
-            result = pd.merge(result,
-                              self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
-                              on=self.hrchy['list']['cust'][:self.hrchy['lvl']['cust']],
-                              how='left', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
-            # result = result.fillna('-')
+            result = pd.merge(
+                result,
+                self.cust_grp[config.COL_CUST[: 2 * self.hrchy['lvl']['cust']]].drop_duplicates(),
+                on=self.hrchy['list']['cust'][:self.hrchy['lvl']['cust']],
+                how='left', suffixes=('', '_DROP')
+            ).filter(regex='^(?!.*_DROP)')
 
         # Fill null values
         result = util.fill_na(data=result, chk_list=self.fill_na_chk_list)
@@ -546,7 +576,7 @@ class TrainDev(object):
 
     @staticmethod
     # Save all of scores to dataframe
-    def score_to_df(hrchy: list, data) -> List[list]:
+    def conv_score_to_df(hrchy: list, data) -> List[list]:
         result = []
         for algorithm, err, accuracy, _ in data:
             # result.append(hrchy + [algorithm.upper(), score])
@@ -556,7 +586,7 @@ class TrainDev(object):
 
     @staticmethod
     # Save best scores to dataframe
-    def make_best_score_df(hrchy: list, data) -> list:
+    def conv_best_score_df(hrchy: list, data) -> list:
         result = []
         for algorithm, err, accuracy, _ in data:
             # result.append(hrchy + [algorithm.upper(), score])

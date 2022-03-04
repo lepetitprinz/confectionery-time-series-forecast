@@ -205,21 +205,21 @@ class PipelineDev(object):
                 self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
             # Save best parameters
-            # if self.exec_cfg['grid_search_yn']:
-            training.save_params(scores=scores)
+            if self.exec_cfg['grid_search_yn']:
+                training.save_params(scores=scores)
 
             # Make score result
             # All scores
             scores_db, score_info = training.make_score_result(
                 data=scores,
                 hrchy_key=self.hrchy['key'],
-                fn=training.score_to_df
+                fn=training.conv_score_to_df
             )
             # Best scores
             scores_best, score_best_info = training.make_score_result(
                 data=scores,
                 hrchy_key=self.hrchy['key'],
-                fn=training.make_best_score_df
+                fn=training.conv_best_score_df
             )
 
             scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')

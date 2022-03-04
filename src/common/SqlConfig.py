@@ -55,16 +55,17 @@ class SqlConfig(object):
               FROM VIEW_I002040
              WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
                AND USE_YN = 'Y'
-             GROUP BY ITEM_ATTR01_CD
-                    , ITEM_ATTR01_NM
-                    , ITEM_ATTR02_CD
-                    , ITEM_ATTR02_NM
-                    , ITEM_ATTR03_CD
-                    , ITEM_ATTR03_NM
-                    , ITEM_ATTR04_CD
-                    , ITEM_ATTR04_NM
-                    , ITEM_CD
-                    , ITEM_NM
+        """
+        return sql
+
+    @staticmethod
+    def sql_item_mega_yn():
+        sql = """
+            SELECT ITEM_CD
+                 , MEGA_YN
+              FROM M4S_i002040
+             WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
+               AND USE_YN = 'Y'
         """
         return sql
 
@@ -1016,6 +1017,43 @@ class SqlConfig(object):
                     GROUP BY ITEM_ATTR02_CD
                 ) RSLT """
 
+        return sql
+
+    @staticmethod
+    def sql_sales_plan_confirm(**kwargs):
+        sql = f"""
+            SELECT SP2_C_CD
+                 , SP2_CD
+                 , SP1_C_CD
+                 , SP1_CD AS CUST_GRP_CD
+                 , YYMMDD AS START_WEEK_DAY
+                 , WEEK
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR04_CD
+                 , ITEM_CD
+                 , SP1_QTY AS PLANED
+              FROM M4S_O202020
+             WHERE YYMMDD = '{kwargs['yymmdd']}'
+        """
+        return sql
+
+    @staticmethod
+    def sql_cust_nm_master():
+        sql = """
+            SELECT LINK_SALES_MGMT_CD AS CODE
+                 , SALES_MGMT_NM AS NAME
+              FROM M4S_I204030
+             WHERE USE_YN = 'Y'
+               AND SALES_MGMT_VRSN_ID = (
+                                         SELECT SALES_MGMT_VRSN_ID
+                                           FROM M4S_I204010 
+                                          WHERE USE_YN = 'Y'
+                                        )
+             GROUP BY LINK_SALES_MGMT_CD
+                    , SALES_MGMT_NM
+        """
         return sql
 
     # Sell-Out Monthly Group

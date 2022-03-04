@@ -90,6 +90,38 @@ def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
     return temp
 
 
+def hrchy_recursion_add_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
+    temp = None
+    if lvl == 0:
+        temp = {}
+        for key, val in df.items():
+            hrchy.append(key)
+            result = hrchy_recursion_add_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl+1, hrchy=hrchy)
+            hrchy.remove(key)
+            temp[key] = result
+
+    elif lvl < hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            hrchy.append(key_hrchy)
+            result = hrchy_recursion_add_key(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+            hrchy.remove(key_hrchy)
+            temp[key_hrchy] = result
+
+        return temp
+
+    elif lvl == hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            hrchy.append(key_hrchy)
+            result = fn(key_hrchy, val_hrchy)
+            hrchy.remove(key_hrchy)
+            temp[key_hrchy] = result
+        return temp
+
+    return temp
+
+
 def hrchy_recursion_with_none(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
     temp = None
     if lvl == 0:

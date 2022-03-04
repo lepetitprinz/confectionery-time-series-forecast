@@ -10,8 +10,8 @@ from baseline.deployment.PipelineDev import PipelineDev
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
-division = 'SELL_OUT'    # SELL_IN / SELL_OUT
-hist_to = '20220227'    # W08(20220213) / W07(20220206) / W06(20220130)
+division = 'SELL_IN'    # SELL_IN / SELL_OUT
+hist_to = '20220130'    # W08(20220213) / W07(20220206) / W06(20220130)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -30,8 +30,8 @@ step_cfg = {
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': True,
-    'cls_pred': False,
-    'cls_mdout': False
+    'cls_pred': True,
+    'cls_mdout': True
 }
 
 # Configuration
@@ -58,7 +58,7 @@ exec_cfg = {
 
     # Training configuration
     'scaling_yn': False,                      # Data scaling
-    'grid_search_yn': True,                   # Grid Search
+    'grid_search_yn': False,                   # Grid Search
     'voting_yn': True                         # Add voting algorithm
 }
 

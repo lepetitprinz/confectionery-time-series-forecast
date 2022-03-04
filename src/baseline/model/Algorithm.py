@@ -178,6 +178,9 @@ class Algorithm(object):
         # Make multi-step forecast
         yhat = model_fit.forecast(steps=pred_step)
 
+        # Convert nan values to zeros
+        yhat = yhat.fillna(0)
+
         return yhat
 
     #############################
