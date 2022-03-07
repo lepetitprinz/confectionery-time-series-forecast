@@ -1025,34 +1025,93 @@ class SqlConfig(object):
             SELECT SP2_C_CD
                  , SP2_CD
                  , SP1_C_CD
-                 , SP1_CD AS CUST_GRP_CD
-                 , YYMMDD AS START_WEEK_DAY
+                 , CUST_GRP_CD
+                 , START_WEEK_DAY
                  , WEEK
                  , ITEM_ATTR01_CD
                  , ITEM_ATTR02_CD
                  , ITEM_ATTR03_CD
                  , ITEM_ATTR04_CD
-                 , ITEM_CD
-                 , SP1_QTY AS PLANED
-              FROM M4S_O202020
-             WHERE YYMMDD = '{kwargs['yymmdd']}'
-        """
+                 , PLANED.ITEM_CD
+                 , PLANED
+                 , MEGA_YN
+              FROM (
+                    SELECT SP2_C_CD
+                         , SP2_CD
+                         , SP1_C_CD
+                         , SP1_CD AS CUST_GRP_CD
+                         , YYMMDD AS START_WEEK_DAY
+                         , WEEK
+                         , ITEM_ATTR01_CD
+                         , ITEM_ATTR02_CD
+                         , ITEM_ATTR03_CD
+                         , ITEM_ATTR04_CD
+                         , ITEM_CD
+                         , SP1_QTY AS PLANED
+                      FROM M4S_O202020
+                     WHERE YYMMDD = '{kwargs['yymmdd']}'
+                    ) PLANED
+             INNER JOIN (
+                         SELECT ITEM_CD
+                              , MEGA_YN
+                           FROM M4S_I002040
+                        ) ITEM
+                ON PLANED.ITEM_CD = ITEM.ITEM_CD
+            """
         return sql
 
     @staticmethod
     def sql_cust_nm_master():
         sql = """
-            SELECT LINK_SALES_MGMT_CD AS CODE
+            SELECT SALES_MGMT_CD AS CODE
                  , SALES_MGMT_NM AS NAME
+                 , SALES_MGMT_TYPE_CD AS TYPE
               FROM M4S_I204030
-             WHERE USE_YN = 'Y'
+             WHERE SALES_MGMT_TYPE_CD = 'SP2_C'
                AND SALES_MGMT_VRSN_ID = (
                                          SELECT SALES_MGMT_VRSN_ID
-                                           FROM M4S_I204010 
+                                           FROM M4S_I204010
                                           WHERE USE_YN = 'Y'
                                         )
-             GROUP BY LINK_SALES_MGMT_CD
+             UNION
+            SELECT RIGHT(SALES_MGMT_CD, 2) AS SALES_MGMT_CD
+                 , SALES_MGMT_NM
+                 , SALES_MGMT_TYPE_CD
+              FROM M4S_I204030
+            WHERE SALES_MGMT_TYPE_CD = 'SP2'
+              AND SALES_MGMT_VRSN_ID = (
+                                        SELECT SALES_MGMT_VRSN_ID
+                                          FROM M4S_I204010
+                                         WHERE USE_YN = 'Y'
+                                        )
+             UNION
+            SELECT RIGHT(SALES_MGMT_CD, 3) AS SALES_MGMT_CD
+                 , SALES_MGMT_NM
+                 , SALES_MGMT_TYPE_CD
+              FROM M4S_I204030
+             WHERE SALES_MGMT_TYPE_CD = 'SP1_C'
+               AND SALES_MGMT_VRSN_ID = (
+                                         SELECT SALES_MGMT_VRSN_ID
+                                           FROM M4S_I204010
+                                          WHERE USE_YN = 'Y'
+                                       )
+             GROUP BY RIGHT(SALES_MGMT_CD, 3)
                     , SALES_MGMT_NM
+                    , SALES_MGMT_TYPE_CD
+            UNION
+           SELECT RIGHT(SALES_MGMT_CD, 4) AS SALES_MGMT_CD
+                , SALES_MGMT_NM
+                , SALES_MGMT_TYPE_CD
+             FROM M4S_I204030
+            WHERE SALES_MGMT_TYPE_CD = 'SP1'
+              AND SALES_MGMT_VRSN_ID = (
+                                        SELECT SALES_MGMT_VRSN_ID
+                                          FROM M4S_I204010
+                                         WHERE USE_YN = 'Y'
+                                       )
+            GROUP BY RIGHT(SALES_MGMT_CD, 4)
+                   , SALES_MGMT_NM
+                   , SALES_MGMT_TYPE_CD
         """
         return sql
 

@@ -4,13 +4,12 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineAccuracy import PipelineAccuracy
 
-hist_to = '20220213'    # W08(20220213) / W07(20220206) / W06(20220130)
+hist_to = '20220213'    # W09(20220220) / W08(20220213) / W07(20220206) / W06(20220130)
 exec_kind = 'dev'
-pred_load_option = 'csv'
+pred_load_option = 'csv'    # db / csv
 item_lvl_list = [5]
 division_list = ['SELL_OUT']    # ['SELL_OUT']
 
-# root_path = os.path.join('/', 'opt', 'DF', 'fcst')
 root_path = os.path.join('..', '..')
 save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
@@ -22,9 +21,10 @@ step_cfg = {
 }
 
 exec_cfg = {
+    'save_db_yn': True,
     'cycle_yn': False,
-    'rm_zero_yn': True,                   # Remove zeros
-    'filter_sales_threshold_yn': True,    # Filter based on sales threshold
+    'rm_zero_yn': False,                   # Remove zeros
+    'filter_sales_threshold_yn': False,    # Filter based on sales threshold
     'pick_specific_biz_yn': False,         # Pick Specific business code
     'pick_specific_sp1_yn': False,        # Pick Specific sp1 list
 }
@@ -40,5 +40,6 @@ pipe_acc = PipelineAccuracy(
     item_lvl_list=item_lvl_list,
     hist_to=hist_to
 )
-
+print(f"Apply end date of history: {hist_to}")
 pipe_acc.run()
+print("Calculating accuracy is finished")

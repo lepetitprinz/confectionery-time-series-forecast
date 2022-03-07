@@ -8,6 +8,10 @@ from dao.OpenAPIWeather import OpenAPIWeather
 ##############################
 # Weather API
 ##############################
+print('------------------------------------------------')
+print('Weather API')
+print('------------------------------------------------')
+
 # Check start time
 print("Start Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -26,7 +30,7 @@ data_weather = api_weather.get_api_dataset()
 # Insert into db of API dataset
 print("Save the API dataset")
 # print(data_weather)
-api_weather.save_result_on_db(data=data_weather)
+# api_weather.save_result_on_db(data=data_weather)
 
 # Check end time
 print("End Time: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

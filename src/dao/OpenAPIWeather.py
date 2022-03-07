@@ -113,7 +113,7 @@ class OpenAPIWeather(object):
 
         converted_list = []
         for exg in self.exg_list:
-            data_exg = data[['date', 'loc_cd', 'loc_nm', exg]]
+            data_exg = data[['date', 'loc_cd', 'loc_nm', exg]].copy()
             data_exg['date'] = pd.to_datetime(data_exg['date']).dt.strftime('%Y%m%d')
             data_exg['project_cd'] = 'ENT001'
             data_exg['idx_cd'] = exg.upper()

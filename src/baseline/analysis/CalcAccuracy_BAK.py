@@ -1,3 +1,4 @@
+import common.util as util
 import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
@@ -7,7 +8,6 @@ from typing import Dict, Tuple
 import datetime
 import numpy as np
 import pandas as pd
-from collections import defaultdict
 
 import matplotlib.pyplot as plt
 # import matplotlib.font_manager as fm
@@ -18,7 +18,6 @@ plt.style.use('fivethirtyeight')
 
 
 class CalcAccuracy(object):
-    item_cd_list = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd']
     col_fixed = ['division_cd', 'start_week_day', 'week']
     pick_sp1 = {
         # SP1: 도봉 / 안양 / 동울산 / 논산 / 동작 / 진주 / 이마트 / 롯데슈퍼 / 7-11
@@ -36,8 +35,7 @@ class CalcAccuracy(object):
         }
     }
 
-    def __init__(self, exec_kind: str, step_cfg: dict, exec_cfg: dict, date_cfg: dict, data_cfg: dict,
-                 acc_classify_standard=0.25):
+    def __init__(self, exec_kind: str, step_cfg: dict, exec_cfg: dict, date_cfg: dict, data_cfg: dict):
         # Object instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
@@ -66,7 +64,6 @@ class CalcAccuracy(object):
         self.hist_date_range = []
 
         # Evaluation instance attribute
-        self.acc_classify_standard = acc_classify_standard
         self.week_compare = 1             # Compare week range
         self.sales_threshold = 5          # Minimum sales quantity
         self.eval_threshold = 0.5         # Accuracy: Success or not
@@ -79,27 +76,20 @@ class CalcAccuracy(object):
         self.init()
 
         # Load the dataset
-        sales_compare, sales_hist, pred, plan = self.load_dataset()
+        sales_compare, sales_hist, pred = self.load_dataset()
 
         # Preprocess the dataset
         if self.step_cfg['cls_prep']:
-            sales_hist, sales_compare, plan = self.preprocessing(
-                sales_hist=sales_hist,
-                sales_compare=sales_compare,
-                plan=plan
-            )
-
-        # Filter forecast sku
-        pred = self.filter_sku(pred=pred, plan=plan)
+            sales_hist, sales_compare = self.preprocessing(sales_hist=sales_hist, sales_compare=sales_compare)
 
         # Compare result
         result = None
         if self.step_cfg['cls_comp']:
-            result = self.compare_result(sales=sales_compare, pred=pred, plan=plan)
+            result = self.compare_result(sales=sales_compare, pred=pred)
 
         # Change data type (string to datetime)
-        # sales_hist = self.conv_to_datetime(data=sales_hist, col='start_week_day')
-        # result = self.conv_to_datetime(data=result, col='start_week_day')
+        sales_hist = self.conv_to_datetime(data=sales_hist, col='start_week_day')
+        result = self.conv_to_datetime(data=result, col='start_week_day')
 
         if self.exec_cfg['pick_specific_biz_yn']:
             result = result[result['item_attr01_cd'] == self.data_cfg['item_attr01_cd']]
@@ -146,8 +136,7 @@ class CalcAccuracy(object):
     #
     #     grp_avg_pivot.to_csv(path)
 
-    def preprocessing(self, sales_hist: pd.DataFrame, sales_compare: pd.DataFrame, plan: pd.DataFrame) \
-            -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def preprocessing(self, sales_hist: pd.DataFrame, sales_compare: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         # Resample data
         sales_compare = self.resample_sales(data=sales_compare)
         sales_hist = self.resample_sales(data=sales_hist)
@@ -161,17 +150,7 @@ class CalcAccuracy(object):
             print(f"Filter sales under {self.sales_threshold} quantity")
             sales_compare = self.filter_sales_threshold(hist=sales_hist, recent=sales_compare)
 
-        # Fill na
-        plan = plan.fillna(0)
-
-        return sales_hist, sales_compare, plan
-
-    def filter_sku(self, pred, plan) -> pd.DataFrame:
-        mask_col = ['cust_grp_cd', 'item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd']
-        plan_mask = plan[mask_col].drop_duplicates().copy()
-        pred = pd.merge(pred, plan_mask, how='inner', on=mask_col)
-
-        return pred
+        return sales_hist, sales_compare
 
     def pick_specific_sp1(self, data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
         pick_sp1 = self.pick_sp1[self.data_cfg['item_attr01_cd']]
@@ -223,29 +202,21 @@ class CalcAccuracy(object):
         self.set_level(item_lvl=self.data_cfg['item_lvl'])
         self.set_hrchy()        # Set the hierarchy
         self.get_item_info()    # Get item information
-        self.set_cust_info()    # Get customer information
+        self.get_cust_info()    # Get customer information
         self.make_dir()         # Make the directory
 
-    def set_cust_info(self) -> None:
-        # cust_info = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
-        # cust_info['cust_grp_cd'] = cust_info['cust_grp_cd'].astype(str)
-        # cust_info = cust_info.set_index('cust_grp_cd')['cust_grp_nm'].to_dict()
-        cust_nm = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_nm_master())
-        cust_nm['code'] = cust_nm['code'].astype(str)
-        cust_map = defaultdict(lambda: defaultdict(dict))
-        for cust_type, code, name in zip(cust_nm['type'], cust_nm['code'], cust_nm['name']):
-            cust_map[cust_type][code] = name
-        # cust_nm = cust_nm.set_index('code')['name'].to_dict()
+    def get_cust_info(self) -> None:
+        cust_info = self.io.get_df_from_db(sql=self.sql_conf.sql_cust_grp_info())
+        cust_info['cust_grp_cd'] = cust_info['cust_grp_cd'].astype(str)
+        cust_info = cust_info.set_index('cust_grp_cd')['cust_grp_nm'].to_dict()
 
-        self.cust_map = cust_map
+        self.cust_map = cust_info
 
     def get_item_info(self) -> None:
-        # Get the item master dataset
         item_info = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
         item_info.columns = [config.HRCHY_CD_TO_DB_CD_MAP.get(col, col) for col in item_info.columns]
         item_info.columns = [config.HRCHY_SKU_TO_DB_SKU_MAP.get(col, col) for col in item_info.columns]
 
-        # Change data type
         if 'item_cd' in item_info.columns:
             item_info['item_cd'] = item_info['item_cd'].astype(str)
 
@@ -256,10 +227,10 @@ class CalcAccuracy(object):
             item_col_list.extend(col)
 
         item_info = item_info[item_col_list].drop_duplicates()
-
-        # Add mege_yn information
-        item_mega_info = self.io.get_df_from_db(sql=self.sql_conf.sql_item_mega_yn())
-        item_info = pd.merge(item_info, item_mega_info, how='inner', on='item_cd')
+        # item_lvl_cd = self.hrchy['apply'][-1]
+        # item_lvl_nm = item_lvl_cd[:-2] + 'nm'
+        # item_info = item_info[[item_lvl_cd, item_lvl_nm]].drop_duplicates()
+        # item_code_map = item_info.set_index(item_lvl_cd)[item_lvl_nm].to_dict()
 
         self.item_info = item_info
 
@@ -344,7 +315,7 @@ class CalcAccuracy(object):
 
         return date
 
-    def load_dataset(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def load_dataset(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         # load sales dataset
         info_sales_compare = {
             'division_cd': self.division,
@@ -367,7 +338,7 @@ class CalcAccuracy(object):
         elif self.division == 'SELL_OUT':  # Sell-Out Dataset
             sales_hist = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_week_hist(**info_sales_hist))
 
-        # Load prediction dataset
+        # load prediction dataset
         pred = None
         if self.data_cfg['load_option'] == 'db':
             info_pred = {
@@ -392,11 +363,7 @@ class CalcAccuracy(object):
 
         pred = self.filter_col(data=pred)
 
-        # Load plan dataset
-        info_plan = {'yymmdd': self.date_sales['compare']['from']}
-        plan = self.io.get_df_from_db(sql=self.sql_conf.sql_sales_plan_confirm(**info_plan))
-
-        return sales_compare, sales_hist, pred, plan
+        return sales_compare, sales_hist, pred
 
     def filter_col(self, data: pd.DataFrame) -> pd.DataFrame:
         filter_col = self.hrchy['apply'] + self.col_fixed + ['pred']
@@ -425,188 +392,61 @@ class CalcAccuracy(object):
 
         return df
 
-    def merge_result(self, dividend: pd.DataFrame, divisor: pd.DataFrame, merge_col: list) -> pd.DataFrame:
+    def merge_result(self, sales: pd.DataFrame, pred: pd.DataFrame) -> pd.DataFrame:
+        merge_col = self.hrchy['apply'] + self.col_fixed
         merged = pd.merge(
-            divisor,
-            dividend,
+            pred,
+            sales,
             on=merge_col,
             how='inner'    # Todo: choose left or inner
         )
-        merged = merged.fillna(0)
+        merged['pred'] = merged['pred'].fillna(0)
+        merged['sales'] = merged['sales'].fillna(0)
 
         return merged
 
-    def compare_result(self, sales: pd.DataFrame, pred: pd.DataFrame, plan: pd.DataFrame) -> pd.DataFrame:
-        fcst_accuracy = self.calc_fcst_accuracy(dividend=sales, divisor=pred, kind='fcst')
-        plan_accuracy = self.calc_plan_accuracy(dividend=sales, divisor=plan, kind='plan')
+    def compare_result(self, sales: pd.DataFrame, pred: pd.DataFrame) -> pd.DataFrame:
+        # Merge dataset
+        data = self.merge_result(sales=sales, pred=pred)
 
-        merged_col = ['cust_grp_cd'] + self.item_cd_list
-        merged = pd.merge(
-            fcst_accuracy, plan_accuracy, how='inner', on=merged_col, suffixes=('', '_DROP')
-        ).filter(regex='^(?!.*_DROP)')
+        # Calculate the accuracy
+        data = self.calc_accuracy(data=data)
+        data = self.eval_result(data=data)
 
         # Add name information
-        merged = self.add_information(data=merged)
+        # Add SP1 name
+        data['cust_grp_nm'] = [self.cust_map.get(code, code) for code in data['cust_grp_cd'].values]
 
-        # Save result on db
-        if self.exec_cfg['save_db_yn']:
-            self.save_result_on_db(data=merged)
+        # Add item names
+        data = pd.merge(data, self.item_info, how='left', on=self.hrchy['list']['item'])
 
-        # Save the result to file
-        self.save_result_to_file(data=merged)
-
-        return merged
-
-    def save_result_on_db(self, data):
-        #
-        data_db = data.copy()
-        data_db = data_db.rename(columns={
-            'cust_grp_cd': 'sp1_cd',
-            'cust_grp_nm': 'sales_mgmt_nm',
-        })
-
-        data_db['project_cd'] = 'ENT001'
-        data_db['data_vrsn_cd'] = self.data_vrsn_cd
-        data_db['division_cd'] = self.division
-        data_db['yymmdd'] = self.date_cfg['date']['compare']['from']
-        data_db['sales_mgmt_cd'] = data_db['sp2_c_cd'] + data_db['sp2_cd'] + data_db['sp1_c_cd'] + data_db['sp1_cd']
-
-        self.io.insert_to_db(df=data_db, tb_name='M4S_O110630')
-
-    def save_result_to_file(self, data: pd.DataFrame) -> None:
-        # Reorder and filter columns
-        reordered = self.reorder_filter_column(data=data)
+        view_col = ['cust_grp_cd', 'cust_grp_nm'] + list(self.item_info.columns) + ['sales', 'pred', 'accuracy']
+        data_save = data[view_col]
 
         # Save the result
         path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
-                            '_' + str(self.hrchy['lvl']['item']) + '_' + str(self.acc_classify_standard) + '.csv')
-        reordered.to_csv(path, index=False, encoding='cp949')
-
-    def calc_fcst_accuracy(self, dividend: pd.DataFrame, divisor: pd.DataFrame, kind: str):
-        # Merge dataset
-        merge_col = self.hrchy['apply'] + self.col_fixed
-        data = self.merge_result(dividend=dividend, divisor=divisor, merge_col=merge_col)
-
-        # Calculate the accuracy
-        data = self.calc_accuracy(data=data, dividend='sales', divisor='pred')
-
-        data = self.classify_accuracy(data=data, kind=kind)
-
-        grp_col = ['cust_grp_cd'] + self.item_cd_list
-        data = self.eval_result_dev(data=data, grp_col=grp_col, kind=kind)
-        data = data.reset_index()
+                            '_' + str(self.hrchy['lvl']['item']) + '.csv')
+        data_save.to_csv(path, index=False, encoding='cp949')
 
         return data
-
-    def calc_plan_accuracy(self, dividend: pd.DataFrame, divisor: pd.DataFrame, kind: str):
-        # Merge dataset
-        merge_col = self.hrchy['apply'] + ['start_week_day', 'week']
-        data = self.merge_result(dividend=dividend, divisor=divisor, merge_col=merge_col)
-
-        #
-        mega = data.groupby(by=['item_attr03_cd', 'mega_yn'])['item_cd'].count().reset_index()
-        mega = mega[['item_attr03_cd', 'mega_yn']].copy()
-
-        # Calculate the accuracy
-        data = self.calc_accuracy(data=data, dividend='sales', divisor='planed')
-
-        # Classify the accuracy
-        data = self.classify_accuracy(data=data, kind=kind)
-
-        grp_col = ['sp2_c_cd', 'sp2_cd', 'sp1_c_cd', 'cust_grp_cd'] + self.item_cd_list
-        data = self.eval_result_dev(data=data, grp_col=grp_col, kind=kind)
-        data = data.reset_index()
-
-        # Merge mega information
-        data = pd.merge(data, mega, how='left', on='item_attr03_cd')
-
-        return data
-
-    def add_information(self, data):
-        # Add naming
-        data['sp2_c_nm'] = [self.cust_map['SP2_C'].get(code, code) for code in data['sp2_c_cd'].values]
-        data['sp2_nm'] = [self.cust_map['SP2'].get(code, code) for code in data['sp2_cd'].values]
-        data['sp1_c_nm'] = [self.cust_map['SP1_C'].get(code, code) for code in data['sp1_c_cd'].values]
-        data['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in data['cust_grp_cd'].values]
-
-        # Add item names
-        item_info = self.item_info[self.item_cd_list + [code[:-2] + 'nm' for code in self.item_cd_list]]\
-            .drop_duplicates()\
-            .copy()
-        data = pd.merge(data, item_info, how='left', on=self.item_cd_list)
-
-        # view_col = ['cust_grp_cd', 'cust_grp_nm'] + list(self.item_info.columns) + ['sales', 'pred', 'accuracy']
-        # data = data[view_col]
-
-        return data
-
-    def reorder_filter_column(self, data: pd.DataFrame):
-        cust = ['sp2_c_nm', 'sp2_nm', 'sp1_c_nm', 'cust_grp_nm']
-        item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'mega_yn']
-        fcst = ['level_cnt', 'cover_fcst_cnt', 'less_fcst_cnt', 'over_fcst_cnt', 'zero_fcst_cnt',
-                'cover_fcst_rate', 'less_fcst_rate', 'over_fcst_rate', 'zero_fcst_rate']
-        plan = ['cover_plan_cnt', 'less_plan_cnt', 'over_plan_cnt', 'zero_plan_cnt',
-                'cover_plan_rate', 'less_plan_rate', 'over_plan_rate', 'zero_plan_rate']
-
-        data_reorder = data[cust + item + fcst + plan].copy()
-
-        return data_reorder
-
-    def classify_accuracy(self, data: pd.DataFrame, kind: str) -> pd.DataFrame:
-        condition = [
-            data['sales'] == 0,
-            data['accuracy'] < 1 - self.acc_classify_standard,
-            data['accuracy'] > 1 + self.acc_classify_standard
-        ]
-        label = kind + '_cnt'
-        values = ['zero_' + label, 'less_' + label, 'over_' + label]
-        data['classification'] = np.select(condlist=condition, choicelist=values, default=None)
-        data['classification'] = data['classification'].fillna('cover_' + label)
-
-        return data
-
-    def eval_result_dev(self, data: pd.DataFrame, grp_col: list, kind: str) -> pd.DataFrame:
-        level_cnt = data.groupby(by=grp_col)['item_cd']\
-            .count()\
-            .rename('level_cnt')
-
-        classify_cnt = data.groupby(by=grp_col + ['classification'])['item_cd']\
-            .count()\
-            .astype(int)\
-            .reset_index()\
-            .rename(columns={'item_cd': 'classify_cnt'})
-
-        classify_cnt = classify_cnt.pivot(
-            index=grp_col,
-            columns=['classification'],
-            values='classify_cnt'
-        ).fillna(0)
-
-        tot_cnt = pd.merge(level_cnt, classify_cnt, left_index=True, right_index=True)
-
-        if 'zero_' + kind + '_cnt' not in tot_cnt.columns:
-            tot_cnt['zero_' + kind + '_cnt'] = 0
-
-        # Calculate rates
-        for classify_kind in ['cover', 'less', 'over', 'zero']:
-            label = classify_kind + '_' + kind
-            tot_cnt[label + '_rate'] = np.round(
-                tot_cnt[label + '_cnt'] / tot_cnt['level_cnt'], 2)
-
-        return tot_cnt
 
     @staticmethod
-    def calc_accuracy(data, dividend: str, divisor: str) -> pd.DataFrame:
+    def calc_accuracy(data) -> pd.DataFrame:
         conditions = [
-            data[divisor] == 0,
-            data[dividend] != data[divisor]
+            data['sales'] == data['pred'],
+            data['sales'] == 0,
+            data['sales'] != data['pred']
         ]
         # values = [1, 0, data['pred'] / data['sales']]
-        values = [0, data[dividend] / data[divisor]]    # Todo: logic changed (22.02.09)
+        values = [1, 0, data['sales'] / data['pred']]    # Todo: Change logic (22.02.09)
         data['accuracy'] = np.select(conditions, values)
 
         # customize accuracy
-        # data = util.customize_accuracy(data=data, col='accuracy')
+        data = util.customize_accuracy(data=data, col='accuracy')
+        # accuracy = np.where(accuracy > 1, 2 - accuracy, accuracy)
+        # accuracy = np.where(accuracy < 0, 0, accuracy)
+        #
+        # data['accuracy'] = accuracy
 
         return data
 

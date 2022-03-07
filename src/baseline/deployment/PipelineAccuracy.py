@@ -7,7 +7,8 @@ class PipelineAccuracy(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
     def __init__(self, exec_kind: str, step_cfg: dict, exec_cfg: dict, root_path: str, save_path: str,
-                 pred_load_option: str, division_list: list, item_lvl_list: list, hist_to=''):
+                 pred_load_option: str, division_list: list, item_lvl_list: list, hist_to='',
+                 acc_classify_standard=0.25):
         # Execution instance attribute
         self.exec_kind = exec_kind
         self.step_cfg = step_cfg
@@ -21,6 +22,7 @@ class PipelineAccuracy(object):
         self.division_list = division_list
         self.item_lvl_list = item_lvl_list
         self.date_cfg = {}
+        self.acc_classify_standard = acc_classify_standard
 
         # Date instance attribute
         self.hist_range_week = 156
@@ -42,7 +44,8 @@ class PipelineAccuracy(object):
                     step_cfg=self.step_cfg,
                     exec_cfg=self.exec_cfg,
                     date_cfg=self.date_cfg,
-                    data_cfg=data_cfg
+                    data_cfg=data_cfg,
+                    acc_classify_standard=self.acc_classify_standard
                 )
                 print("---------------------------------")
                 print("Calculate Accuracy")
