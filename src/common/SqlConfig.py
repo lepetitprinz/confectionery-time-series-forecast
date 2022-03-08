@@ -1115,6 +1115,94 @@ class SqlConfig(object):
         """
         return sql
 
+    @staticmethod
+    def sql_pred_plan_sell_in(**kwargs):
+        sql = f"""
+            SELECT SP2_C_CD
+                 , SP2_CD
+                 , SP1_C_CD
+                 , CUST_GRP_CD
+                 , START_WEEK_DAY
+                 , WEEK
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR04_CD
+                 , COMPARE.ITEM_CD
+                 , ISNULL(PRED, 0) AS PRED
+                 , ISNULL(PLANED, 0) AS PLANED
+                 , MEGA_YN
+              FROM (
+                    SELECT SP2_C_CD
+                         , SP2_CD
+                         , SP1_C_CD
+                         , SP1_CD AS CUST_GRP_CD
+                         , YYMMDD AS START_WEEK_DAY
+                         , WEEK
+                         , ITEM_ATTR01_CD
+                         , ITEM_ATTR02_CD
+                         , ITEM_ATTR03_CD
+                         , ITEM_ATTR04_CD
+                         , ITEM_CD
+                         , DF_IN_QTY AS PRED
+                         , SP1_QTY AS PLANED
+                      FROM M4S_O202020
+                     WHERE YYMMDD = '{kwargs['yymmdd']}'
+                    ) COMPARE
+             INNER JOIN (
+                         SELECT ITEM_CD
+                              , MEGA_YN
+                           FROM M4S_I002040
+                        ) ITEM
+                ON COMPARE.ITEM_CD = ITEM.ITEM_CD
+        """
+        return sql
+
+    @staticmethod
+    def sql_pred_plan_sell_out(**kwargs):
+        sql = f"""
+            SELECT SP2_C_CD
+                 , SP2_CD
+                 , SP1_C_CD
+                 , CUST_GRP_CD
+                 , START_WEEK_DAY
+                 , WEEK
+                 , ITEM_ATTR01_CD
+                 , ITEM_ATTR02_CD
+                 , ITEM_ATTR03_CD
+                 , ITEM_ATTR04_CD
+                 , COMPARE.ITEM_CD
+                 , ISNULL(PRED, 0) AS PRED
+                 , ISNULL(PLANED, 0) AS PLANED
+                 , MEGA_YN
+              FROM (
+                    SELECT SP2_C_CD
+                         , SP2_CD
+                         , SP1_C_CD
+                         , SP1_CD AS CUST_GRP_CD
+                         , YYMMDD AS START_WEEK_DAY
+                         , WEEK
+                         , ITEM_ATTR01_CD
+                         , ITEM_ATTR02_CD
+                         , ITEM_ATTR03_CD
+                         , ITEM_ATTR04_CD
+                         , ITEM_CD
+                         , DF_OUT_QTY AS PRED
+                         , SP1_QTY AS PLANED
+                      FROM M4S_O202020
+                     WHERE YYMMDD = '{kwargs['yymmdd']}'
+                       AND DF_OUT_QTY <> 0
+                    ) COMPARE
+             INNER JOIN (
+                         SELECT ITEM_CD
+                              , MEGA_YN
+                           FROM M4S_I002040
+                        ) ITEM
+                ON COMPARE.ITEM_CD = ITEM.ITEM_CD
+        """
+        return sql
+
+
     # Sell-Out Monthly Group
     @staticmethod
     def sql_sell_out_month_grp_test(**kwargs):

@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.analysis.CalcAccuracy import CalcAccuracy
+from baseline.analysis.CalcAccuracy_BAK_2 import CalcAccuracy
 
 hist_to = '20220213'    # W08(20220213) / W07(20220206) / W06(20220130)
 exec_kind = 'dev'

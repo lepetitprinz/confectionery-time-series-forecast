@@ -1,4 +1,4 @@
-from baseline.analysis.CalcAccuracy import CalcAccuracy
+from baseline.analysis.CalcAccuracy import CalcAccuracyBatch
 
 import datetime
 
@@ -6,16 +6,14 @@ import datetime
 class PipelineAccuracy(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
-    def __init__(self, exec_kind: str, step_cfg: dict, exec_cfg: dict, root_path: str, save_path: str,
-                 pred_load_option: str, division_list: list, item_lvl_list: list, hist_to='',
+    def __init__(self, exec_kind: str, exec_cfg: dict, root_path: str, save_path: str,
+                 division_list: list, item_lvl_list: list, hist_to='',
                  acc_classify_standard=0.25):
         # Execution instance attribute
         self.exec_kind = exec_kind
-        self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
         self.root_path = root_path
         self.save_path = save_path
-        self.pred_load_option = pred_load_option
 
         # Data instance attribute
         self.hist_to = hist_to
@@ -39,9 +37,8 @@ class PipelineAccuracy(object):
                 data_cfg = self.get_data_cfg(division=division, item_lvl=item_lvl)
 
                 # Initiate class
-                acc = CalcAccuracy(
+                acc = CalcAccuracyBatch(
                     exec_kind=self.exec_kind,
-                    step_cfg=self.step_cfg,
                     exec_cfg=self.exec_cfg,
                     date_cfg=self.date_cfg,
                     data_cfg=data_cfg,
@@ -116,7 +113,6 @@ class PipelineAccuracy(object):
         data_cfg = {
             'division': division,    # SELL_IN / SELL_OUT
             'item_lvl': item_lvl,
-            'load_option': self.pred_load_option,
             'root_path': self.root_path,
             'save_path': self.save_path
         }
