@@ -365,6 +365,28 @@ def conv_col_lower(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def conv_json_to_dict(path: str) -> dict:
+    # Opening JSON file
+    with open(path) as json_file:
+        data = json.load(json_file)
+
+    return data
+
+
+def func_accuracy(data, dividend: str, divisor: str) -> np.array:
+    conditions = [
+        data[dividend] == data[divisor],
+        data[divisor] == 0,
+        data[dividend] != data[divisor]
+    ]
+    # values = [1, 0, data['pred'] / data['sales']]
+    values = [1, 0, data[dividend] / data[divisor]]
+
+    result = np.select(conditions, values)
+
+    return result
+
+
 def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
     """
     recalculate accuracy
@@ -376,13 +398,5 @@ def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
     acc = np.where(acc < 0, 0, acc)    # minus accuracy values convert to zero
 
     data[col] = acc
-
-    return data
-
-
-def conv_json_to_dict(path: str) -> dict:
-    # Opening JSON file
-    with open(path) as json_file:
-        data = json.load(json_file)
 
     return data

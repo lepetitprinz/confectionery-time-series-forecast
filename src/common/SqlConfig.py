@@ -464,8 +464,7 @@ class SqlConfig(object):
     @staticmethod
     def sql_sell_week_compare(**kwargs):
         sql = f"""
-            SELECT DIVISION_CD
-                 , CUST_GRP_CD
+            SELECT CUST_GRP_CD
                  , ITEM_ATTR01_CD
                  , ITEM_ATTR02_CD
                  , ITEM_ATTR03_CD
@@ -1129,6 +1128,7 @@ class SqlConfig(object):
                  , ITEM_ATTR03_CD
                  , ITEM_ATTR04_CD
                  , COMPARE.ITEM_CD
+                 , ISNULL(SALES, 0) AS SALES
                  , ISNULL(PRED, 0) AS PRED
                  , ISNULL(PLANED, 0) AS PLANED
                  , MEGA_YN
@@ -1144,6 +1144,7 @@ class SqlConfig(object):
                          , ITEM_ATTR03_CD
                          , ITEM_ATTR04_CD
                          , ITEM_CD
+                         , RST_IN_QTY AS SALES
                          , DF_IN_QTY AS PRED
                          , SP1_QTY AS PLANED
                       FROM M4S_O202020
@@ -1172,6 +1173,7 @@ class SqlConfig(object):
                  , ITEM_ATTR03_CD
                  , ITEM_ATTR04_CD
                  , COMPARE.ITEM_CD
+                 , ISNULL(SALES, 0) AS SALES
                  , ISNULL(PRED, 0) AS PRED
                  , ISNULL(PLANED, 0) AS PLANED
                  , MEGA_YN
@@ -1187,11 +1189,12 @@ class SqlConfig(object):
                          , ITEM_ATTR03_CD
                          , ITEM_ATTR04_CD
                          , ITEM_CD
+                         , RST_OUT_QTY AS SALES
                          , DF_OUT_QTY AS PRED
                          , SP1_QTY AS PLANED
                       FROM M4S_O202020
                      WHERE YYMMDD = '{kwargs['yymmdd']}'
-                       AND DF_OUT_QTY <> 0
+                       AND SP1_CD IN ('1065', '1066', '1067', '1073', '1074', '1075', '1076')
                     ) COMPARE
              INNER JOIN (
                          SELECT ITEM_CD

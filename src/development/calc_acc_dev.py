@@ -6,7 +6,6 @@ from baseline.deployment.PipelineAccuracy import PipelineAccuracy
 
 hist_to = '20220220'    # W09(20220220) / W08(20220213) / W07(20220206) / W06(20220130)
 exec_kind = 'dev'
-pred_load_option = 'db'    # db / csv
 item_lvl_list = [5]
 division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
 root_path = os.path.join('/', 'opt', 'DF', 'fcst')
@@ -32,9 +31,7 @@ exec_cfg = {
 
 pipe_acc = PipelineAccuracy(
     exec_kind=exec_kind,
-    step_cfg=step_cfg,
     exec_cfg=exec_cfg,
-    pred_load_option=pred_load_option,
     root_path=root_path,
     save_path=save_path,
     division_list=division_list,
@@ -45,7 +42,10 @@ pipe_acc = PipelineAccuracy(
 print("")
 print("Calculate the accuracy")
 print(f"Apply end date of history: {hist_to}")
-print(f"Execution type: {exec_kind} / Prediction result load option: {pred_load_option} ")
+print(f"Execution type: {exec_kind}")
 print(f"Accuracy classification standard: {str(acc_classify_standard)}")
+
+# Run
 pipe_acc.run()
+
 print("Calculating accuracy is finished")
