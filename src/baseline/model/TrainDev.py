@@ -81,6 +81,7 @@ class TrainDev(object):
         self.model_param_by_data_lvl_map = {}
 
         # Training Configuration
+        self.n_test = 4
         self.fixed_n_test = 4
         self.validation_method = 'train_test'    # Train-test / Walk-forward
 
@@ -205,12 +206,15 @@ class TrainDev(object):
 
     def train_test_validation(self, model: str, data, hrchy: list) -> Tuple[float, Sequence, dict]:
         # Set test length
-        n_test = ast.literal_eval(self.model_info[model]['label_width'])
+        n_test = self.n_test
+        # n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
         # Split train & test dataset
         data_train, data_test = self.split_train_test(data=data, model=model, n_test=n_test)
 
-        hyper_parameter = self.get_hyper_parameter(hrchy=hrchy)
+        hyper_parameter = {}
+        if not self.exec_cfg['grid_search_yn']:
+            hyper_parameter = self.get_hyper_parameter(hrchy=hrchy)
 
         # Data Scaling
         if self.exec_cfg['scaling_yn']:
@@ -464,7 +468,7 @@ class TrainDev(object):
         )
         file_path = os.path.join(
             self.path_root, 'parameter', 'data_lvl_model_param_' + self.division + '_' +
-                                         self.hrchy['key'][:-1] + '.json'
+                                         self.hrchy['key'][:-1] + '_' + str(self.n_test) + '.json'
         )
         self.io.save_object(data=self.model_param_by_data_lvl_map, data_type='json', file_path=file_path)
 

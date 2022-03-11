@@ -66,26 +66,26 @@ pipeline.run()
 print("Grid Search End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 print("")
 
-# print('------------------------------------------------')
-# print('Grid Search - SELL-OUT')
-# print('------------------------------------------------')
-#
-# # Check start time
-# print("Grid Search Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-#
-# # Data Configuration
-# data_cfg = {'division': 'SELL_OUT'}
-#
-# pipeline = PipelineDev(
-#     data_cfg=data_cfg,
-#     exec_cfg=exec_cfg,
-#     step_cfg=step_cfg,
-#     path_root=path_root
-# )
-#
-# # Execute Grid Search
-# pipeline.run()
-#
-# # Check end time
-# print("Grid Search End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-# print("")
+print('------------------------------------------------')
+print('Grid Search - SELL-OUT')
+print('------------------------------------------------')
+
+# Check start time
+print("Grid Search Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+# Data Configuration
+data_cfg = {'division': 'SELL_OUT'}
+
+pipeline = PipelineDev(
+    data_cfg=data_cfg,
+    exec_cfg=exec_cfg,
+    step_cfg=step_cfg,
+    path_root=path_root
+)
+
+# Execute Grid Search
+pipeline.run()
+
+# Check end time
+print("Grid Search End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("")

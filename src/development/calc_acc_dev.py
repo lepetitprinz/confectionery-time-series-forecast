@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccuracy import PipelineAccuracy
+from baseline.deployment.PipelineAccuracyBak import PipelineAccuracy
 
 hist_to = '20220220'    # W09(20220220) / W08(20220213) / W07(20220206) / W06(20220130)
 exec_kind = 'dev'

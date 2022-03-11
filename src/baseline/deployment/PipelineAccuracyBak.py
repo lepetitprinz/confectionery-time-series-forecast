@@ -1,4 +1,4 @@
-from baseline.analysis.CalcAccuracyNew import CalcAccuracyNew
+from baseline.analysis.CalcAccuracyBak3 import CalcAccuracy
 
 import datetime
 
@@ -37,7 +37,7 @@ class PipelineAccuracy(object):
                 data_cfg = self.get_data_cfg(division=division, item_lvl=item_lvl)
 
                 # Initiate class
-                acc = CalcAccuracyNew(
+                acc = CalcAccuracy(
                     exec_kind=self.exec_kind,
                     exec_cfg=self.exec_cfg,
                     date_cfg=self.date_cfg,

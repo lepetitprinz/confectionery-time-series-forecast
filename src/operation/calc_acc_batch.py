@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccuracy import PipelineAccuracy
+from baseline.deployment.PipelineAccuracyBak import PipelineAccuracy
 
 division_list = ['SELL_IN', 'SELL_OUT']
 item_lvl_list = [3, 5]
