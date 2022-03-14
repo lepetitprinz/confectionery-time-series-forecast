@@ -2,10 +2,10 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccuracyBak import PipelineAccuracy
+from baseline.deployment.PipelineAccuracy import PipelineAccuracy
 
-hist_to = '20220220'    # W09(20220220) / W08(20220213) / W07(20220206) / W06(20220130)
-exec_kind = 'dev'
+hist_to = '20220213'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
+exec_kind = 'test'
 item_lvl_list = [5]
 division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
 root_path = os.path.join('/', 'opt', 'DF', 'fcst')

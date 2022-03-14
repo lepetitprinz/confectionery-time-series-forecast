@@ -100,8 +100,8 @@ class TrainDev(object):
         self.hyper_parameter['best'] = mst_info['param_grid']
         if self.hyper_param_apply_option == 'each':
             file_path = os.path.join(
-                self.path_root, 'parameter',
-                'data_lvl_model_param_' + self.division + '_' + self.hrchy['key'][:-1] + '.json'
+                self.path_root, 'parameter', 'data_lvl_model_param_' + self.division + '_' +
+                self.hrchy['key'][:-1] + '_' + str(self.n_test) + '.json'
             )
             self.hyper_parameter['each'] = self.io.load_object(file_path=file_path, data_type='json')
 

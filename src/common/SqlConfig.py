@@ -86,6 +86,36 @@ class SqlConfig(object):
     @staticmethod
     def sql_bom_mst():
         sql = """
+            SELECT BOM.SKU_CD AS SKU_CD
+                 , ITEM.ITEM_NM AS SKU_NM
+                 , BOM_CD
+                 , ING.ITEM_NM AS BOM_NM
+              FROM (
+                    SELECT PROD_ITEM_CD AS SKU_CD
+                         , CNSM_ITEM_CD AS BOM_CD
+                      FROM M4S_I305200
+                     GROUP BY PROD_ITEM_CD
+                            , CNSM_ITEM_CD
+                   ) BOM
+             INNER JOIN (
+                         SELECT ITEM_CD
+                              , ITEM_NM
+                           FROM M4S_I002040
+                          WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
+                        ) ITEM
+                ON BOM.SKU_CD = ITEM.ITEM_CD
+             INNER JOIN (
+                         SELECT ITEM_CD
+                              , ITEM_NM
+                           FROM M4S_I002040
+                        ) ING
+                ON BOM.BOM_CD = ING.ITEM_CD
+        """
+        return sql
+
+    @staticmethod
+    def sql_bom_mst_bak():
+        sql = """
             SELECT ITEM_CD AS SKU_CD
                  , ITEM_NM AS SKU_NM
                  , BOM_CD

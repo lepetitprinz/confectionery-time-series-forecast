@@ -6,12 +6,11 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineDev import PipelineDev
 
 # Root path
-# path_root = os.path.join('..', '..')
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
-hist_to = '20220220'    # W09(20220220) / W08(20220213) / W07(20220206) / W06(20220130)
+hist_to = '20220213'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')

@@ -1,4 +1,4 @@
-import util
+import common.util as util
 import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
@@ -24,7 +24,7 @@ class CalcAccuracy(object):
     classify_kind = ['cover', 'less', 'over', 'zero']
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
-    # SP1-C
+    # Customer mapping
     sp1_hrchy_map = {
         'SELL_IN': {
             '101': '1.시판',
@@ -83,14 +83,14 @@ class CalcAccuracy(object):
         # Data instance attribute
         self.level = {}
         self.hrchy = {}
+        self.division = data_cfg['division']
         self.cust_map = {}
         self.date_sales = {}
-        self.division = data_cfg['division']
         self.data_vrsn_cd = ''
         self.hist_date_range = []
 
         # Evaluation instance attribute
-        self.week_compare = 1             # Compare week range
+        self.week_compare = 1    # Compare week range
         self.acc_classify_standard = acc_classify_standard
         self.load_sales_option = 'fixed'    # fixed / recent
 
@@ -101,7 +101,8 @@ class CalcAccuracy(object):
         # Run batch process
         if self.exec_kind == 'batch':
             self.exec_batch()
-        elif self.exec_kind == 'dev':
+        # Run dev process
+        elif (self.exec_kind == 'dev') or (self.exec_kind == 'test'):
             self.exec_dev()
 
     # Execute the batch process
@@ -112,7 +113,7 @@ class CalcAccuracy(object):
         # Update recent sales matrix
         pred_plan = pd.merge(pred_plan, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
 
-        # Filter business range
+        # Filter business range (Fixed)
         pred_plan = pred_plan[pred_plan['item_attr01_cd'] == 'P1']
 
         # Make the raw result
@@ -125,13 +126,15 @@ class CalcAccuracy(object):
 
         # Make the summary result
         if self.exec_cfg['calc_summary']:
-            self.calc_summary(data=pred_plan)
+            # Summary of all brand
+            self.calc_summary(data=pred_plan, mega_filter=False)
+            # Summary of mega brand
+            self.calc_summary(data=pred_plan, mega_filter=True)
 
         # Make the db result
         if self.exec_cfg['calc_db']:
             self.calc_db(data=pred_plan)
 
-    # Execute the
     def exec_dev(self) -> None:
         # Load the dataset
         sales, pred = self.load_data_dev()
@@ -158,14 +161,39 @@ class CalcAccuracy(object):
 
         return merged
 
+    def calc_dev(self, data: pd.DataFrame) -> None:
+        acc = self.calc_accuracy(data=data, dividend='sales', divisor='pred', label='_pred')
+
+        # Add naming information
+        acc['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in acc['cust_grp_cd'].values]
+
+        # Add naming information
+        merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd']
+        acc = pd.merge(acc, self.item_mst, how='left', on=merge_col)
+        acc['item_attr01_nm'] = acc['item_attr01_nm'].fillna('건과')
+
+        # Reorder columns
+        col_cust = ['cust_grp_nm']
+        col_item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm',
+                    'item_cd', 'item_nm', 'mega_yn']
+        col_etc = ['sales', 'pred', 'acc_pred']
+        acc = acc[col_cust + col_item + col_etc]
+
+        # Save the result
+        path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
+                            '_' + str(self.hrchy['lvl']['item']) + '_dev.csv')
+        acc.to_csv(path, index=False, encoding='cp949')
+
     def calc_raw(self, data: pd.DataFrame) -> None:
         data_pred = self.calc_accuracy(data=data, dividend='sales', divisor='pred', label='_pred')
         data_plan = self.calc_accuracy(data=data, dividend='sales', divisor='plan', label='_plan')
 
+        # Merge the calculation result of prediction & plan
         grp_col = self.cust_batch_list + self.hrchy['list']['item'] + \
                   ['mega_yn', 'start_week_day', 'week', 'sales', 'pred', 'plan']
         merged = pd.merge(data_pred, data_plan, on=grp_col)
 
+        # Add naming information
         merged['sp1_c_nm'] = [self.cust_map['SP1_C'].get(code, code) for code in merged['sp1_c_cd'].values]
         merged['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in merged['cust_grp_cd'].values]
 
@@ -173,7 +201,7 @@ class CalcAccuracy(object):
         merged = pd.merge(merged, self.item_mst, how='left', on=merge_col)
         merged['item_attr01_nm'] = merged['item_attr01_nm'].fillna('건과')
 
-        # reorder columns
+        # Reorder columns
         col_cust = ['sp1_c_nm', 'cust_grp_nm']
         col_item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm',
                     'item_cd', 'item_nm', 'mega_yn']
@@ -198,23 +226,26 @@ class CalcAccuracy(object):
         # Save the result to file
         self.save_result_to_file(data=merged)
 
-    def 
+    def calc_summary(self, data: pd.DataFrame, mega_filter: bool) -> None:
+        # If only view results on mega brand
+        if mega_filter:
+            data = data[data['mega_yn'] == 'Y']
 
-    def calc_summary(self, data: pd.DataFrame) -> None:
+        # Compare results
         data_pred = self.compare_for_db(data=data, kind='pred')
         data_plan = self.compare_for_db(data=data, kind='plan')
         data_concat = pd.concat([data_pred, data_plan])
 
-        # Add cust class column
+        # Add customer class column
         data_concat = self.map_cust_class(data=data_concat)
 
         # Group by cust class and (forecast/plan)
         data_concat = data_concat.groupby(by=['cust_class', 'gubun']).sum()
 
-        # sum all of the class
+        # Sum all of the class
         data_concat['tot_cnt'] = data_concat.groupby(by=['cust_class', 'gubun']).sum().sum(axis=1).copy()
 
-        # calculate the rate
+        # Calculate the rate
         data_concat = data_concat.div(data_concat['tot_cnt'], axis=0).reset_index()
         data_pivot = data_concat.pivot(
             index='gubun',
@@ -223,9 +254,12 @@ class CalcAccuracy(object):
         )
 
         # Save the result
-        path = os.path.join(
-            self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division + '_' +
-            str(self.hrchy['lvl']['item']) + '_' + str(self.acc_classify_standard) + '_summary.csv')
+        if mega_filter:
+            prefix = '_summary_mega_y.csv'
+        else:
+            prefix = '_summary.csv'
+        name = str(self.hrchy['lvl']['item']) + '_' + str(self.acc_classify_standard) + prefix
+        path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division + '_' + name)
         data_pivot.to_csv(path, encoding='cp949')
 
     def map_cust_class(self, data):
@@ -442,9 +476,6 @@ class CalcAccuracy(object):
         return date
 
     def load_data_batch(self) -> pd.DataFrame:
-        # Load the calendar dataset
-        self.cal_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_calendar())
-
         # Load the plan dataset
         pred_plan = None
         info_plan = {'yymmdd': self.date_sales['compare']['from']}
