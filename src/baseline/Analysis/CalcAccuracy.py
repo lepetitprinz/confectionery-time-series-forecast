@@ -197,8 +197,10 @@ class CalcAccuracy(object):
         merged['sp1_c_nm'] = [self.cust_map['SP1_C'].get(code, code) for code in merged['sp1_c_cd'].values]
         merged['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in merged['cust_grp_cd'].values]
 
-        merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
-        merged = pd.merge(merged, self.item_mst, how='left', on=merge_col)
+        item_mst = self.item_mst.copy()
+        item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm']]
+        # merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
+        merged = pd.merge(merged, item_mst, how='left', on=['item_cd'])
         merged['item_attr01_nm'] = merged['item_attr01_nm'].fillna('건과')
 
         # Reorder columns
@@ -546,12 +548,13 @@ class CalcAccuracy(object):
 
     def classify_accuracy(self, data: pd.DataFrame, label='') -> pd.DataFrame:
         condition = [
+            data['acc' + label] == 1,
             data['sales'] == 0,
             data['acc' + label] < 1 - self.acc_classify_standard,
             data['acc' + label] > 1 + self.acc_classify_standard
         ]
         class_label = label + '_cnt'
-        values = ['zero' + class_label, 'less' + class_label, 'over' + class_label]
+        values = ['cover' + class_label, 'zero' + class_label, 'less' + class_label, 'over' + class_label]
         data['class' + label] = np.select(condlist=condition, choicelist=values, default=None)
         data['class' + label] = data['class' + label].fillna('cover' + class_label)
 
@@ -635,6 +638,15 @@ class CalcAccuracy(object):
         # add calendar data
         calendar = self.cal_mst[['yymmdd', 'yymm', 'week']].copy().drop_duplicates()
         data_db = pd.merge(data_db, calendar, on='yymmdd')
+
+        # Delete previous result
+        del_info = {
+            'data_vrsn_cd': self.data_vrsn_cd,
+            'division_cd': self.division,
+            'yymmdd': self.date_cfg['date']['compare']['from']
+        }
+
+        self.io.delete_from_db(sql=self.sql_conf.del_pred_plan_acc(**del_info))
 
         # Save result on the DB
         self.io.insert_to_db(df=data_db, tb_name='M4S_O110630')

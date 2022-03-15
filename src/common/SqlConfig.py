@@ -43,18 +43,54 @@ class SqlConfig(object):
     def sql_item_view():
         sql = """
             SELECT ITEM_ATTR01_CD AS BIZ_CD
-                 , ITEM_ATTR01_NM AS BIZ_NM
+                 , ITEM1.NAME AS BIZ_NM
                  , ITEM_ATTR02_CD AS LINE_CD
-                 , ITEM_ATTR02_NM AS LINE_NM
+                 , ITEM2.NAME AS LINE_NM
                  , ITEM_ATTR03_CD AS BRAND_CD
-                 , ITEM_ATTR03_NM AS BRAND_NM
+                 , ITEM3.NAME AS BRAND_NM
                  , ITEM_ATTR04_CD AS ITEM_CD
-                 , ITEM_ATTR04_NM AS ITEM_NM
+                 , ITEM4.NAME AS ITEM_NM
                  , ITEM_CD AS SKU_CD
                  , ITEM_NM AS SKU_NM
-              FROM VIEW_I002040
-             WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
-               AND USE_YN = 'Y'
+              FROM (
+                    SELECT ITEM_ATTR01_CD
+                         , ITEM_ATTR02_CD
+                         , ITEM_ATTR03_CD
+                         , ITEM_ATTR04_CD
+                         , ITEM_CD
+                         , ITEM_NM
+                      FROM M4S_I002040
+                     WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
+                       AND USE_YN = 'Y'
+                   ) ITEM
+              LEFT OUTER JOIN (
+                               SELECT COMM_DTL_CD AS CODE
+                                    , COMM_DTL_CD_NM AS NAME
+                                 FROM M4S_I002011
+                                WHERE COMM_CD = 'ITEM_GUBUN01'
+                              ) ITEM1
+                ON ITEM.ITEM_ATTR01_CD = ITEM1.CODE
+              LEFT OUTER JOIN (
+                               SELECT COMM_DTL_CD AS CODE
+                                    , COMM_DTL_CD_NM AS NAME
+                                 FROM M4S_I002011
+                                WHERE COMM_CD = 'ITEM_GUBUN02'
+                              ) ITEM2
+                ON ITEM.ITEM_ATTR02_CD = ITEM2.CODE
+              LEFT OUTER JOIN (
+                               SELECT COMM_DTL_CD AS CODE
+                                    , COMM_DTL_CD_NM AS NAME
+                                 FROM M4S_I002011
+                                WHERE COMM_CD = 'ITEM_GUBUN03'
+                              ) ITEM3
+                ON ITEM.ITEM_ATTR03_CD = ITEM3.CODE
+              LEFT OUTER JOIN (
+                               SELECT COMM_DTL_CD AS CODE
+                                    , COMM_DTL_CD_NM AS NAME
+                                 FROM M4S_I002011
+                                WHERE COMM_CD = 'ITEM_GUBUN04'
+                              ) ITEM4
+                ON ITEM.ITEM_ATTR04_CD = ITEM4.CODE
         """
         return sql
 
@@ -63,7 +99,7 @@ class SqlConfig(object):
         sql = """
             SELECT ITEM_CD
                  , MEGA_YN
-              FROM M4S_i002040
+              FROM M4S_I002040
              WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
                AND USE_YN = 'Y'
         """
@@ -715,6 +751,20 @@ class SqlConfig(object):
             WHERE DIVISION_CD = '{kwargs['division_cd']}'
         """
         return sql
+
+    @staticmethod
+    def del_pred_plan_acc(**kwargs):
+        sql = f"""
+            DELETE
+              FROM M4S_O110630
+             WHERE DATA_VRSN_CD = '{kwargs['data_vrsn_cd']}'
+               AND DIVISION_CD = '{kwargs['division_cd']}'
+               AND YYMMDD = '{kwargs['yymmdd']}'
+
+        """
+        return sql
+
+    # --------------------------------------------------
 
     @staticmethod
     def sql_sell_in_unit(**kwargs):
