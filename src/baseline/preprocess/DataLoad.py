@@ -73,10 +73,27 @@ class DataLoad(object):
         return mst_info
 
     # Load exogenous dataset: weather
-    def load_exog(self, info: dict) -> pd.DataFrame:
+    # Exogenous information
+    def load_exog(self) -> pd.DataFrame:
+        info = {
+            'partial_yn': 'N',
+            'from': self.date['history']['from'],
+            'to': self.date['history']['to']
+        }
         exog = self.io.get_df_from_db(sql=self.sql_conf.sql_exg_data(**info))
 
         return exog
+
+    # Load sell-in distribution store chain
+    def load_sales_dist(self) -> pd.DataFrame:
+        info = {
+            'from': self.date['history']['from'],
+            'to': self.date['history']['to']
+        }
+
+        sales_dist = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_dist(**info))
+
+        return sales_dist
 
     # Filter new item for predict sales on only old item
     def filter_new_item(self, sales: pd.DataFrame) -> pd.DataFrame:

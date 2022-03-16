@@ -231,40 +231,40 @@ class SqlConfig(object):
     def sql_sell_in(**kwargs):
         sql = f"""
              SELECT DIVISION_CD
-                 , SALES.CUST_GRP_CD
-                 , ITEM_ATTR01_CD AS BIZ_CD
-                 , ITEM_ATTR02_CD AS LINE_CD
-                 , ITEM_ATTR03_CD AS BRAND_CD
-                 , ITEM_ATTR04_CD AS ITEM_CD
-                 , SALES.ITEM_CD AS SKU_CD
-                 , YYMMDD
-                 , SEQ
-                 , FROM_DC_CD
-                 , UNIT_PRICE
-                 , UNIT_CD
-                 , DISCOUNT
-                 , WEEK
-                 , QTY
-                 , CREATE_DATE
-              FROM (
-                    SELECT *
-                      FROM M4S_I002176
-                     WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-                       AND QTY <> 0
-                   ) SALES
-             INNER JOIN (
-                         SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
-                              , ITEM_CD
-                           FROM M4S_I204050
-                          WHERE USE_YN = 'Y'
-                            AND SALES_MGMT_VRSN_ID = (
-                                                      SELECT SALES_MGMT_VRSN_ID 
-                                                        FROM M4S_I204010 
-                                                       WHERE USE_YN = 'Y'
-                                                     )
-                        ) MAP
-                ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
-               AND SALES.ITEM_CD = MAP.ITEM_CD
+                  , SALES.CUST_GRP_CD
+                  , ITEM_ATTR01_CD AS BIZ_CD
+                  , ITEM_ATTR02_CD AS LINE_CD
+                  , ITEM_ATTR03_CD AS BRAND_CD
+                  , ITEM_ATTR04_CD AS ITEM_CD
+                  , SALES.ITEM_CD AS SKU_CD
+                  , YYMMDD
+                  , SEQ
+                  , FROM_DC_CD
+                  , UNIT_PRICE
+                  , UNIT_CD
+                  , DISCOUNT
+                  , WEEK
+                  , QTY
+                  , CREATE_DATE
+               FROM (
+                     SELECT *
+                       FROM M4S_I002176
+                      WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                        AND QTY <> 0
+                    ) SALES
+              INNER JOIN (
+                          SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                               , ITEM_CD
+                            FROM M4S_I204050
+                           WHERE USE_YN = 'Y'
+                             AND SALES_MGMT_VRSN_ID = (
+                                                       SELECT SALES_MGMT_VRSN_ID 
+                                                         FROM M4S_I204010 
+                                                        WHERE USE_YN = 'Y'
+                                                      )
+                         ) MAP
+                 ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+                AND SALES.ITEM_CD = MAP.ITEM_CD
         """
         return sql
 
@@ -1285,6 +1285,53 @@ class SqlConfig(object):
         """
         return sql
 
+    @staticmethod
+    def sql_sell_in_dist(**kwargs):
+        sql = f"""
+             SELECT SALES.CUST_GRP_CD
+                  , ITEM_ATTR01_CD AS BIZ_CD
+                  , ITEM_ATTR02_CD AS LINE_CD
+                  , ITEM_ATTR03_CD AS BRAND_CD
+                  , ITEM_ATTR04_CD AS ITEM_CD
+                  , SALES.ITEM_CD AS SKU_CD
+                  , YYMMDD
+                  , QTY AS IN_QTY
+               FROM (
+                     SELECT CUST_GRP_CD
+                          , ITEM_ATTR01_CD
+                          , ITEM_ATTR02_CD 
+                          , ITEM_ATTR03_CD
+                          , ITEM_ATTR04_CD 
+                          , ITEM_CD
+                          , YYMMDD
+                          , SUM(QTY) AS QTY
+                       FROM M4S_I002176
+                      WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+                        AND QTY <> 0
+                        AND CUST_GRP_CD IN ('1065', '1066', '1067', '1073', '1074', '1075', '1076')
+                      GROUP BY CUST_GRP_CD
+                          , ITEM_ATTR01_CD
+                          , ITEM_ATTR02_CD 
+                          , ITEM_ATTR03_CD
+                          , ITEM_ATTR04_CD 
+                          , ITEM_CD
+                          , YYMMDD
+                    ) SALES
+              INNER JOIN (
+                          SELECT RIGHT(SALES_MGMT_CD, 4) AS CUST_GRP_CD
+                               , ITEM_CD
+                            FROM M4S_I204050
+                           WHERE USE_YN = 'Y'
+                             AND SALES_MGMT_VRSN_ID = (
+                                                       SELECT SALES_MGMT_VRSN_ID 
+                                                         FROM M4S_I204010 
+                                                        WHERE USE_YN = 'Y'
+                                                      )
+                         ) MAP
+                 ON SALES.CUST_GRP_CD = MAP.CUST_GRP_CD
+                AND SALES.ITEM_CD = MAP.ITEM_CD
+        """
+        return sql
 
     # Sell-Out Monthly Group
     @staticmethod

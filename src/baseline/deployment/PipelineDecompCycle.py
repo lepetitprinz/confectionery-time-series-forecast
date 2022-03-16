@@ -80,7 +80,7 @@ class PipelineDecompCycle(object):
 
         # Preprocessing the dataset
         sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
-        decomposed, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=pd.DataFrame())
+        decomposed, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, weather=pd.DataFrame())
 
         decomposed_list = util.hrchy_recursion_extend_key(
             hrchy_lvl=self.hrchy['lvl']['total']-1,

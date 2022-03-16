@@ -144,16 +144,13 @@ class PipelineCycle(object):
         # ================================================================================================= #
         data_prep = None
         exg_list = None
-
-        # Exogenous information
-        exg_info = {
-            'partial_yn': 'N',
-            'from': self.date['history']['from'],
-            'to': self.date['history']['to']
-        }
+        sales_dist = None
 
         # Exogenous dataset
-        exg = load.load_exog(info=exg_info)
+        exg = load.load_exog()    # Weather dataset
+
+        if (self.division == 'SELL_OUT') & (self.exec_cfg['add_exog_dist_sales']):
+            sales_dist = load.load_sales_dist()
 
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
@@ -165,12 +162,13 @@ class PipelineCycle(object):
                 date=self.date,
                 common=self.common,
                 hrchy=self.hrchy,
+                division=self.division,
                 data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
 
             # Preprocessing the dataset
-            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
+            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, weather=exg, sales_dist=sales_dist)
             self.hrchy['cnt'] = hrchy_cnt
 
             # Save Step result

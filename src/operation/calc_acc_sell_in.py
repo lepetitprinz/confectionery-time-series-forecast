@@ -16,8 +16,11 @@ save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 exec_cfg = {
     'save_db_yn': True,
     'cycle_yn': True,
+    'calc_raw_yn': True,
+    'calc_csv_yn': True,
+    'calc_summary': True,
+    'calc_db': True
 }
-
 print(f"Start calculating accuracy: {exec_kind}")
 pipe_acc = PipelineAccuracy(
     exec_kind=exec_kind,

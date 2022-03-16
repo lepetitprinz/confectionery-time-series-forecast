@@ -161,7 +161,7 @@ class PipelineDev(object):
             )
 
             # Preprocessing the dataset
-            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, exg=exg)
+            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, weather=exg)
             self.hrchy['cnt'] = hrchy_cnt
 
             # Save Step result

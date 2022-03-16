@@ -29,6 +29,7 @@ exec_cfg = {
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration
+    'add_exog_dist_sales': True,
     'decompose_yn': False,                   # Decomposition
     'feature_selection_yn': False,           # Feature Selection
     'filter_threshold_cnt_yn': False,        # Filter data level under threshold count

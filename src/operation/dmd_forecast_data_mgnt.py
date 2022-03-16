@@ -27,7 +27,7 @@ print('Data Life Cycle Management')
 print('------------------------------------------------')
 
 # Check start time
-print("Forecast Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("Data Management Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 dlc = DataLifeCycle(
     rm_data_interval=rm_data_interval,
@@ -38,7 +38,7 @@ dlc = DataLifeCycle(
 dlc.run()
 
 # Check end time
-print("Forecast End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("Data Management  End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 print("")
 
 

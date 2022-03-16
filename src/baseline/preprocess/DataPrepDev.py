@@ -75,7 +75,7 @@ class DataPrep(object):
         # ------------------------------- #
         if not self.exec_cfg['decompose_yn']:
             exg_list = list(idx.lower() for idx in weather['idx_cd'].unique())
-            if (self.division == 'SELL_OUT') & (self.exec_cfg['add_exog_dist_sales']):
+            if self.division == 'SELL_OUT':
                 exg_list.append('in_qty')
         else:
             exg_list = []
@@ -98,7 +98,7 @@ class DataPrep(object):
             data = self.merge_weather(data=data, weather=weather)
 
             #
-            if (self.division == 'SELL_OUT') & (self.exec_cfg['add_exog_dist_sales']):
+            if self.division == 'SELL_OUT':
                 data = self.merge_sales_dist(data=data, sales_dist=sales_dist)
 
         # Preprocess sales dataset
