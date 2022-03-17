@@ -9,7 +9,7 @@ exec_kind = 'batch'
 item_lvl_list = [5]
 division_list = ['SELL_IN', 'SELL_OUT']    # SELL_IN / SELL_OUT
 
-root_path = os.path.join('..', '..')
+root_path = os.path.join('src', '..')
 save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 exec_cfg = {

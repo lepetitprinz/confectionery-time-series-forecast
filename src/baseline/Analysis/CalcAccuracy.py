@@ -560,8 +560,7 @@ class CalcAccuracy(object):
 
         return data
 
-    @staticmethod
-    def count_class(data: pd.DataFrame, grp_col: list, label=''):
+    def count_class(self, data: pd.DataFrame, grp_col: list, label=''):
         class_cnt = data.groupby(by=grp_col + ['class' + label])['item_cd'] \
             .count() \
             .astype(int)\
@@ -574,8 +573,9 @@ class CalcAccuracy(object):
             values='class_cnt'
         ).fillna(0)
 
-        if 'zero' + label + '_cnt' not in class_cnt.columns:
-            class_cnt['zero' + label + '_cnt'] = 0
+        for class_kind in self.classify_kind:
+            if class_kind + label + '_cnt' not in class_cnt.columns:
+                class_cnt[class_kind + label + '_cnt'] = 0
 
         return class_cnt
 

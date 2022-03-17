@@ -9,14 +9,14 @@ exec_cfg = {
     'backup_yn': True
 }
 
-path_root = os.path.join('..', '..')
+path_root = os.path.join('src', '..')
 # path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 dir_list = ['data', 'result', 'prediction']
 exec_kind_list = ['batch', 'dev', 'verify']
 
 path_info = {
-    'root_path': os.path.join('..', '..'),
-    'backup_path': os.path.join('..', '..', 'backup'),
+    'root_path': os.path.join('src', '..'),
+    'backup_path': os.path.join('src', '..', 'backup'),
     'module': ['data', 'result', 'prediction'],
     'exec_kind': ['batch', 'dev', 'verify'],
 }

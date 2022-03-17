@@ -8,11 +8,12 @@ import ast
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, Sequence
 from itertools import product
 from collections import defaultdict
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
+
 
 warnings.filterwarnings('ignore')
 
@@ -65,7 +66,7 @@ class Train(object):
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
-        # self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
+        self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
         self.decimal_point = 3
@@ -75,21 +76,138 @@ class Train(object):
         self.grid_search_yn: bool = exec_cfg['grid_search_yn']    # Execute grid search or not
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
+        # Window Generator Configuration
+        self.window_method = 'expand'    # slice / expand
+        self.hist_width = len(pd.date_range(
+            start=self.data_cfg['date']['history']['from'],
+            end=self.data_cfg['date']['history']['to'],
+            freq='W'
+        ))
+        self.pred_width = int(common['week_pred'])
+        self.shift_width = 4
+        self.end_width = self.hist_width + self.pred_width
+        self.start_index = self.end_width % self.shift_width
+        self.window_length = (self.end_width - self.start_index) / self.shift_width
+
+        # Stacking ensemble configuration
+        self.train_rate = 0.7
+        self.val_rate = 1 - self.train_rate
+        self.test_size = self.pred_width
+
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def train(self, df) -> dict:
         # Evaluate each algorithm
+        # scores = util.hrchy_recursion(
+        #     hrchy_lvl=self.hrchy['lvl']['total'] - 1,
+        #     fn=self.train_time_series,
+        #     df=df
+        # )
+
+        # Evaluate each algorithm
         scores = util.hrchy_recursion(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
-            fn=self.train_model,
+            fn=self.train_stack_ensemble,
             df=df
         )
 
         return scores
 
-    def train_model(self, df) -> List[List[np.array]]:
+    def train_stack_ensemble(self, df):
+        # Print training progress
+        self.cnt += 1
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+
+        # Generate machine learning input
+        ml_input = self.generate_input(df=df)
+        print("")
+
+    def split_ml_data(self, data: pd.DataFrame):
+        test_data = data.iloc[-1*self.test_size:]
+        data_sliced = data.iloc[:-1*self.test_size].copy
+        train_data = data_sliced
+        val_data = data_sliced
+
+    def generate_input(self, df: pd.DataFrame):
+        # Set features by models (univ/multi)
+        feature_by_variable = self.select_feature_by_variable(df=df)
+
+        input_by_model = {}
+        for model in self.model_candidates:
+            # Classify dataset by variables
+            data = feature_by_variable[self.model_info[model]['variate']]
+
+            # Generate the machine learning input
+            input_by_model[model] = self.predict_on_window_data(model=model, data=data)
+
+        input_df = pd.DataFrame(input_by_model)
+
+        return input_df
+
+    def predict_on_window_data(self, model: str, data: list):
+        data_window = self.split_window(data=data)
+
+        ml_input = []
+        for i, window in enumerate(data_window):
+            if self.model_info[model]['variate'] == 'multi':
+                window = self.split_variable(data=window)
+
+            pred_width = None
+            if i == (self.window_length-1):
+                pred_width = self.pred_width
+            else:
+                pred_width = self.shift_width
+
+            # Predict
+            prediction = self.predict(model=model, data=window, pred_width=pred_width)
+            ml_input.extend(prediction)
+
+        return ml_input
+
+    def predict(self, model: str, data, pred_width):
+        try:
+            prediction = self.estimators[model](
+                history=data,
+                cfg=self.param_grid[model],
+                pred_step=pred_width
+                )
+            # Clip results & Round results
+            prediction = np.round(np.clip(prediction, 0, self.err_val).tolist(), self.decimal_point)
+
+        except ValueError:
+            value = 0
+            if self.model_info[model]['variate'] == 'univ':
+                value = round(data.mean(), self.decimal_point)
+            elif self.model_info[model]['variate'] == 'multi':
+                value = round(data['endog'].mean(), self.decimal_point)
+            prediction = [value] * pred_width
+
+        return prediction
+
+    def split_variable(self, data) -> dict:
+        data = {
+            'endog': data[self.target_col].values.ravel(),
+            'exog': data[self.exo_col_list].values
+        }
+
+        return data
+
+    def split_window(self, data):
+        window_list = []
+        if self.window_method == 'expand':
+             for i in range(self.start_index + self.shift_width, self.end_width + 1, self.shift_width):
+                window_list.append(data.iloc[self.start_index:i])
+        elif self.window_method == 'slice':
+            for i in range(self.start_index, self.end_width + 1, self.shift_width):
+                window_list.append(data.iloc[i:i + self.shift_width])
+
+        return window_list
+
+    # Training: Time Series
+    def train_time_series(self, df) -> List[List[np.array]]:
         # Print training progress
         self.cnt += 1
         if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
@@ -101,14 +219,30 @@ class Train(object):
         models = []
         for model in self.model_candidates:
             # Validation
-            score = self.validation(
+            score, diff, params = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
-                model=model)
+                model=model
+            )
+            models.append([model, score, diff, params])
 
-            models.append([model, score[0], score[1], score[2]])
+        if self.exec_cfg['voting_yn']:
+            score = self.voting(models=models)
+            models.append(['voting', score, [], {}])
+
         models = sorted(models, key=lambda x: x[1])
 
         return models
+
+    def voting(self, models: list) -> float:
+        score = self.err_val
+        try:
+            score = np.sqrt(np.mean((np.array([score[2] for score in models]).sum(axis=0) / len(models))**2, axis=0))
+            if score > self.err_val:
+                score = self.err_val
+        except ValueError:
+            pass
+
+        return round(score, self.decimal_point)
 
     # Split univariate / multivariate features
     def select_feature_by_variable(self, df: pd.DataFrame) -> dict:
@@ -122,7 +256,7 @@ class Train(object):
         return feature_by_variable
 
     # Validation
-    def validation(self, data, model: str) -> Tuple[float, float, dict]:
+    def validation(self, data, model: str) -> Tuple[float, Sequence, dict]:
         # Train / Test Split method
         if self.validation_method == 'train_test':
             score = self.train_test_validation(data=data, model=model)
@@ -136,12 +270,12 @@ class Train(object):
 
         return score
 
-    def train_test_validation(self, model: str, data) -> Tuple[float, float, dict]:
+    def train_test_validation(self, model: str, data) -> Tuple[float, Sequence, dict]:
         # Set test length
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
         # Split train & test dataset
-        data_train, data_test = self.split_train_test(data=data, model=model, n_test=n_test)
+        data_train, data_test = self.split_train_test(data=data, n_test=n_test)
 
         # Data Scaling
         if self.exec_cfg['scaling_yn']:
@@ -150,11 +284,10 @@ class Train(object):
                 test=data_test
             )
 
-        acc = 0
         best_params = {}
         if self.grid_search_yn:
             # Grid Search
-            err, best_params = self.grid_search(
+            err, diff, best_params = self.grid_search(
                 model=model,
                 train=data_train,
                 test=data_test,
@@ -163,7 +296,7 @@ class Train(object):
 
         else:
             # Evaluation
-            err, acc = self.evaluation(
+            err, diff = self.evaluation(
                 model=model,
                 params=self.param_grid[model],
                 train=data_train,
@@ -171,37 +304,22 @@ class Train(object):
                 n_test=n_test
             )
 
-        return err, acc, best_params
+        return err, diff, best_params
 
-    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int) -> Tuple[dict, dict]:
+    def split_train_test(self, data: pd.DataFrame, n_test: int) -> Tuple[dict, dict]:
         data_length = len(data)
 
-        data_train, data_test = None, None
-        if self.model_info[model]['variate'] == 'univ':
-            if data_length - n_test >= n_test:    # if training period bigger than prediction
-                data_train = data.iloc[: data_length - n_test]
-                data_test = data.iloc[data_length - n_test:]
+        if data_length - n_test >= n_test:    # if training period bigger than prediction
+            data_train = data.iloc[: data_length - n_test]
+            data_test = data.iloc[data_length - n_test:]
 
-            elif data_length > self.fixed_n_test:    # if data period bigger than fixed period
-                data_train = data.iloc[: data_length - self.fixed_n_test]
-                data_test = data.iloc[data_length - self.fixed_n_test:]
+        elif data_length > self.fixed_n_test:    # if data period bigger than fixed period
+            data_train = data.iloc[: data_length - self.fixed_n_test]
+            data_test = data.iloc[data_length - self.fixed_n_test:]
 
-            else:
-                data_train = data.iloc[: data_length - 1]
-                data_test = data.iloc[data_length - 1:]
-
-        elif self.model_info[model]['variate'] == 'multi':
-            if data_length - n_test >= n_test:    # if training period bigger than prediction
-                data_train = data.iloc[: data_length - n_test, :]
-                data_test = data.iloc[data_length - n_test:, :]
-
-            elif data_length > self.fixed_n_test:    # if data period bigger than fixed period
-                data_train = data.iloc[: data_length - self.fixed_n_test, :]
-                data_test = data.iloc[data_length - self.fixed_n_test:, :]
-
-            else:
-                data_train = data.iloc[: data_length - 1, :]
-                data_test = data.iloc[data_length - 1:, :]
+        else:
+            data_train = data.iloc[: data_length - 1]
+            data_test = data.iloc[data_length - 1:]
 
             x_train = data_train[self.exo_col_list].values
             x_test = data_test[self.exo_col_list].values
@@ -217,25 +335,24 @@ class Train(object):
 
         return data_train, data_test
 
-    @staticmethod
     # Calculate accuracy
-    def calc_accuracy(test, pred) -> float:
+    def calc_accuracy(self, test, pred) -> float:
         pred = np.where(pred < 0, 0, pred)    # change minus values to zero
         arr_acc = np.array([test, pred]).T
         arr_acc_marked = arr_acc[arr_acc[:, 0] != 0]
 
         if len(arr_acc_marked) != 0:
             acc = np.average(arr_acc_marked[:, 1] / arr_acc_marked[:, 0])
-            acc = round(acc, 2)
+            acc = round(acc, self.decimal_point)
         else:
             # acc = np.nan
-            acc = 10**5 - 1
+            acc = self.err_val
 
         return acc
 
-    def evaluation(self, model, params, train, test, n_test) -> Tuple[float, float]:
-        # evaluation
-        acc = 0
+    # evaluation
+    def evaluation(self, model, params, train, test, n_test) -> Tuple[float, Sequence]:
+        # get the length of train dataset
         if self.model_info[model]['variate'] == 'univ':
             len_train = len(train)
             len_test = len(test)
@@ -245,53 +362,53 @@ class Train(object):
 
         err = self.err_val
         diff = [self.err_val] * len_test
-        if len_train > self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
+        if len_train >= self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
             try:
                 yhat = self.estimators[model](
                     history=train,    # Train dataset
                     cfg=params,       # Hyper-parameter
                     pred_step=n_test  # Prediction range
                 )
-
                 if yhat is not None:
                     if len_test < n_test:
                         yhat = yhat[:len_test]
                     if self.model_info[model]['variate'] == 'univ':
                         err = round(mean_squared_error(test, yhat, squared=False), self.decimal_point)
+                        diff = test - yhat
+                        diff = diff.values
                         # acc = round(self.calc_accuracy(test=test, pred=yhat), self.decimal_point)
-                        acc = 0
 
                     elif self.model_info[model]['variate'] == 'multi':
-                        err = round(mean_squared_error(test['endog'], yhat, squared=False),self.decimal_point)
+                        err = round(mean_squared_error(test['endog'], yhat, squared=False), self.decimal_point)
+                        diff = test['endog'] - yhat
                         # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), self.decimal_point)
-                        acc = 0
 
                     # Clip error values
                     if err > self.err_val:
                         err = self.err_val
 
             except ValueError:
-                pass    # Non-solvable problem
+                pass
 
-        return err, acc
+        return err, diff
 
-    def grid_search(self, model, train, test, n_test) -> Tuple[tuple, dict]:
+    def grid_search(self, model, train, test, n_test) -> Tuple[float, Sequence, dict]:
         # get hyper-parameter grid for current algorithm
         param_grid_list = self.get_param_list(model=model)
 
         err_list = []
         for params in param_grid_list:
-            err = self.evaluation(
+            err, diff = self.evaluation(
                 model=model,
                 params=params,
                 train=train,
                 test=test,
                 n_test=n_test
             )
-            err_list.append((err, params))
+            err_list.append((err, diff, params))
 
         err_list = sorted(err_list, key=lambda x: x[0])    # Sort result based on error score
-        best_result = err_list[0]    # Get best result
+        best_result = err_list[0]    # Get the best result of grid search
 
         return best_result
 
@@ -387,8 +504,9 @@ class Train(object):
     # Count best hyper-parameters
     def count_best_params(self, data) -> None:
         for algorithm in data:
-            model, score, accuracy, params = algorithm
-            self.best_params_cnt[model][str(params)] += 1
+            if algorithm[0] != 'voting':
+                model, score, diff, params = algorithm
+                self.best_params_cnt[model][str(params)] += 1
 
     def make_score_result(self, data: dict, hrchy_key: str, fn) -> Tuple[pd.DataFrame, dict]:
         hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
@@ -396,8 +514,9 @@ class Train(object):
 
         # Convert to dataframe
         result = pd.DataFrame(result)
-        cols = self.hrchy['apply'] + ['stat_cd', 'rmse', 'accuracy']
+        cols = self.hrchy['apply'] + ['stat_cd', 'rmse', 'diff']
         result.columns = cols
+        result = result.drop(columns=['diff'])
 
         # Add information
         result['project_cd'] = self.common['project_cd']    # Project code

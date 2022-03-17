@@ -2,10 +2,10 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
-from baseline.preprocess.DataPrepDev import DataPrep
+from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
-from baseline.model.Train import Train
-from baseline.model.Predict import Predict
+from baseline.model.TrainStack import Train
+from baseline.model.PredictStack import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
 
 
@@ -147,9 +147,9 @@ class PipelineCycle(object):
         sales_dist = None
 
         # Exogenous dataset
-        exg = load.load_exog()    # weather
+        exg = load.load_exog()    # Weather dataset
 
-        if self.division == 'SELL_OUT':
+        if (self.division == 'SELL_OUT') & (self.exec_cfg['add_exog_dist_sales']):
             sales_dist = load.load_sales_dist()
 
         if self.step_cfg['cls_prep']:

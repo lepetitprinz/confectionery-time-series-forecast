@@ -1,4 +1,4 @@
-from baseline.preprocess.WindowGenerator import WindowGenerator
+from baseline.preprocess.WindowGeneratorDL import WindowGenerator
 
 import os
 import pandas as pd
