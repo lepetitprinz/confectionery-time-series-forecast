@@ -8,9 +8,13 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+
 
 class Predict(object):
-    estimators = {
+    estimators_ts = {
         'ar': Algorithm.ar,            # Autoregressive model
         'arima': Algorithm.arima,      # Arima model
         'hw': Algorithm.hw,            # Holt-winters model
@@ -19,8 +23,14 @@ class Predict(object):
         'sarima': Algorithm.sarimax    # SARIMAX model
     }
 
+    estimators_ml = {
+        'rf': RandomForestRegressor,
+        'gb': GradientBoostingRegressor,
+        'et': ExtraTreesRegressor
+    }
+
     def __init__(self, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list):
+                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list, ml_data_map: dict):
         """
         :param date: Date information
         :param division: Division (SELL-IN/SELl-OUT)
@@ -59,6 +69,9 @@ class Predict(object):
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.cand_models = list(self.model_info.keys())
 
+        # Stacking
+        self.ml_data_map = ml_data_map
+
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
@@ -67,14 +80,13 @@ class Predict(object):
         self.voting_opt = 'mean'
 
     def forecast(self, df):
-        hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
-        prediction = util.hrchy_recursion_extend_key(
-            hrchy_lvl=hrchy_tot_lvl,
+        predictions = util.hrchy_recursion_extend_key(
+            hrchy_lvl=self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1,
             fn=self.forecast_model,
             df=df
         )
 
-        return prediction
+        return predictions
 
     def forecast_model(self, hrchy, df):
         # Show prediction progress
@@ -82,18 +94,49 @@ class Predict(object):
         if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
-        # Set features by models (univ/multi)
-        feature_by_variable = self.select_feature_by_variable(df=df)
+        prediction_ts = self.forecast_time_series(hrchy=hrchy, data=df)
+        prediction_ml = self.forecast_machine_learning(hrchy=hrchy, data=df)
+        prediction = prediction_ts + prediction_ml
 
-        models = []
+        return prediction
+
+    def forecast_machine_learning(self, hrchy, data):
+        predictions = []
+        for estimator_nm, estimator in self.estimators_ml.items():
+            prediction = self.predict_ml_model(
+                data=data,
+                estimator=estimator,
+                params={},
+                # params=self.ml_param_list[estimator_nm]
+            )
+            predictions.append(hrchy + [estimator_nm.upper(), prediction])
+
+        return predictions
+
+    @staticmethod
+    def predict_ml_model(data, estimator, params={}):
+        est = estimator()
+        est.set_params(**params)
+
+        # Fit the model
+        est.fit(data['train']['x'], data['train']['y'])
+        yhat = est.predict(data['test']['x'])
+
+        return yhat
+
+    def forecast_time_series(self, hrchy, data):
+        # Set features by models (univ/multi)
+        feature_by_variable = self.select_feature_by_variable(df=data)
+
+        predictions = []
         for model in self.cand_models:
             data = feature_by_variable[self.model_info[model]['variate']]
             data = self.split_variable(model=model, data=data)
             n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
-            if len(df) > self.fixed_n_test:
+            if len(data) > self.fixed_n_test:
                 try:
-                    prediction = self.estimators[model](
+                    prediction = self.estimators_ts[model](
                         history=data,
                         cfg=self.param_grid[model],
                         pred_step=n_test
@@ -105,13 +148,13 @@ class Predict(object):
                     prediction = [self.err_val] * n_test
             else:
                 prediction = [self.err_val] * n_test
-            models.append(hrchy + [model.upper(), prediction])
+            predictions.append(hrchy + [model.upper(), prediction])
 
         if self.exec_cfg['voting_yn']:
-            prediction = self.ensemble_voting(models=models)
-            models.append(hrchy + ['VOTING', prediction])
+            prediction = self.ensemble_voting(models=predictions)
+            predictions.append(hrchy + ['VOTING', prediction])
 
-        return models
+        return predictions
 
     def ensemble_voting(self, models: list):
         ensemble = None

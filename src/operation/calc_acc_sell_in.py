@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineAccuracy import PipelineAccuracy
@@ -21,7 +22,9 @@ exec_cfg = {
     'calc_summary': True,
     'calc_db': True
 }
-print(f"Start calculating accuracy: {exec_kind}")
+print('------------------------------------------------')
+print(f"Start calculating accuracy: {exec_kind} at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print('------------------------------------------------\n')
 pipe_acc = PipelineAccuracy(
     exec_kind=exec_kind,
     exec_cfg=exec_cfg,
@@ -32,4 +35,4 @@ pipe_acc = PipelineAccuracy(
     acc_classify_standard=acc_classify_standard
 )
 pipe_acc.run()
-print("Calculating accuracy is finished")
+print(f"Process is finished at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")

@@ -157,4 +157,7 @@ class Init(object):
             'decompose_db': util.make_path_baseline(
                 path=self.path_root, module='data', exec_kind='batch', division=self.division,
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'),
+            'ml_data_map': util.make_path_baseline(
+                path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='ml_data_map', extension='pickle'),
         }

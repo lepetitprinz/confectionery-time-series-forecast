@@ -3,6 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+
 from baseline.deployment.PipelineStack import PipelineCycle
 
 # Root path
@@ -39,7 +40,7 @@ exec_cfg = {
     'cycle': False,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': False,                     # Save each step result to object or csv
+    'save_step_yn': True,                     # Save each step result to object or csv
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration
@@ -59,7 +60,7 @@ exec_cfg = {
 
     # Training configuration
     'scaling_yn': False,                      # Data scaling
-    'grid_search_yn': False,                   # Grid Search
+    'grid_search_yn': False,                  # Grid Search
     'voting_yn': True                         # Add voting algorithm
 }
 

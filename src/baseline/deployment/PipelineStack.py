@@ -185,6 +185,8 @@ class PipelineCycle(object):
         # 4. Training
         # ================================================================================================= #
         scores_best = None
+        ml_data_map = None
+
         if self.step_cfg['cls_train']:
             print("Step 4: Train\n")
             if not self.step_cfg['cls_prep']:
@@ -206,6 +208,9 @@ class PipelineCycle(object):
             # Train the models
             scores = training.train(df=data_prep)
 
+            # temp
+            self.io.save_object(data=scores, file_path='score_test.pickle', data_type='binary')
+
             # Save Step result
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
@@ -213,6 +218,12 @@ class PipelineCycle(object):
             # Save best parameters
             if self.exec_cfg['grid_search_yn']:
                 training.save_best_params(scores=scores)
+
+            # Make machine learning data
+            ml_data_map = training.make_ml_data_map(
+                data=scores,
+                fn=training.score_to_df
+            )
 
             # Make score result
             # All scores
@@ -234,6 +245,7 @@ class PipelineCycle(object):
             # Save best scores
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
+                self.io.save_object(data=ml_data_map, file_path=self.path['ml_data_map'], data_type='binary')
 
             if self.exec_cfg['save_db_yn']:
                 # Save best of the training scores on the DB table
@@ -264,6 +276,7 @@ class PipelineCycle(object):
             if not self.step_cfg['cls_train']:
                 # Load best scores
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
+                ml_data_map = self.io.load_object(file_path=self.path['ml_data_map'], data_type='binary')
 
             # Initiate predict class
             predict = Predict(
@@ -275,7 +288,8 @@ class PipelineCycle(object):
                 hrchy=self.hrchy,
                 common=self.common,
                 data_cfg=self.data_cfg,
-                exec_cfg=self.exec_cfg
+                exec_cfg=self.exec_cfg,
+                ml_data_map=ml_data_map
             )
 
             # Forecast

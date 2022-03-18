@@ -14,18 +14,27 @@ from collections import defaultdict
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+
 
 warnings.filterwarnings('ignore')
 
 
 class Train(object):
-    estimators = {
+    estimators_ts = {
         'ar': Algorithm.ar,
         'arima': Algorithm.arima,
         'hw': Algorithm.hw,
         'var': Algorithm.var,
         'varmax': Algorithm.varmax,
         'sarima': Algorithm.sarimax
+    }
+    estimators_ml = {
+        'rf': RandomForestRegressor,
+        'gb': GradientBoostingRegressor,
+        'et': ExtraTreesRegressor
     }
 
     def __init__(self, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
@@ -66,6 +75,7 @@ class Train(object):
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
+        # self.param_grid_list = {}  # Hyper-parameter
         self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
         # Training Configuration
@@ -83,57 +93,157 @@ class Train(object):
             end=self.data_cfg['date']['history']['to'],
             freq='W'
         ))
+        self.val_width = int(common['week_eval'])
         self.pred_width = int(common['week_pred'])
         self.shift_width = 4
         self.end_width = self.hist_width + self.pred_width
-        self.start_index = self.end_width % self.shift_width
-        self.window_length = (self.end_width - self.start_index) / self.shift_width
+        self.start_index = self.hist_width % self.shift_width
+        self.window_cnt = (self.hist_width - self.start_index) / self.shift_width
+        self.input_length = self.end_width - self.start_index
+        self.train_length = self.hist_width - self.start_index
+        self.target_start_idx = self.start_index + self.shift_width
 
         # Stacking ensemble configuration
         self.train_rate = 0.7
         self.val_rate = 1 - self.train_rate
         self.test_size = self.pred_width
+        self.ml_param_list = {}
+        # self.ml_param_list = config.PARAM_GRIDS_SIM
 
         # After processing configuration
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def train(self, df) -> dict:
-        # Evaluate each algorithm
-        # scores = util.hrchy_recursion(
-        #     hrchy_lvl=self.hrchy['lvl']['total'] - 1,
-        #     fn=self.train_time_series,
-        #     df=df
-        # )
-
-        # Evaluate each algorithm
-        scores = util.hrchy_recursion(
+        scores = util.hrchy_recursion_score(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
-            fn=self.train_stack_ensemble,
+            fn=self.evaluation_model,
             df=df
         )
 
         return scores
 
-    def train_stack_ensemble(self, df):
+    def evaluation_model(self, df) -> tuple:
         # Print training progress
         self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
+        score_ts = self.train_time_series(df=df)
+        score_ml, stack_data = self.train_stack_ensemble(df=df)
+        # scores = self.concat_score(score_ts=score_ts, score_ml=score_ml)
+        scores = score_ts + score_ml
+
+        return scores, stack_data
+
+    def concat_score(self, score_ts, score_ml):
+        if not self.exec_cfg['grid_search_yn']:
+            score_ts = [[score[0], score[1]] for score in score_ts]
+            scores = score_ts + score_ml
+        else:
+            scores = score_ts + score_ml
+
+        # Sort scores
+        scores = sorted(scores, key=lambda x: x[1])
+
+        return scores
+
+    def train_stack_ensemble(self, df):
         # Generate machine learning input
-        ml_input = self.generate_input(df=df)
-        print("")
+        data_input = self.generate_input(data=df)
+        data = self.add_target_data(input_data=data_input, target_data=df[self.target_col])
 
-    def split_ml_data(self, data: pd.DataFrame):
-        test_data = data.iloc[-1*self.test_size:]
-        data_sliced = data.iloc[:-1*self.test_size].copy
-        train_data = data_sliced
-        val_data = data_sliced
+        data_fit = self.make_ml_data(data=data, kind='fit')
+        data_pred = self.make_ml_data(data=data, kind='pred')
 
-    def generate_input(self, df: pd.DataFrame):
+        # Evaluation
+        scores = []
+        for estimator_nm, estimator in self.estimators_ml.items():
+            score = self.validation_ml_model(
+                data=data_fit,
+                estimator=estimator,
+                # params=self.ml_param_list[estimator_nm]
+            )
+            scores.append([estimator_nm, score, [], {}])
+
+        return scores, data_pred
+
+    def make_ml_data(self, data, kind: str):
+        # Split the data
+        data_split = self.split_ml_fit_data(data=data, kind=kind)
+
+        # Scale the data
+        data_scaled = self.scaling(data=data_split, kind=kind)
+
+        return data_scaled
+
+    def validation_ml_model(self, data, estimator, params={}):
+        est = estimator()
+        est.set_params(**params)
+
+        est.fit(data['train']['x'], data['train']['y'])
+        yhat = est.predict(data['val']['x'])
+
+        score = round(mean_squared_error(data['val']['y'], yhat, squared=False), self.decimal_point)
+
+        return score
+
+    def add_target_data(self, input_data, target_data):
+        target_data = target_data.reset_index(drop=True)
+        target_sliced = target_data.iloc[self.target_start_idx:] + pd.Series([0] * self.pred_width)
+        target_sliced = target_sliced.rename(self.target_col)
+        concat_data = pd.concat([input_data, target_sliced], axis=1)
+        concat_data = concat_data.fillna(0)
+
+        return concat_data
+
+    def split_ml_fit_data(self, data: pd.DataFrame, kind: str) -> dict:
+        data_split = {}
+        if kind == 'fit':
+            train_data = data.iloc[self.start_index: self.train_length - self.val_width].copy()
+            val_data = data.iloc[self.train_length - self.val_width: self.train_length].copy()
+            test_data = data.iloc[self.train_length:].copy()
+
+            data_split = {
+                'train': {
+                    'x': train_data.drop(columns=self.target_col).copy(),
+                    'y': train_data[self.target_col]
+                },
+                'val': {
+                    'x': val_data.drop(columns=self.target_col).copy(),
+                    'y': val_data[self.target_col]
+                },
+                'test': {
+                    'x': test_data.drop(columns=self.target_col).copy()
+                }
+            }
+        elif kind == 'pred':
+            train_data = data.iloc[self.start_index: self.train_length].copy()
+            test_data = data.iloc[self.train_length:].copy()
+
+            data_split = {
+                'train': {
+                    'x': train_data.drop(columns=self.target_col).copy(),
+                    'y': train_data[self.target_col]
+                },
+                'test': {
+                    'x': test_data.drop(columns=self.target_col).copy()
+                }
+            }
+
+        return data_split
+
+    def split_ml_train_data(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        test_data = data.iloc[self.train_length:].copy()
+        data_sliced = data.iloc[:self.train_length].copy()
+        train_data = data_sliced.iloc[:int(self.train_length * self.train_rate)].copy()
+        val_data = data_sliced.iloc[int(self.train_length * self.train_rate):].copy()
+
+        return train_data, val_data, test_data
+
+    def generate_input(self, data: pd.DataFrame):
         # Set features by models (univ/multi)
-        feature_by_variable = self.select_feature_by_variable(df=df)
+        feature_by_variable = self.select_feature_by_variable(df=data)
 
         input_by_model = {}
         for model in self.model_candidates:
@@ -141,13 +251,13 @@ class Train(object):
             data = feature_by_variable[self.model_info[model]['variate']]
 
             # Generate the machine learning input
-            input_by_model[model] = self.predict_on_window_data(model=model, data=data)
+            input_by_model[model] = self.predict_on_window_list(model=model, data=data)
 
         input_df = pd.DataFrame(input_by_model)
 
         return input_df
 
-    def predict_on_window_data(self, model: str, data: list):
+    def predict_on_window_list(self, model: str, data: list):
         data_window = self.split_window(data=data)
 
         ml_input = []
@@ -155,8 +265,7 @@ class Train(object):
             if self.model_info[model]['variate'] == 'multi':
                 window = self.split_variable(data=window)
 
-            pred_width = None
-            if i == (self.window_length-1):
+            if i == (self.window_cnt - 1):
                 pred_width = self.pred_width
             else:
                 pred_width = self.shift_width
@@ -169,7 +278,7 @@ class Train(object):
 
     def predict(self, model: str, data, pred_width):
         try:
-            prediction = self.estimators[model](
+            prediction = self.estimators_ts[model](
                 history=data,
                 cfg=self.param_grid[model],
                 pred_step=pred_width
@@ -198,40 +307,35 @@ class Train(object):
     def split_window(self, data):
         window_list = []
         if self.window_method == 'expand':
-             for i in range(self.start_index + self.shift_width, self.end_width + 1, self.shift_width):
+            for i in range(self.start_index + self.shift_width, self.hist_width + 1, self.shift_width):
                 window_list.append(data.iloc[self.start_index:i])
         elif self.window_method == 'slice':
-            for i in range(self.start_index, self.end_width + 1, self.shift_width):
+            for i in range(self.start_index, self.hist_width + 1, self.shift_width):
                 window_list.append(data.iloc[i:i + self.shift_width])
 
         return window_list
 
     # Training: Time Series
     def train_time_series(self, df) -> List[List[np.array]]:
-        # Print training progress
-        self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
-
         # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=df)
 
-        models = []
+        scores = []
         for model in self.model_candidates:
             # Validation
             score, diff, params = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
                 model=model
             )
-            models.append([model, score, diff, params])
+            scores.append([model, score, diff, params])
 
         if self.exec_cfg['voting_yn']:
-            score = self.voting(models=models)
-            models.append(['voting', score, [], {}])
+            score = self.voting(models=scores)
+            scores.append(['voting', score, [], {}])
 
-        models = sorted(models, key=lambda x: x[1])
+        # scores = sorted(scores, key=lambda x: x[1])
 
-        return models
+        return scores
 
     def voting(self, models: list) -> float:
         score = self.err_val
@@ -275,19 +379,12 @@ class Train(object):
         n_test = ast.literal_eval(self.model_info[model]['label_width'])
 
         # Split train & test dataset
-        data_train, data_test = self.split_train_test(data=data, n_test=n_test)
-
-        # Data Scaling
-        if self.exec_cfg['scaling_yn']:
-            data_train, data_test = self.scaling(
-                train=data_train,
-                test=data_test
-            )
+        data_train, data_test = self.split_train_test(data=data, model=model, n_test=n_test)
 
         best_params = {}
         if self.grid_search_yn:
             # Grid Search
-            err, diff, best_params = self.grid_search(
+            score, diff, best_params = self.grid_search(
                 model=model,
                 train=data_train,
                 test=data_test,
@@ -296,7 +393,7 @@ class Train(object):
 
         else:
             # Evaluation
-            err, diff = self.evaluation(
+            score, diff = self.evaluation(
                 model=model,
                 params=self.param_grid[model],
                 train=data_train,
@@ -304,9 +401,9 @@ class Train(object):
                 n_test=n_test
             )
 
-        return err, diff, best_params
+        return score, diff, best_params
 
-    def split_train_test(self, data: pd.DataFrame, n_test: int) -> Tuple[dict, dict]:
+    def split_train_test(self, data: pd.DataFrame, model: str, n_test: int) -> Tuple[dict, dict]:
         data_length = len(data)
 
         if data_length - n_test >= n_test:    # if training period bigger than prediction
@@ -321,6 +418,7 @@ class Train(object):
             data_train = data.iloc[: data_length - 1]
             data_test = data.iloc[data_length - 1:]
 
+        if self.model_info[model]['variate'] == 'multi':
             x_train = data_train[self.exo_col_list].values
             x_test = data_test[self.exo_col_list].values
 
@@ -360,11 +458,11 @@ class Train(object):
             len_train = len(train['endog'])
             len_test = len(test['endog'])
 
-        err = self.err_val
+        score = self.err_val
         diff = [self.err_val] * len_test
         if len_train >= self.fixed_n_test:   # Evaluate if data length is bigger than minimum threshold
             try:
-                yhat = self.estimators[model](
+                yhat = self.estimators_ts[model](
                     history=train,    # Train dataset
                     cfg=params,       # Hyper-parameter
                     pred_step=n_test  # Prediction range
@@ -373,24 +471,24 @@ class Train(object):
                     if len_test < n_test:
                         yhat = yhat[:len_test]
                     if self.model_info[model]['variate'] == 'univ':
-                        err = round(mean_squared_error(test, yhat, squared=False), self.decimal_point)
+                        score = round(mean_squared_error(test, yhat, squared=False), self.decimal_point)
                         diff = test - yhat
                         diff = diff.values
                         # acc = round(self.calc_accuracy(test=test, pred=yhat), self.decimal_point)
 
                     elif self.model_info[model]['variate'] == 'multi':
-                        err = round(mean_squared_error(test['endog'], yhat, squared=False), self.decimal_point)
+                        score = round(mean_squared_error(test['endog'], yhat, squared=False), self.decimal_point)
                         diff = test['endog'] - yhat
                         # acc = round(self.calc_accuracy(test=test['endog'], pred=yhat), self.decimal_point)
 
                     # Clip error values
-                    if err > self.err_val:
-                        err = self.err_val
+                    if score > self.err_val:
+                        score = self.err_val
 
             except ValueError:
                 pass
 
-        return err, diff
+        return score, diff
 
     def grid_search(self, model, train, test, n_test) -> Tuple[float, Sequence, dict]:
         # get hyper-parameter grid for current algorithm
@@ -425,7 +523,7 @@ class Train(object):
         n_test = ast.literal_eval(self.model_info[model]['label_width'])    # Change data type
         predictions = []
         for train, test in dataset:
-            yhat = self.estimators[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
+            yhat = self.estimators_ts[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
             yhat = np.nan_to_num(yhat)
             err = mean_squared_error(test, yhat, squared=False)
             predictions.append(err)
@@ -436,20 +534,21 @@ class Train(object):
         return rmse
 
     @staticmethod
-    def scaling(train, test) -> tuple:
-        # Split train and test dataset
-        x_train = train['exog']
-        x_test = test['exog']
-
+    def scaling(data: dict, kind: str) -> dict:
         # Apply Min-Max Scaling
         scaler = MinMaxScaler()
-        x_train_scaled = scaler.fit_transform(x_train)
-        x_test_scaled = scaler.transform(x_test)
 
-        train['exog'] = x_train_scaled
-        test['exog'] = x_test_scaled
+        x_train_scaled = scaler.fit_transform(data['train']['x'])
+        x_test_scaled = scaler.transform(data['test']['x'])
 
-        return train, test
+        data['train']['x'] = x_train_scaled
+        data['test']['x'] = x_test_scaled
+
+        if kind == 'fit':
+            x_val_scaled = scaler.transform(data['val']['x'])
+            data['val']['x'] = x_val_scaled
+
+        return data
 
     def make_best_params_data(self, model: str, params: dict) -> tuple:
         model = model.upper()    # Convert name to uppercase
@@ -503,7 +602,7 @@ class Train(object):
 
     # Count best hyper-parameters
     def count_best_params(self, data) -> None:
-        for algorithm in data:
+        for algorithm in data['score']:
             if algorithm[0] != 'voting':
                 model, score, diff, params = algorithm
                 self.best_params_cnt[model][str(params)] += 1
@@ -575,11 +674,24 @@ class Train(object):
 
         return result, score_info
 
+    def make_ml_data_map(self, data, fn):
+        hrchy_tot_lvl = self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1
+        result = util.hrchy_recursion_extend_key(hrchy_lvl=hrchy_tot_lvl, fn=fn, df=data)
+        hrchy_data_map = dict(result)
+
+        return hrchy_data_map
+
+    @staticmethod
+    def make_hrchy_data_dict(hrchy: list, data):
+        hrchy_key = '_'.join(hrchy)
+
+        return [hrchy_key, data['data']]
+
     @staticmethod
     # Save all of scores to dataframe
     def score_to_df(hrchy: list, data) -> List[list]:
         result = []
-        for algorithm, err, accuracy, _ in data:
+        for algorithm, err, accuracy, _ in data['score']:
             # result.append(hrchy + [algorithm.upper(), score])
             result.append(hrchy + [algorithm.upper(), err, accuracy])
 
@@ -589,7 +701,7 @@ class Train(object):
     # Save best scores to dataframe
     def make_best_score_df(hrchy: list, data) -> list:
         result = []
-        for algorithm, err, accuracy, _ in data:
+        for algorithm, err, accuracy, _ in data['score']:
             # result.append(hrchy + [algorithm.upper(), score])
             result.append(hrchy + [algorithm.upper(), err, accuracy])
 

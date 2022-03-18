@@ -400,3 +400,29 @@ def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
     data[col] = acc
 
     return data
+
+
+def hrchy_recursion_score(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
+    temp = None
+    if lvl == 0:
+        temp = {}
+        for key, val in df.items():
+            result = hrchy_recursion_score(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
+            temp[key] = result
+
+    elif lvl < hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            result = hrchy_recursion_score(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
+            temp[key_hrchy] = result
+
+        return temp
+
+    elif lvl == hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            score, data = fn(val_hrchy)
+            temp[key_hrchy] = {'score': score, 'data': data}
+        return temp
+
+    return temp
