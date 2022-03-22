@@ -88,11 +88,12 @@ class Train(object):
 
         # Window Generator Configuration
         self.window_method = 'expand'    # slice / expand
-        self.hist_width = len(pd.date_range(
+        self.hist_date = pd.date_range(
             start=self.data_cfg['date']['history']['from'],
             end=self.data_cfg['date']['history']['to'],
             freq='W'
-        ))
+        )
+        self.hist_width = len(self.hist_date)
         self.val_width = int(common['week_eval'])
         self.pred_width = int(common['week_pred'])
         self.shift_width = 4
@@ -126,7 +127,7 @@ class Train(object):
     def evaluation_model(self, df) -> tuple:
         # Print training progress
         self.cnt += 1
-        if (self.cnt % 100 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         score_ts = self.train_time_series(df=df)
@@ -262,16 +263,21 @@ class Train(object):
 
         ml_input = []
         for i, window in enumerate(data_window):
-            if self.model_info[model]['variate'] == 'multi':
-                window = self.split_variable(data=window)
-
             if i == (self.window_cnt - 1):
                 pred_width = self.pred_width
             else:
                 pred_width = self.shift_width
 
+            prediction = [0] * pred_width
+            if self.model_info[model]['variate'] == 'multi':
+                window = self.split_variable(data=window)
+
             # Predict
-            prediction = self.predict(model=model, data=window, pred_width=pred_width)
+            try:
+                prediction = self.predict(model=model, data=window, pred_width=pred_width)
+            except ValueError:
+                continue
+
             ml_input.extend(prediction)
 
         return ml_input
@@ -304,7 +310,26 @@ class Train(object):
 
         return data
 
+    def fill_na_date(self, data):
+        avg = round(data.mean(), self.decimal_point)
+        na_date = list(set(self.hist_date) - set(data.index))
+        if isinstance(data, pd.Series):
+            na_df = pd.Series(avg, index=na_date)
+        elif isinstance(data, pd.DataFrame):
+            temp = avg.to_frame().transpose()
+            temp = temp.append([temp] * (len(na_date) - 1), ignore_index=True)
+            na_df = pd.DataFrame(
+                temp.values,
+                index=na_date,
+                columns=temp.columns)
+        data = data.append(na_df).sort_index()
+
+        return data
+
     def split_window(self, data):
+        if len(data) < self.hist_width:
+            data = self.fill_na_date(data)
+
         window_list = []
         if self.window_method == 'expand':
             for i in range(self.start_index + self.shift_width, self.hist_width + 1, self.shift_width):

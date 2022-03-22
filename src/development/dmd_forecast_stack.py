@@ -11,7 +11,7 @@ path_root = os.path.join('..', '..')
 # path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
-division = 'SELL_OUT'    # SELL_IN / SELL_OUT
+division = 'SELL_IN'    # SELL_IN / SELL_OUT
 hist_to = '20220227'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 
 # Change data type (string -> datetime)
@@ -31,7 +31,7 @@ step_cfg = {
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': True,
-    'cls_pred': False,
+    'cls_pred': True,
     'cls_mdout': False
 }
 
