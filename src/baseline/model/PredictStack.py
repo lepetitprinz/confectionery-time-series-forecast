@@ -95,12 +95,15 @@ class Predict(object):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         prediction_ts = self.forecast_time_series(hrchy=hrchy, data=df)
-        prediction_ml = self.forecast_machine_learning(hrchy=hrchy, data=df)
+        prediction_ml = self.forecast_machine_learning(hrchy=hrchy)
         prediction = prediction_ts + prediction_ml
 
         return prediction
 
-    def forecast_machine_learning(self, hrchy, data):
+    def forecast_machine_learning(self, hrchy):
+        # get data
+        data = self.ml_data_map['_'.join(hrchy)]
+
         predictions = []
         for estimator_nm, estimator in self.estimators_ml.items():
             prediction = self.predict_ml_model(

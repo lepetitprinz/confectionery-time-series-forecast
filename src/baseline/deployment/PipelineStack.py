@@ -222,7 +222,7 @@ class PipelineCycle(object):
             # Make machine learning data
             ml_data_map = training.make_ml_data_map(
                 data=scores,
-                fn=training.score_to_df
+                fn=training.make_hrchy_data_dict
             )
 
             # Make score result

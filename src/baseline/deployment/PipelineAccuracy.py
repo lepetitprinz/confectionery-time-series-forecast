@@ -1,4 +1,4 @@
-from baseline.analysis.CalcAccuracy import CalcAccuracy
+from baseline.analysis.CalcAccuracyNew import CalcAccuracy
 
 import datetime
 

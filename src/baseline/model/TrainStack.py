@@ -275,6 +275,7 @@ class Train(object):
             # Predict
             try:
                 prediction = self.predict(model=model, data=window, pred_width=pred_width)
+                prediction = np.round(np.clip(prediction, 0, self.err_val).tolist(), self.decimal_point)
             except ValueError:
                 continue
 
@@ -710,7 +711,7 @@ class Train(object):
     def make_hrchy_data_dict(hrchy: list, data):
         hrchy_key = '_'.join(hrchy)
 
-        return [hrchy_key, data['data']]
+        return [[hrchy_key, data['data']]]
 
     @staticmethod
     # Save all of scores to dataframe

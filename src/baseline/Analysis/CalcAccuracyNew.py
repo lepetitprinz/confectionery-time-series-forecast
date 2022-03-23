@@ -200,8 +200,7 @@ class CalcAccuracy(object):
         result['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in result['cust_grp_cd'].values]
 
         item_mst = self.item_mst.copy()
-        item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm',
-                             'item_attr03_nm', 'item_attr04_nm']]
+        item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm']]
         # merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
         result = pd.merge(result, item_mst, how='left', on=['item_cd'])
         result['item_attr01_nm'] = result['item_attr01_nm'].fillna('건과')
@@ -706,8 +705,7 @@ class CalcAccuracy(object):
         # Save result on the DB
         self.io.insert_to_db(df=data_db, tb_name='M4S_O110630')
 
-    @staticmethod
-    def reorder_filter_column(data: pd.DataFrame):
+    def reorder_filter_column(self, data: pd.DataFrame):
         cust = ['sp2_c_nm', 'sp2_nm', 'sp1_c_nm', 'cust_grp_nm']
         item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'mega_yn', 'level_cnt']
         pred = ['cover_pred_cnt', 'less_pred_cnt', 'over_pred_cnt', 'zero_pred_cnt',
