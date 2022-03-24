@@ -192,7 +192,8 @@ class CalcAccuracy(object):
                   ['mega_yn', 'start_week_day', 'week', 'sales', 'pred', 'plan']
         merged = pd.merge(data_pred, data_plan, on=grp_col)
 
-        merged = self.calc_acc_exception(data=merged)
+        if self.division == 'SELL_IN':
+            merged = self.calc_acc_exception(data=merged)
 
         # Add naming information
         result = merged.copy()

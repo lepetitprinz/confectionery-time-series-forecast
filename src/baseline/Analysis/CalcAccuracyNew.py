@@ -113,26 +113,84 @@ class CalcAccuracy(object):
         # Update recent sales matrix
         pred_plan = pd.merge(pred_plan, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
 
-        # Filter business range (Fixed)
-        pred_plan = pred_plan[pred_plan['item_attr01_cd'] == 'P1']
+        # Filter data (Option)
+        pred, plan = self.filter_data(data=pred_plan)
+
+        self.calc_all(pred=pred, plan=plan)
 
         # Make the raw result
-        data_raw = self.calc_raw(data=pred_plan)
+        # data_raw = self.calc_raw(data=pred_plan)
+        #
+        # # Make the summary result
+        # if self.exec_cfg['calc_summary']:
+        #     # Summary of all brand
+        #     self.calc_summary(data=data_raw, mega_filter=False)
+        #     # Summary of mega brand
+        #     self.calc_summary(data=data_raw, mega_filter=True)
+        #
+        # # Make the db result
+        # if self.exec_cfg['calc_db']:
+        #     self.calc_db(data=data_raw)
 
-        # Make the file result
-        if self.exec_cfg['calc_csv_yn']:
-            self.calc_csv(data=pred_plan)
+    def calc_all(self, pred: pd.DataFrame, plan: pd.DataFrame):
+        for label in ['pred', 'plan']:
+            acc = self.calc_accuracy(data=pred, dividend='sales', divisor=label, label='')
+            acc = self.add_name_info(data=acc, label=label)
+            acc = self.reorder_col(data=acc)
 
-        # Make the summary result
-        if self.exec_cfg['calc_summary']:
-            # Summary of all brand
-            self.calc_summary(data=data_raw, mega_filter=False)
-            # Summary of mega brand
-            self.calc_summary(data=data_raw, mega_filter=True)
+        print("")
 
-        # Make the db result
-        if self.exec_cfg['calc_db']:
-            self.calc_db(data=data_raw)
+    def add_name_info(self, data, label: str):
+        data['sp1_c_nm'] = [self.cust_map['SP1_C'].get(code, code) for code in data['sp1_c_cd'].values]
+        data['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in data['cust_grp_cd'].values]
+
+        # Add item information
+        item_mst = self.item_mst.copy()
+        item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm']]
+        # merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
+        data = pd.merge(data, item_mst, how='left', on=['item_cd'])
+
+        # Add classification
+        data['gubun'] = label
+
+        return data
+
+    def calc_raw(self, data: pd.DataFrame) -> pd.DataFrame:
+        data_pred = self.calc_accuracy(data=data, dividend='sales', divisor='pred', label='_pred')
+        data_plan = self.calc_accuracy(data=data, dividend='sales', divisor='plan', label='_plan')
+
+        # Merge the calculation result of prediction & plan
+        grp_col = self.cust_batch_list + self.hrchy['list']['item'] + \
+                  ['mega_yn', 'start_week_day', 'week', 'sales', 'pred', 'plan']
+        merged = pd.merge(data_pred, data_plan, on=grp_col)
+
+        # if self.division == 'SELL_IN':
+            # merged = self.calc_acc_exception(data=merged)
+
+        # Add naming information
+        result = merged.copy()
+        result['sp1_c_nm'] = [self.cust_map['SP1_C'].get(code, code) for code in result['sp1_c_cd'].values]
+        result['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in result['cust_grp_cd'].values]
+
+        item_mst = self.item_mst.copy()
+        item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm']]
+        # merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
+        result = pd.merge(result, item_mst, how='left', on=['item_cd'])
+        result['item_attr01_nm'] = result['item_attr01_nm'].fillna('건과')
+
+        # Reorder columns
+        col_cust = ['sp1_c_nm', 'cust_grp_nm']
+        col_item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm',
+                    'item_cd', 'item_nm', 'mega_yn']
+        col_etc = ['sales', 'pred', 'plan', 'acc_pred', 'acc_plan']
+        result = result[col_cust + col_item + col_etc]
+
+        # Save the result
+        path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
+                            '_' + str(self.hrchy['lvl']['item']) + '_raw.csv')
+        result.to_csv(path, index=False, encoding='cp949')
+
+        return merge
 
     def exec_dev(self) -> None:
         # Load the dataset
@@ -148,6 +206,32 @@ class CalcAccuracy(object):
         merged = merged[merged['item_attr01_cd'] == 'P1']
 
         self.calc_dev(data=merged)
+
+    def filter_data(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        temp = data[data['item_attr01_cd'] == 'P1'].copy()
+
+        if self.exec_cfg['filter_data_yn']:
+            # Filtering condition 1
+            mask = temp[(temp['sales'] == 0) & (temp['pred'] == 0) & (temp['plan'] == 0)].index
+            temp = temp.loc[set(temp.index) - set(mask)]
+
+            # Filtering condition 2
+            more = temp[temp['sales'] >= 5]
+            less = temp[temp['sales'] < 5]
+
+            # split into prediction and planning
+            add_pred = less[(less['sales'] == 0) & (less['pred'] == 0)].copy()
+            add_plan = less[(less['sales'] == 0) & (less['plan'] == 0)].copy()
+
+            #
+            pred = more.append(add_pred)
+            plan = more.append(add_plan)
+
+            #
+            pred = pred.drop(columns=['plan'])
+            plan = pred.drop(columns=['pred'])
+
+            return pred, plan
 
     def preprocess_dev(self, sales, pred) -> pd.DataFrame:
         # Filter columns
@@ -181,43 +265,7 @@ class CalcAccuracy(object):
         # Save the result
         path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
                             '_' + str(self.hrchy['lvl']['item']) + '_dev.csv')
-        acc.to_csv(path, index=False, encoding='cp949')
-
-    def calc_raw(self, data: pd.DataFrame) -> pd.DataFrame:
-        data_pred = self.calc_accuracy(data=data, dividend='sales', divisor='pred', label='_pred')
-        data_plan = self.calc_accuracy(data=data, dividend='sales', divisor='plan', label='_plan')
-
-        # Merge the calculation result of prediction & plan
-        grp_col = self.cust_batch_list + self.hrchy['list']['item'] + \
-                  ['mega_yn', 'start_week_day', 'week', 'sales', 'pred', 'plan']
-        merged = pd.merge(data_pred, data_plan, on=grp_col)
-
-        merged = self.calc_acc_exception(data=merged)
-
-        # Add naming information
-        result = merged.copy()
-        result['sp1_c_nm'] = [self.cust_map['SP1_C'].get(code, code) for code in result['sp1_c_cd'].values]
-        result['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in result['cust_grp_cd'].values]
-
-        item_mst = self.item_mst.copy()
-        item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm']]
-        # merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
-        result = pd.merge(result, item_mst, how='left', on=['item_cd'])
-        result['item_attr01_nm'] = result['item_attr01_nm'].fillna('건과')
-
-        # Reorder columns
-        col_cust = ['sp1_c_nm', 'cust_grp_nm']
-        col_item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm',
-                    'item_cd', 'item_nm', 'mega_yn']
-        col_etc = ['sales', 'pred', 'plan', 'acc_pred', 'acc_plan']
-        result = result[col_cust + col_item + col_etc]
-
-        # Save the result
-        path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division +
-                            '_' + str(self.hrchy['lvl']['item']) + '_raw.csv')
-        result.to_csv(path, index=False, encoding='cp949')
-
-        return merged
+        acc.to_csv(path, index=False, encoding='cp949')d
 
     @staticmethod
     def calc_acc_exception(data: pd.DataFrame) -> pd.DataFrame:
@@ -226,19 +274,6 @@ class CalcAccuracy(object):
         data.loc[mask, 'acc_plan'] = 0
 
         return data
-
-    def calc_csv(self, data) -> None:
-        data_pred = self.compare_for_file(data=data, kind='pred')
-        data_plan = self.compare_for_file(data=data, kind='plan')
-
-        grp_col = self.cust_batch_list + self.item_batch_list + ['mega_yn', 'level_cnt']
-        merged = pd.merge(data_pred, data_plan, on=grp_col)
-
-        # Add name information
-        merged = self.add_information(data=merged)
-
-        # Save the result to file
-        self.save_result_to_file(data=merged)
 
     def calc_summary(self, data: pd.DataFrame, mega_filter: bool) -> None:
         # If only view results on mega brand
@@ -263,6 +298,16 @@ class CalcAccuracy(object):
 
         # Group by cust class and (forecast/plan)
         data_concat = data_concat.groupby(by=['cust_class', 'gubun']).sum()
+
+        # Add total result
+        data_concat_sum = data_concat.reset_index()\
+            .groupby('gubun')\
+            .sum()\
+            .reset_index()\
+            .copy()
+        data_concat_sum['cust_class'] = '0.전체'
+        data_concat_sum = data_concat_sum.set_index(['cust_class', 'gubun'])
+        data_concat = data_concat.append(data_concat_sum).sort_index()
 
         # Sum all of the class
         data_concat['tot_cnt'] = data_concat.groupby(by=['cust_class', 'gubun']).sum().sum(axis=1).copy()

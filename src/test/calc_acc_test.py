@@ -14,16 +14,17 @@ root_path = os.path.join('..', '..')
 save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 exec_cfg = {
-    'save_db_yn': True,
+    'save_db_yn': False,
     'cycle_yn': False,
-    'calc_csv_yn': False,
+    'filter_data_yn': True,
     'calc_summary': True,
-    'calc_db': False
+    'calc_db': False,
 }
 
 pipe_acc = PipelineAccuracy(
     exec_kind=exec_kind,
     exec_cfg=exec_cfg,
+    # option_cfg=option_cfg,
     root_path=root_path,
     save_path=save_path,
     division_list=division_list,
