@@ -112,6 +112,7 @@ class Predict(object):
                 params={},
                 # params=self.ml_param_list[estimator_nm]
             )
+            prediction = np.round(np.clip(prediction, 0, self.max_val).tolist(), self.decimal_point)
             predictions.append(hrchy + [estimator_nm.upper(), prediction])
 
         return predictions

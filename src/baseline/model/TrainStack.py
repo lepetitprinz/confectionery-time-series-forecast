@@ -101,7 +101,7 @@ class Train(object):
         self.start_index = self.hist_width % self.shift_width
         self.window_cnt = (self.hist_width - self.start_index) / self.shift_width
         self.input_length = self.end_width - self.start_index
-        self.train_length = self.hist_width - self.start_index
+        self.train_length = self.hist_width - self.start_index - self.shift_width
         self.target_start_idx = self.start_index + self.shift_width
 
         # Stacking ensemble configuration
@@ -152,7 +152,8 @@ class Train(object):
     def train_stack_ensemble(self, df):
         # Generate machine learning input
         data_input = self.generate_input(data=df)
-        data = self.add_target_data(input_data=data_input, target_data=df[self.target_col])
+        target = self.fill_empty_date(data=df[self.target_col])
+        data = self.add_target_data(input_data=data_input, target_data=target)
 
         data_fit = self.make_ml_data(data=data, kind='fit')
         data_pred = self.make_ml_data(data=data, kind='pred')
@@ -168,6 +169,16 @@ class Train(object):
             scores.append([estimator_nm, score, [], {}])
 
         return scores, data_pred
+
+    def fill_empty_date(self, data: pd.Series):
+        empty_date = set(self.hist_date) - set(data.index)
+        if len(empty_date) > 0:
+            avg_qty = round(data.mean(), self.decimal_point)
+            empty_df = pd.DataFrame([avg_qty] * len(empty_date), index=list(empty_date))
+            data = pd.concat([data, empty_df], axis=0)
+            data = data.sort_index().squeeze()
+
+        return data
 
     def make_ml_data(self, data, kind: str):
         # Split the data
@@ -190,8 +201,9 @@ class Train(object):
         return score
 
     def add_target_data(self, input_data, target_data):
-        target_data = target_data.reset_index(drop=True)
-        target_sliced = target_data.iloc[self.target_start_idx:] + pd.Series([0] * self.pred_width)
+        # target_data = target_data.reset_index(drop=True)
+        target_sliced = target_data.iloc[self.target_start_idx:].tolist()
+        target_sliced = pd.Series(target_sliced + [0] * self.pred_width)
         target_sliced = target_sliced.rename(self.target_col)
         concat_data = pd.concat([input_data, target_sliced], axis=1)
         concat_data = concat_data.fillna(0)
@@ -717,9 +729,9 @@ class Train(object):
     # Save all of scores to dataframe
     def score_to_df(hrchy: list, data) -> List[list]:
         result = []
-        for algorithm, err, accuracy, _ in data['score']:
+        for algorithm, err, _, _ in data['score']:
             # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), err, accuracy])
+            result.append(hrchy + [algorithm.upper(), err, 0])
 
         return result
 
@@ -727,11 +739,11 @@ class Train(object):
     # Save best scores to dataframe
     def make_best_score_df(hrchy: list, data) -> list:
         result = []
-        for algorithm, err, accuracy, _ in data['score']:
+        for algorithm, err, _, _ in data['score']:
             # result.append(hrchy + [algorithm.upper(), score])
-            result.append(hrchy + [algorithm.upper(), err, accuracy])
+            result.append(hrchy + [algorithm.upper(), err, 0])
 
-        result = sorted(result, key=lambda x: x[2])
+        result = sorted(result, key=lambda x: x[-2])
 
         return [result[0]]
 

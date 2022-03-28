@@ -7,12 +7,12 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineStack import PipelineCycle
 
 # Root path
-path_root = os.path.join('..', '..')
-# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+# path_root = os.path.join('..', '..')
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
-hist_to = '20220227'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
+hist_to = '20220227'    # W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -30,9 +30,9 @@ step_cfg = {
     'cls_load': False,
     'cls_cns': False,
     'cls_prep': False,
-    'cls_train': False,
+    'cls_train': True,
     'cls_pred': True,
-    'cls_mdout': False
+    'cls_mdout': True
 }
 
 # Configuration

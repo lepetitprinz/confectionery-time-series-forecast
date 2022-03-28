@@ -208,9 +208,6 @@ class PipelineCycle(object):
             # Train the models
             scores = training.train(df=data_prep)
 
-            # temp
-            self.io.save_object(data=scores, file_path='score_test.pickle', data_type='binary')
-
             # Save Step result
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')

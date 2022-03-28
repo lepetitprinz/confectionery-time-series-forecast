@@ -75,7 +75,8 @@ class PipelineDecompCycle(object):
             common=self.common,
             hrchy=self.hrchy,
             data_cfg=self.data_cfg,
-            exec_cfg=self.exec_cfg
+            exec_cfg=self.exec_cfg,
+            division=self.division
         )
 
         # Preprocessing the dataset
