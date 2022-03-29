@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccuracy import PipelineAccuracy
+from baseline.deployment.PipelineAccReport import PipelineAccReport
 
 hist_to = '20220220'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 exec_kind = 'test'
@@ -29,7 +29,7 @@ exec_cfg = {
     'pick_specific_sp1_yn': False,         # Pick Specific sp1 list
 }
 
-pipe_acc = PipelineAccuracy(
+pipe_acc = PipelineAccReport(
     exec_kind=exec_kind,
     exec_cfg=exec_cfg,
     root_path=root_path,

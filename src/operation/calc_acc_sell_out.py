@@ -7,7 +7,7 @@ from baseline.deployment.PipelineAccSystem import PipelineAccSystem
 
 exec_kind = 'batch'
 item_lvl_list = [5]
-division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
+division_list = ['SELL_OUT']    # SELL_IN / SELL_OUT
 
 acc_classify_standard = 0.25
 
@@ -16,7 +16,7 @@ save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 exec_cfg = {
     'save_file_yn': True,
-    'save_db_yn': True,
+    'save_db_yn': False,
     'cycle_yn': True,
 }
 

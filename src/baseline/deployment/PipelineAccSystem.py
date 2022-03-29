@@ -1,9 +1,9 @@
-from baseline.analysis.CalcAccuracyNew import CalcAccuracy
+from baseline.analysis.CalcAccuracySystem import CalcAccuracySystem
 
 import datetime
 
 
-class PipelineAccuracy(object):
+class PipelineAccSystem(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
     def __init__(self, exec_kind: str, exec_cfg: dict, root_path: str, save_path: str,
@@ -37,7 +37,7 @@ class PipelineAccuracy(object):
                 data_cfg = self.get_data_cfg(division=division, item_lvl=item_lvl)
 
                 # Initiate class
-                acc = CalcAccuracy(
+                acc = CalcAccuracySystem(
                     exec_kind=self.exec_kind,
                     exec_cfg=self.exec_cfg,
                     date_cfg=self.date_cfg,
