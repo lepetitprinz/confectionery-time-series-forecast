@@ -16,7 +16,7 @@ save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 exec_cfg = {
     'save_file_yn': True,
-    'save_db_yn': False,
+    'save_db_yn': True,
     'cycle_yn': True,
 }
 

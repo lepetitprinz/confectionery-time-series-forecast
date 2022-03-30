@@ -116,6 +116,9 @@ class CalcAccuracySystem(object):
         # Filter business range (Fixed)
         pred_plan = pred_plan[pred_plan['item_attr01_cd'] == 'P1']
 
+        # Fill empty brand code
+        pred_plan['item_attr03_cd'] = pred_plan['item_attr03_cd'].fillna('UNDEFINED')
+
         # Make the raw result
         data_raw = self.calc_raw(data=pred_plan)
 
@@ -140,6 +143,9 @@ class CalcAccuracySystem(object):
 
         # Filter business range
         merged = merged[merged['item_attr01_cd'] == 'P1']
+
+        # Fill empty brand code
+        merged['item_attr03_cd'] = merged['item_attr03_cd'].fillna('UNDEFINED')
 
         self.calc_dev(data=merged)
 
@@ -606,6 +612,9 @@ class CalcAccuracySystem(object):
         item_info = self.item_mst[self.item_batch_list + [code[:-2] + 'nm' for code in self.item_batch_list]]\
             .drop_duplicates()\
             .copy()
+        item_info = item_info.dropna(how='all')
+        item_info = item_info.fillna('UNDEFINED')
+
         data = pd.merge(data, item_info, how='left', on=self.item_batch_list)
 
         return data

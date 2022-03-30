@@ -193,10 +193,10 @@ class CalcAccuracyReport(object):
             .sum() \
             .reset_index() \
             .copy()
-        summary_label_sum['cust_class'] = '5.전체'
+        summary_label_sum['cust_class'] = '0.전체'
         summary_label_sum = summary_label_sum.set_index(['cust_class', 'gubun'])
         summary_label = summary_label.append(summary_label_sum).sort_index()
-        summary_label = summary_label.drop(columns=['zero_cnt'])
+        # summary_label = summary_label.drop(columns=['zero_cnt'])
 
         # Sum all of the class
         summary_label['tot_cnt'] = summary_label.groupby(by=['cust_class', 'gubun']).sum().sum(axis=1).copy()
@@ -205,12 +205,25 @@ class CalcAccuracyReport(object):
         summary_label_rate = summary_label.div(summary_label['tot_cnt'], axis=0).copy()
         summary_label_rate = summary_label_rate.drop(columns=['tot_cnt'])
         summary_label_rate.columns = [col + '_rate' for col in summary_label_rate.columns]
-        summary_label_all = pd.concat([summary_label, summary_label_rate], axis=1)
-        summary_label_all = summary_label_all[
-            ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate', 'over_cnt', 'over_cnt_rate']
-        ]
 
-        return summary_label_all
+        # Concatenate count & rate result
+        summary_label_result = None
+        if self.exec_cfg['summary_add_cnt']:
+            summary_label_result = pd.concat([summary_label, summary_label_rate], axis=1)
+            summary_label_result = summary_label_result[
+                ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate',
+                 'over_cnt', 'over_cnt_rate', 'zero_cnt', 'zero_cnt_rate']
+            ]
+
+        else:
+            summary_label_rate = summary_label_rate.reset_index()
+            summary_label_result = summary_label_rate.pivot(
+                index=['gubun'],
+                columns='cust_class',
+                values=['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate', 'zero_cnt_rate']
+            )
+
+        return summary_label_result
 
     def save_summary(self, data) -> None:
         for tag in ['all', 'mega']:
@@ -250,7 +263,8 @@ class CalcAccuracyReport(object):
         item_mst = self.item_mst.copy()
         item_mst = item_mst[['item_cd', 'item_nm', 'item_attr01_nm', 'item_attr02_nm',
                              'item_attr03_nm', 'item_attr04_nm']]
-        # merge_col = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd', 'mega_yn']
+        item_mst = item_mst.fillna('UNDEFINED')
+
         data_add = pd.merge(data_add, item_mst, how='left', on=['item_cd'])
 
         return data_add
@@ -277,6 +291,10 @@ class CalcAccuracyReport(object):
         summary.to_csv(path, index=False, encoding='cp949')
 
     def filter_data(self, data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+        # Fill empty brand code
+        data['item_attr03_cd'] = data['item_attr03_cd'].fillna('UNDEFINED')
+
+        # Filter business range (Fixed)
         temp = data[data['item_attr01_cd'] == 'P1'].copy()
 
         # Filtering condition 1
@@ -554,6 +572,7 @@ class CalcAccuracyReport(object):
         item_info = self.item_mst[self.item_batch_list + [code[:-2] + 'nm' for code in self.item_batch_list]]\
             .drop_duplicates()\
             .copy()
+        item_info = item_info.fillna('UNDEFINED')
         data = pd.merge(data, item_info, how='left', on=self.item_batch_list)
 
         return data

@@ -4,10 +4,10 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineAccReport import PipelineAccReport
 
-hist_to = '20220227'    # W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213)
-exec_kind = 'dev'
+hist_to = '20220206'    # W12(20220313) / W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213)
+exec_kind = 'batch'
 item_lvl_list = [5]
-division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
+division_list = ['SELL_IN', 'SELL_OUT']    # SELL_IN / SELL_OUT
 
 root_path = os.path.join('..', '..')
 # root_path = os.path.join('/', 'opt', 'DF', 'fcst')
@@ -16,6 +16,7 @@ save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 exec_cfg = {
     'save_db_yn': False,
     'cycle_yn': False,
+    'summary_add_cnt': False
 }
 
 pipe_acc = PipelineAccReport(
