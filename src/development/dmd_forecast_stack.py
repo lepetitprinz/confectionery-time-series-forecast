@@ -12,7 +12,7 @@ path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
-hist_to = '20220227'    # W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
+hist_to = '20220313'    #  W12(20220313) / W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')

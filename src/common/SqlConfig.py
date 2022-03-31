@@ -62,6 +62,7 @@ class SqlConfig(object):
                       FROM M4S_I002040
                      WHERE ITEM_TYPE_CD IN ('FERT', 'HAWA')
                        AND USE_YN = 'Y'
+                       AND DEL_YN = 'N'
                    ) ITEM
               LEFT OUTER JOIN (
                                SELECT COMM_DTL_CD AS CODE

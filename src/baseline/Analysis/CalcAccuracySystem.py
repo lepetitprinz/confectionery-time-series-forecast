@@ -609,7 +609,8 @@ class CalcAccuracySystem(object):
         data['cust_grp_nm'] = [self.cust_map['SP1'].get(code, code) for code in data['cust_grp_cd'].values]
 
         # Add item names
-        item_info = self.item_mst[self.item_batch_list + [code[:-2] + 'nm' for code in self.item_batch_list]]\
+        item_info = self.item_mst.copy()
+        item_info = item_info[self.item_batch_list + [code[:-2] + 'nm' for code in self.item_batch_list]]\
             .drop_duplicates()\
             .copy()
         item_info = item_info.dropna(how='all')
