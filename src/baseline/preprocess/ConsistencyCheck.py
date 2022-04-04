@@ -28,25 +28,25 @@ class ConsistencyCheck(object):
         self.io = DataIO()
         self.sql_config = SqlConfig()
 
-        # Data Configuration
+        # Data instance attribute
         self.exec_cfg = exec_cfg
         self.data_vrsn_cd = data_vrsn_cd
         self.division = division
         self.common = common
         self.hrchy = hrchy
 
-        # Resampling configuration
+        # Resampling instance attribute
         self.resample_rule = 'W-MON'    # Resampling rule
         self.resample_sum_list = ['qty']     # columns of weekly resampling rule (Summation)
         self.resample_avg_list = ['unit_price', 'discount']    # columns of weekly resampling rule (Average)
 
-        # Information
+        # Information instance attribute
         self.mst_info = mst_info
         self.err_grp_map = err_grp_map
         self.unit_cd = common['unit_cd'].split(',')    # Applying unit code list
         self.col_numeric = ['unit_price', 'discount', 'qty']    # Numeric column list
 
-        # Save and Load Configuration
+        # Save and Load instance attribute
         self.save_path = os.path.join(path_root, 'error')    # Save path
         self.tb_name = 'M4S_I002174'    # Saving table name
 

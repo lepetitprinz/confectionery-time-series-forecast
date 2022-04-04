@@ -8,14 +8,14 @@ from recommend.feature_engineering.Rank import Rank
 
 class PipelineCycle(object):
     def __init__(self, cfg: dict):
-        # Class configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
-        # Execute configuration
+        # Execute instance attribute
         self.cfg = cfg
 
-        # Data configuration
+        # Data instance attribute
         self.common = self.io.get_dict_from_db(
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',

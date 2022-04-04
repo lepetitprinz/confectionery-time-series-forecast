@@ -202,7 +202,8 @@ class PipelineCycle(object):
                 mst_info=mst_info,                 # Master information
                 exg_list=exg_list,                 # Exogenous variable list
                 data_cfg=self.data_cfg,            # Data configuration
-                exec_cfg=self.exec_cfg             # Execute configuration
+                exec_cfg=self.exec_cfg,             # Execute configuration
+                path_root=self.path_root
             )
 
             # Train the models
@@ -213,8 +214,11 @@ class PipelineCycle(object):
                 self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
             # Save best parameters
-            if self.exec_cfg['grid_search_yn']:
-                training.save_best_params(scores=scores)
+            # if self.exec_cfg['grid_search_yn']:
+            #     training.save_best_params_ts(scores=scores)
+
+            if self.exec_cfg['stack_grid_search_yn']:
+                training.save_best_params_stack(scores=scores)
 
             # Make machine learning data
             ml_data_map = training.make_ml_data_map(

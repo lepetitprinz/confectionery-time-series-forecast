@@ -19,17 +19,17 @@ class PipelineDev(object):
         :param exec_cfg: Data I/O Configuration
         :param step_cfg: Execute Configuration
         """
-        # Hierarchy Level
+        # Hierarchy Level instance attribute
         self.item_lvl = 3    # Fixed
 
-        # I/O & Execution Configuration
+        # I/O & Execution instance attribute
         self.exec_kind = 'dev'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
         self.path_root = path_root
 
-        # Class Configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.common = self.io.get_dict_from_db(
@@ -38,7 +38,7 @@ class PipelineDev(object):
             val='OPTION_VAL'
         )
 
-        # Data Configuration
+        # Data instance attribute
         self.division = data_cfg['division']
         self.data_vrsn_cd = ''
         self.hrchy = {}

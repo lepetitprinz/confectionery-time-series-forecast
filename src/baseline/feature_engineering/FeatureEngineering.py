@@ -10,16 +10,16 @@ class FeatureEngineering(object):
         self.exg_list = exg_list
         self.decimal_point = 2
 
-        # Feature Selection
+        # Feature Selection instance attribute
         self.feat_select_method = 'spearmanr'    # pearson / spearmanr
         self.n_feature_to_select = 2
 
-        # Time series rolling statistics
+        # Time series rolling statistics instance attribute
         self.rolling_window = 5
         self.rolling_center = True
         self.rolling_agg_list = ['min', 'max', 'mean', 'median']
 
-        # Representative sampling
+        # Representative sampling instance attribute
         self.repr_sampling_grp_list = ['sku_cd', 'yy', 'week']
         self.repr_sampling_agg_list = ['min', 'max', 'mean', 'median']
 

@@ -4,7 +4,6 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 
 import os
-import datetime
 import numpy as np
 import pandas as pd
 from typing import Dict, Tuple
@@ -62,8 +61,7 @@ class CalcAccuracyReport(object):
         }
     }
 
-    def __init__(self, exec_kind: str, exec_cfg: dict, date_cfg: dict, data_cfg: dict,
-                 acc_classify_standard=0.25):
+    def __init__(self, exec_kind: str, exec_cfg: dict, date_cfg: dict, data_cfg: dict, acc_classifier=0.3):
         # Object instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
@@ -96,7 +94,7 @@ class CalcAccuracyReport(object):
 
         # Evaluation instance attribute
         self.week_compare = 1    # Compare week range
-        self.acc_classify_standard = acc_classify_standard
+        self.acc_classifier = acc_classifier
         self.load_sales_option = 'fixed'    # fixed / recent
 
     def run(self) -> None:
@@ -207,12 +205,13 @@ class CalcAccuracyReport(object):
         summary_label_rate.columns = [col + '_rate' for col in summary_label_rate.columns]
 
         # Concatenate count & rate result
-        summary_label_result = None
         if self.exec_cfg['summary_add_cnt']:
             summary_label_result = pd.concat([summary_label, summary_label_rate], axis=1)
             summary_label_result = summary_label_result[
                 ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate',
-                 'over_cnt', 'over_cnt_rate', 'zero_cnt', 'zero_cnt_rate']
+                 'over_cnt', 'over_cnt_rate']
+                # ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate',
+                #  'over_cnt', 'over_cnt_rate', 'zero_cnt', 'zero_cnt_rate']
             ]
 
         else:
@@ -220,7 +219,8 @@ class CalcAccuracyReport(object):
             summary_label_result = summary_label_rate.pivot(
                 index=['gubun'],
                 columns='cust_class',
-                values=['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate', 'zero_cnt_rate']
+                values=['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate']
+                # values = ['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate', 'zero_cnt_rate']
             )
 
         return summary_label_result
@@ -229,7 +229,7 @@ class CalcAccuracyReport(object):
         for tag in ['all', 'mega']:
             result = data[tag]
             result = pd.concat(result, axis=0)
-            name = str(self.hrchy['lvl']['item']) + '_' + str(self.acc_classify_standard) + self.summary_tag[tag]
+            name = str(self.hrchy['lvl']['item']) + '_' + str(self.acc_classifier) + self.summary_tag[tag]
             path = os.path.join(self.save_path, self.data_vrsn_cd, self.data_vrsn_cd + '_' + self.division + '_' + name)
             result.to_csv(path, encoding='cp949')
 
@@ -269,7 +269,8 @@ class CalcAccuracyReport(object):
 
         return data_add
 
-    def reorder_col_raw(self, data, label: str):
+    @staticmethod
+    def reorder_col_raw(data, label: str):
         # Reorder columns
         col_cust = ['sp1_c_nm', 'cust_grp_nm']
         col_item = ['item_attr01_nm', 'item_attr02_nm', 'item_attr03_nm', 'item_attr04_nm',
@@ -290,7 +291,8 @@ class CalcAccuracyReport(object):
                             '_' + str(self.hrchy['lvl']['item']) + '_dev_summary.csv')
         summary.to_csv(path, index=False, encoding='cp949')
 
-    def filter_data(self, data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    @staticmethod
+    def filter_data(data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
         # Fill empty brand code
         data['item_attr03_cd'] = data['item_attr03_cd'].fillna('UNDEFINED')
 
@@ -532,8 +534,8 @@ class CalcAccuracyReport(object):
         condition = [
             data['acc' + label] == 1,
             data['sales'] == 0,
-            data['acc' + label] < 1 - self.acc_classify_standard,
-            data['acc' + label] > 1 + self.acc_classify_standard
+            data['acc' + label] < 1 - self.acc_classifier,
+            data['acc' + label] > 1 + self.acc_classifier
         ]
         class_label = label + '_cnt'
         values = ['cover' + class_label, 'zero' + class_label, 'less' + class_label, 'over' + class_label]

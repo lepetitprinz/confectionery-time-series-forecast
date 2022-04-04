@@ -41,10 +41,10 @@ class Predict(object):
         :param mst_info: Several master information
         :param exg_list: Exogenous variable list
         """
-        # Class Configuration
+        # Class instance attribute
         self.algorithm = Algorithm()
 
-        # Data Configuration
+        # Data instance attribute
         self.date = date                    # Date information
         self.data_cfg = data_cfg            # Data configuration
         self.exec_cfg = exec_cfg
@@ -57,11 +57,11 @@ class Predict(object):
         self.item_mst = mst_info['item_mst']            # Item master
         self.cal_mst = mst_info['cal_mst']              # Calendar master
 
-        # Data Level Configuration
+        # Data Level instance attribute
         self.cnt = 0          # Data level count
         self.hrchy = hrchy    # Hierarchy information
 
-        # Algorithms
+        # Algorithms instance attribute
         self.err_val = 0    # Setting value for prediction error
         self.fixed_n_test = 4
         self.max_val = float(10 ** 5 - 1)           # Clipping value for outlier
@@ -69,10 +69,10 @@ class Predict(object):
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.cand_models = list(self.model_info.keys())
 
-        # Stacking
+        # Stacking instance attribute
         self.ml_data_map = ml_data_map
 
-        # After processing configuration
+        # After processing instance attribute
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 

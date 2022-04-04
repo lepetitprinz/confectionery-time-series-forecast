@@ -10,15 +10,15 @@ from simulation.model.Train import Train
 
 class PipelineCycle(object):
     def __init__(self, step_cfg: dict, exec_cfg: dict, path_root: str):
-        # Class Configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
-        # I/O & Execution Configuration
+        # I/O & Execution instance attribute
         self.step_cfg = step_cfg    # Step configuration
         self.exec_cfg = exec_cfg    # Execution configuration
 
-        # Data configuration
+        # Data instance attribute
         self.common = self.io.get_dict_from_db(
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
@@ -30,7 +30,7 @@ class PipelineCycle(object):
         self.date = {}                # Date
         self.path = {}                # Path
 
-        # Data Level Configuration
+        # Data Level instance attribute
         self.hrchy = {}        # Hierarchy
         self.lag = 'w1'        # Lag
         self.threshold = 20    # Minimum data length

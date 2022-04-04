@@ -16,7 +16,7 @@ class SalesAnalysis(object):
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']
 
     def __init__(self, step_cfg: dict, data_cfg: dict):
-        # Class Configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.path_root = os.path.join('..', '..')
@@ -28,13 +28,13 @@ class SalesAnalysis(object):
         self.hist_date_list = None
         self.hist_date_cnt = 0
 
-        # Data configuration
+        # Data instance attribute
         self.step_cfg = step_cfg
         self.data_cfg = data_cfg
         self.division: str = data_cfg['division']
         self.cut_lvl: int = 10
 
-        # information
+        # information instance attribute
         self.date: dict = {}
         self.path: dict = {}
         self.level: dict = {}

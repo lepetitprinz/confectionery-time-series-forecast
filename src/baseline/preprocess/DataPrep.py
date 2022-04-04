@@ -25,7 +25,7 @@ class DataPrep(object):
         :param data_cfg: Data configuration
         :param exec_cfg: Execution information
         """
-        # Dataset configuration
+        # Dataset instance attribute
         self.common = common
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
@@ -45,12 +45,12 @@ class DataPrep(object):
         self.exg_map = config.EXG_MAP    # Exogenous variable map
         self.key_col = ['cust_grp_cd', 'sku_cd']    # Key columns of data level
 
-        # Hierarchy configuration
+        # Hierarchy instance attribute
         self.hrchy = hrchy
         self.hrchy_level = hrchy['lvl']['cust'] + hrchy['lvl']['item'] - 1
         self.hrchy_cnt = 0
 
-        # Data threshold
+        # Data threshold instance attribute
         self.decimal_point = 2
         self.exec_date = None       # Baseline forecast execution date
         self.rm_lvl_cnt = 0         # Data level count filtered by threshold
@@ -62,7 +62,7 @@ class DataPrep(object):
             days=int(self.common['filter_threshold_sku_recent']) * 7
         )
 
-        # Execute option
+        # Execute option instance attribute
         self.imputer = 'knn'           # Imputation method
         self.outlier_method = 'std'    # Removing outlier method (Standard deviation / Quantile)
         self.noise_rate = 0.1          # Noise rate

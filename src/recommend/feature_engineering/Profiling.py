@@ -17,7 +17,7 @@ class Profiling(object):
             'tfidf_vectorizer': TfidfVectorizer()    # TF-IDF Vectorizer
         }
 
-        # Save & Load Configuration
+        # Save & Load instance attribute
         self.save_steps_yn = save_step_yn
         self.load_step_yn = load_step_yn
         self.save_db_yn = save_db_yn

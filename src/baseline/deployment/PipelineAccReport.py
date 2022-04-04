@@ -8,7 +8,7 @@ class PipelineAccReport(object):
 
     def __init__(self, exec_kind: str, exec_cfg: dict, root_path: str, save_path: str,
                  division_list: list, item_lvl_list: list, hist_to='',
-                 acc_classify_standard=0.25):
+                 acc_classifier_list=[0.3]):
         # Execution instance attribute
         self.exec_kind = exec_kind
         self.exec_cfg = exec_cfg
@@ -20,7 +20,7 @@ class PipelineAccReport(object):
         self.division_list = division_list
         self.item_lvl_list = item_lvl_list
         self.date_cfg = {}
-        self.acc_classify_standard = acc_classify_standard
+        self.acc_classifier_list = acc_classifier_list
 
         # Date instance attribute
         self.hist_range_week = 156
@@ -36,21 +36,23 @@ class PipelineAccReport(object):
             for item_lvl in self.item_lvl_list:
                 data_cfg = self.get_data_cfg(division=division, item_lvl=item_lvl)
 
-                # Initiate class
-                acc = CalcAccuracyReport(
-                    exec_kind=self.exec_kind,
-                    exec_cfg=self.exec_cfg,
-                    date_cfg=self.date_cfg,
-                    data_cfg=data_cfg,
-                    acc_classify_standard=self.acc_classify_standard
-                )
-                print("---------------------------------")
-                print("Calculate Accuracy")
-                print(f"Division: {division} / Level: {self.item_lvl_map[item_lvl]}")
-                print("---------------------------------")
+                for acc_classifier in self.acc_classifier_list:
+                    # Initiate class
+                    acc = CalcAccuracyReport(
+                        exec_kind=self.exec_kind,
+                        exec_cfg=self.exec_cfg,
+                        date_cfg=self.date_cfg,
+                        data_cfg=data_cfg,
+                        acc_classifier=acc_classifier
+                    )
+                    print("-------------------------------------------")
+                    print("Calculate Accuracy")
+                    print(f"Division: {division} / Level: {self.item_lvl_map[item_lvl]}")
+                    print(f"Cover rate: {(1-acc_classifier) * 100}%")
+                    print("-------------------------------------------")
 
-                # Calculate accuracy
-                acc.run()
+                    # Calculate the accuracy
+                    acc.run()
 
     def init(self):
         date = self.set_date()

@@ -14,6 +14,7 @@ class TimeSeriesAnalysis(object):
     col_str = ['cust_grp_cd', 'start_week_day', 'item_cd']
 
     def __init__(self, data_cfg: dict, exec_cfg: dict):
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.root_path = data_cfg['root_path']
@@ -26,7 +27,7 @@ class TimeSeriesAnalysis(object):
         self.data_cfg: dict = data_cfg
         self.exec_cfg: dict = exec_cfg
 
-        # Data configuration
+        # Data instance attribute
         self.division = data_cfg['division']
         self.data_version = data_cfg['data_version']
         self.date = {
@@ -37,7 +38,6 @@ class TimeSeriesAnalysis(object):
 
         self.level = {}
         self.hrchy = {}
-
         self.n_lags = 4
 
     def run(self):

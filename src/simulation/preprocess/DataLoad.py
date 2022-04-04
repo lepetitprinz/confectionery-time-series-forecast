@@ -6,12 +6,12 @@ from common.SqlConfig import SqlConfig
 
 class DataLoad(object):
     def __init__(self, division: str, hrchy_lvl: int, lag: str, exec_cfg: dict):
-        # initiate class
+        # initiate class instance attribute
         self.sql_conf = SqlConfig()
         self.io = DataIO()
         self.exec_cfg = exec_cfg
 
-        # data option
+        # data option instance attribute
         self.common = {}
         self.date = {}
         self.data_version = ''
@@ -19,13 +19,13 @@ class DataLoad(object):
         self.hrchy_lvl = hrchy_lvl
         self.lag = lag
 
-        # Dataset
+        # Dataset instance attribute
         self.sales = None
         self.exg = {}
         self.algorithms = {}
         self.parameters = {}
 
-        # model configuration
+        # Model instance attribute
         self.target_col = ''
 
     def init(self, io):

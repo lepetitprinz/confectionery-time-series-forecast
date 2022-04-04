@@ -17,7 +17,7 @@ class ResultSummary(object):
 
     def __init__(self, data_vrsn: str, division: str, date: dict, common: dict,  test_vrsn: str,
                  hrchy: dict, item_mst: pd.DataFrame, lvl_cfg: dict):
-        # Data Information Configuration
+        # Data Information instance attribute
         self.data_vrsn = data_vrsn
         self.division = division
         self.date = date
@@ -26,7 +26,7 @@ class ResultSummary(object):
         self.test_vrsn = test_vrsn
         self.lvl_cfg = lvl_cfg
 
-        # Data Level Configuration
+        # Data Level instance attribute
         self.hrchy = hrchy
         self.hrchy_item_cd_list = common['db_hrchy_item_cd'].split(',')
         self.hrchy_item_nm_list = common['db_hrchy_item_nm'].split(',')

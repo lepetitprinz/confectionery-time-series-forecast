@@ -11,7 +11,7 @@ class Pipeline(object):
     Ranking Pipeline
     """
     def __init__(self, data_cfg: dict, exec_cfg: dict):
-        # Class configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.data_cfg = data_cfg
@@ -21,7 +21,7 @@ class Pipeline(object):
             key='OPTION_CD',
             val='OPTION_VAL'
         )
-        # Data configuration
+        # Data instance attribute
         self.item_col = 'sku_cd'
         self.meta_col = 'bom_cd'
         self.top_n = 10

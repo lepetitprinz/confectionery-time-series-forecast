@@ -3,7 +3,6 @@ import common.config as config
 from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.model.Algorithm import Algorithm
-# from baseline.model.ModelDL import Models
 
 import ast
 import warnings
@@ -40,11 +39,11 @@ class Train(object):
         :param mst_info: Several master information
         :param exg_list: Exogenous variable list
         """
-        # Class Configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
 
-        # Data Configuration
+        # Data instance attribute
         self.common = common    # Common information
         self.data_cfg = data_cfg    # Data configuration
         self.exec_cfg = exec_cfg    # Execute configuration
@@ -53,22 +52,21 @@ class Train(object):
         self.target_col = common['target_col']    # Target column
 
         # self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        # self.exo_col_list = exg_list + ['discount', 'num_work_day']    # Todo : Test columns
         self.exo_col_list = exg_list + common['exg_fixed'].split(',')
         self.cust_grp = mst_info['cust_grp']    # Customer group master
         self.item_mst = mst_info['item_mst']    # Item master
 
-        # Data Level Configuration
+        # Data Level instance attribute
         self.cnt = 0    # Data level count
         self.hrchy = hrchy    # Hierarchy information
 
-        # Algorithm Configuration
+        # Algorithm instance attribute
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.model_candidates = list(self.model_info.keys())    # Model candidates list
         self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
-        # Training Configuration
+        # Training instance attribute
         self.decimal_point = 3
         self.fixed_n_test = 4
         self.err_val = float(10 ** 5 - 1)    # set error values or clip outlier values
@@ -76,7 +74,7 @@ class Train(object):
         self.grid_search_yn: bool = exec_cfg['grid_search_yn']    # Execute grid search or not
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
-        # After processing configuration
+        # After processing instance attribute
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 

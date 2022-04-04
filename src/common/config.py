@@ -74,25 +74,25 @@ PARAM_GRIDS_FCST = {
 # 2.What-If Simulation
 PARAM_GRIDS_SIM = {
     'rf': {  # Random Forest
-        'n_estimators': [100, 200, 300, 400],
-        'criterion': ['squared_error'],
-        'min_samples_split': [2, 3, 4, 5],  # minimum number of samples required to split inner node
-        'min_samples_leaf': [1, 2, 3, 4, 5],   # have the effect of smoothing the model
-        'max_features': ['auto']
+        'n_estimators': [200, 400, 600],
+        'min_samples_split': [2, 5, 10],  # minimum number of samples required to split inner node
+        'min_samples_leaf': [1, 2, 4],   # have the effect of smoothing the model
+        # 'max_features': ['auto', 'sqrt'],
+        'max_depth': [20, 40, 60],
+        'bootstrap': [True, False],
     },
     'gb': {  # Gradient Boost
-        'n_estimators': [100, 200, 300, 400],
-        'criterion': ['friedman_mse'],
-        'min_samples_split': [2, 3, 4, 5],  # minimum number of samples required to split inner node
-        'min_samples_leaf': [1, 2, 3, 4, 5],   # have the effect of smoothing the model
-        'max_features': ['auto']
+        'n_estimators': [200, 400, 600],
+        'min_samples_split': [2, 5, 10],  # minimum number of samples required to split inner node
+        'min_samples_leaf': [1, 2, 4],   # have the effect of smoothing the model
+        # 'max_features': ['auto', 'sqrt'],
+        'max_depth': [20, 40, 60],
     },
     'et': {  # Extremely Randomized Trees
-        'n_estimators': [100, 200, 300, 400],
-        'criterion': ['squared_error'],
-        'min_samples_split': [2, 3, 4, 5],  # minimum number of samples required to split inner node
-        'min_samples_leaf': [1, 2, 3, 4, 5],   # have the effect of smoothing the model
-        'max_features': ['auto']
+        'n_estimators': [200, 400, 600],
+        'min_samples_split': [2, 5, 10],  # minimum number of samples required to split inner node
+        'min_samples_leaf': [1, 2, 4],   # have the effect of smoothing the model
+        # 'max_features': ['auto', 'sqrt']
     },
     'mlp': {  # Multi-layer Perceptron
         'units': [8, 16, 32],

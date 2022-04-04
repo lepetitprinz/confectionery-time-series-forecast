@@ -23,7 +23,7 @@ class DataPrep(object):
             freq=common['resample_rule']
         )
 
-        # Data Configuration
+        # Data instance attribute
         self.lag = lag    # lagging period
         self.hrchy = hrchy    # Hierarchy information
         self.threshold = threshold    # Minimum data length

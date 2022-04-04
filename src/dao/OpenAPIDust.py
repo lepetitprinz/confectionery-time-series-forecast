@@ -9,12 +9,12 @@ import xml.etree.ElementTree as ET
 
 class OpenAPIDust(object):
     def __init__(self):
-        # Class configuration
+        # Class instance attribute
         self.io = DataIO()
         self.sql_conf = SqlConfig()
         self.table_nm = 'M4S_O110710'
 
-        # API configuration
+        # API instance attribute
         self.info = None
         self.item_cd_list = ['PM10', 'PM25']
         self.location_list = ['seoul', 'busan', 'daegu', 'incheon', 'gwangju', 'daejeon', 'ulsan', 'gyeonggi',

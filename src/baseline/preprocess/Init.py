@@ -25,7 +25,7 @@ class Init(object):
         self.exec_kind = exec_kind
         self.resample_rule = resample_rule
 
-        # Setting
+        # Setting instance attribute
         self.data_vrsn_cd = ''    # Data version
         self.middle_out = True    # Apply middle-out or not
         self.date = {}     # Date information (History / Middle-out)

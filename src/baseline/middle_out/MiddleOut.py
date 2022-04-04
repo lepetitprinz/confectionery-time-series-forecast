@@ -17,12 +17,12 @@ class MiddleOut(object):
         :param ratio_lvl: Middle-out level
         :param item_mst: Several master information
         """
-        # Data Information Configuration
+        # Data Information instance attribute
         self.common = common
         self.division_cd = division
         self.data_vrsn_cd = data_vrsn
 
-        # Data Level Configuration
+        # Data Level instance attribute
         self.hrchy = hrchy    # Hierarchy information
         self.hrchy_cust_cd_list = ['cust_grp_cd']
         self.hrchy_item_cd_list = common['db_hrchy_item_cd'].split(',')
@@ -31,7 +31,7 @@ class MiddleOut(object):
         self.drop_col = ['project_cd', 'division_cd', 'data_vrsn_cd', 'fkey', 'create_user_cd', 'accuracy'] + \
                          common['db_hrchy_item_nm'].split(',')
 
-        # Middle-out Configuration
+        # Middle-out instance attribute
         self.err_val = 0              # Setting value for prediction error
         self.max_val = 10 ** 5 - 1    # Clipping value for outlier
         self.ratio_lvl = ratio_lvl    # Ratio level
@@ -39,7 +39,7 @@ class MiddleOut(object):
         self.item_mst = item_mst      # Item master
         self.split_lvl = self.hrchy['lvl']['item']
 
-        # After processing Configuration
+        # After processing instance attribute
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
     def run_middle_out(self, sales: pd.DataFrame, pred: pd.DataFrame) -> tuple:
