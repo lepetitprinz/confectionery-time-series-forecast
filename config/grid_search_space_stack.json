@@ -2,18 +2,15 @@
     "rf": {
         "n_estimators": [
             100,
-            300,
-			500
+            300
         ],
         "min_samples_split": [
             2,
-            5,
-			10
+            5
         ],
         "min_samples_leaf": [
-            1,
             2,
-			4
+            4
         ],
 		"max_depth": [
 			20,
@@ -27,18 +24,15 @@
     "gb": {
         "n_estimators": [
             100,
-            300,
-			500
+            300
         ],
         "min_samples_split": [
             2,
-            5,
-			10
+            5
         ],
         "min_samples_leaf": [
-            1,
             2,
-			4
+            4
         ],
 		"max_depth": [
 			20,
@@ -48,16 +42,13 @@
     "et": {
         "n_estimators": [
             100,
-            300,
-			500
+            300
         ],
         "min_samples_split": [
             2,
-            5,
-			10
+            5
         ],
         "min_samples_leaf": [
-            1,
             2,
             4
         ]

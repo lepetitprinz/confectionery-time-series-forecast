@@ -144,7 +144,7 @@ class Train(object):
     def evaluation_model(self, df) -> tuple:
         # Print training progress
         self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 10 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         score_ts = self.train_time_series(df=df)
@@ -157,7 +157,7 @@ class Train(object):
     def evaluation_model_with_hrchy(self, hrchy, df) -> tuple:
         # Print training progress
         self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+        if (self.cnt % 10 == 0) or (self.cnt == self.hrchy['cnt']):
             print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
         score_ts = self.train_time_series(df=df)
