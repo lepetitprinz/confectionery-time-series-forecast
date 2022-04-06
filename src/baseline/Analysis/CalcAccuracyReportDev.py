@@ -34,7 +34,7 @@ class CalcAccuracyReportDev(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
     summary_tag = {
-        'all': '_summary.csv',
+        'all': '_summary_all.csv',
         'mega': '_summary_mega.csv',
         'chain_all': '_summary_chain_all.csv',
         'chain_mega': '_summary_chain_mega.csv'
@@ -280,20 +280,23 @@ class CalcAccuracyReportDev(object):
         # Sum by group
         summary_label = summary_label.groupby(by=self.group_by_sum_col[self.division][mega_filter]).sum()
 
+        # Summary for mega brand of SELL-IN
+        if mega_filter and self.division == 'SELL_IN':
+            summary_label_all = summary_label.reset_index()\
+                .groupby(by=['cust_class', 'gubun'])\
+                .sum()\
+                .reset_index()\
+                .copy()
+            summary_label_all['item_attr03_cd'] = '0.전체'
+            summary_label_all = summary_label_all.set_index(['item_attr03_cd', 'cust_class', 'gubun'])
+            summary_label = summary_label.append(summary_label_all).sort_index()
+
         # Add total result
         summary_label_sum = summary_label.reset_index() \
             .groupby(by=self.group_by_tot_col[self.division][mega_filter]) \
             .sum() \
             .reset_index() \
             .copy()
-
-        #
-        if mega_filter and self.division == 'SELL_IN':
-            summary_label_tot = summary_label_sum.sum().copy()
-            summary_label_tot['item_attr03_nm'] = '0.전체'
-            summary_label_tot['gubun'] = label
-            summary_label_sum = summary_label_sum.append(summary_label_tot, ignore_index=True)
-            summary_label_sum = summary_label_sum.sort_values(by=['item_attr03_nm'])
 
         summary_label_sum['cust_class'] = '0.전체'
         summary_label_sum = summary_label_sum.set_index(self.group_by_sum_col[self.division][mega_filter])
