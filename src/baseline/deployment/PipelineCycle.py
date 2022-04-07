@@ -157,7 +157,7 @@ class PipelineCycle(object):
             if not self.step_cfg['cls_cns']:
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
-            # Initiate data preprocessing class
+            # instantiate data preprocessing class
             preprocess = DataPrep(
                 date=self.date,
                 common=self.common,
@@ -191,7 +191,7 @@ class PipelineCycle(object):
                 data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
                 self.hrchy['cnt'] = hrchy_cnt
 
-            # Initiate train class
+            # instantiate train class
             training = Train(
                 data_vrsn_cd=self.data_vrsn_cd,    # Data version code
                 division=self.division,            # Division code
@@ -265,7 +265,7 @@ class PipelineCycle(object):
                 # Load best scores
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
 
-            # Initiate predict class
+            # instantiate predict class
             predict = Predict(
                 division=self.division,
                 mst_info=mst_info,
@@ -321,6 +321,7 @@ class PipelineCycle(object):
             # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
+            # instantiate middle-out class
             md_out = MiddleOut(
                 common=self.common,
                 division=self.division,

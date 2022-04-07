@@ -25,8 +25,8 @@ exec_cfg = {
     'cycle': True,                            # Prediction cycle
 
     # save configuration
-    'save_step_yn': False,                    # Save each step result to object or csv
-    'save_db_yn': False,                      # Save each step result to Database
+    'save_step_yn': True,                     # Save each step result to object or csv
+    'save_db_yn': False,                       # Save each step result to Database
 
     # Data preprocessing configuration
     'add_exog_dist_sales': True,
@@ -34,9 +34,9 @@ exec_cfg = {
     'feature_selection_yn': False,            # Feature Selection
     'filter_threshold_cnt_yn': False,         # Filter data level under threshold count
     'filter_threshold_recent_yn': True,       # Filter data level under threshold recent week
-    'filter_threshold_recent_sku_yn': True,  # Filter SKU level under threshold recent week
+    'filter_threshold_recent_sku_yn': True,   # Filter SKU level under threshold recent week
     'rm_fwd_zero_sales_yn': True,             # Remove forward empty sales
-    'rm_outlier_yn': True,                    # Outlier Correction
+    'rm_outlier_yn': True,                    # Outlier clipping
     'data_imputation_yn': True,               # Data Imputation
 
     # Training configuration
