@@ -142,6 +142,7 @@ class PredictDev(object):
         param_grid = {}
         if self.hyper_param_apply_option == 'best':
             param_grid = self.hyper_parameter['best']
+
         elif self.hyper_param_apply_option == 'each':
             param_grid = self.hyper_parameter['each'].get('_'.join(hrchy), self.hyper_parameter['best'])
 

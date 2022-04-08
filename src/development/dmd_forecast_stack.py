@@ -7,12 +7,13 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineStack import PipelineCycle
 
 # Root path
-path_root = os.path.join('..', '..')
-# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+# path_root = os.path.join('..', '..')
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
-#  W12(20220313) / W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
+
+# W13(20220320) / W12(20220313) / W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 hist_to = '20220313'
 
 # Change data type (string -> datetime)
@@ -32,8 +33,8 @@ step_cfg = {
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': True,
-    'cls_pred': False,
-    'cls_mdout': False
+    'cls_pred': True,
+    'cls_mdout': True
 }
 
 # Configuration
@@ -63,7 +64,7 @@ exec_cfg = {
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
     'voting_yn': True,                        # Add voting algorithm
-    'stack_grid_search_yn': True,         # Stacking Model
+    'stack_grid_search_yn': False,         # Stacking Model
 }
 
 # Data Configuration

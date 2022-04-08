@@ -39,6 +39,13 @@ class Train(object):
         'et': ExtraTreesRegressor           # Extreme Random Tree Regression
     }
 
+    estimators_ml_list = ['rf', 'gb', 'et']
+
+    ml_param_name = {
+        'each': 'data_lvl_ml_model_param_',
+        'best': 'ml_model_param_'
+    }
+
     def __init__(self, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
                  data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list, path_root: str):
         """
@@ -75,8 +82,8 @@ class Train(object):
 
         # Time Series algorithm instance attribute
         self.model_info = mst_info['model_mst']    # Algorithm master
-        self.param_grid = mst_info['param_grid']    # Hyper-parameter master
-        self.model_candidates = list(self.model_info.keys())    # Model candidates list
+        self.ts_param_grid = mst_info['param_grid']    # Hyper-parameter master
+        self.ts_model_candidates = list(self.model_info.keys())    # Model candidates list
         # self.param_grid_list = {}  # Hyper-parameter
         self.ts_param_grids = config.PARAM_GRIDS_FCST    # Hyper-parameter
 
@@ -88,6 +95,9 @@ class Train(object):
         self.grid_search_yn = exec_cfg['grid_search_yn']    # Execute grid search or not
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
 
+        #######################################
+        # Stacking Model
+        #######################################
         # Window Generator instance attribute
         self.window_method = 'expand'    # slice / expand
         self.hist_date = pd.date_range(
@@ -106,25 +116,41 @@ class Train(object):
         self.train_length = self.hist_width - self.start_index - self.shift_width
         self.target_start_idx = self.start_index + self.shift_width
 
-        # Stacking ensemble algorithm instance attribute
+        # Machine learning algorithm instance attribute
         self.stack_train_rate = 0.7
-        self.stack_val_rate = 1 - self.stack_train_rate
         self.stack_test_size = self.pred_width
         self.stack_scoring = 'neg_root_mean_squared_error'
+
+        # Machine learning hyper-parameter instance attribute
+        self.ml_hyper_parameter = {}
+        self.ml_hyper_param_apply_option = 'each'
+
+        # Grid search instance attribute
+        self.stack_cv_fold = 5
         self.stack_grid_search_yn = exec_cfg['stack_grid_search_yn']
         self.stack_grid_search_space = util.conv_json_to_dict(
             path=os.path.join(self.path_root, 'config', 'grid_search_space_stack.json')
         )
-        self.stack_cv_fold = 5
-        self.hyper_param_apply_option = 'each'
-        self.model_param_by_data_lvl_map = {}
-        self.grid_search_best_param_cnt = defaultdict(lambda: defaultdict(int))
+        self.data_lvl_best_parameter = {}
 
-        # After processing instance attribute
+        # Post processing instance attribute
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
+    def init(self):
+        param_path = os.path.join(self.path_root, 'parameter')
+        file_name = self.division + '_' + self.hrchy['key'][:-1] + '.json'
+        path_each = os.path.join(param_path, self.ml_param_name['each'] + file_name)
+        path_best = os.path.join(param_path, self.ml_param_name['best'] + file_name)
+
+        self.ml_hyper_parameter['each'] = self.io.load_object(file_path=path_each, data_type='json')
+        self.ml_hyper_parameter['best'] = self.io.load_object(file_path=path_best, data_type='json')
+
     def train(self, df) -> dict:
+        # Initialize the parameter
+        self.init()
+
+        # Grid search for the stacking model
         if self.exec_cfg['stack_grid_search_yn']:
             scores = util.hrchy_recursion_add_key(
                 hrchy_lvl=self.hrchy['lvl']['total'] - 1,
@@ -133,39 +159,30 @@ class Train(object):
             )
 
         else:
-            scores = util.hrchy_recursion_score(
+            scores = util.hrchy_recursion_score_new(
                 hrchy_lvl=self.hrchy['lvl']['total'] - 1,
-                fn=self.evaluation_model,
+                fn=self.evaluation_model_with_hrchy,
                 df=df
             )
 
         return scores
 
-    def evaluation_model(self, df) -> tuple:
-        # Print training progress
-        self.cnt += 1
-        if (self.cnt % 10 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
-
-        score_ts = self.train_time_series(df=df)
-        score_ml, stack_data = self.train_stack_ensemble(df=df)
-        # scores = self.concat_score(score_ts=score_ts, score_ml=score_ml)
-        scores = score_ts + score_ml
-
-        return scores, stack_data
-
     def evaluation_model_with_hrchy(self, hrchy, df) -> tuple:
         # Print training progress
-        self.cnt += 1
-        if (self.cnt % 10 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+        self.show_progress()
 
+        # Grid search
         score_ts = self.train_time_series(df=df)
         score_ml, stack_data = self.train_stack_ensemble(df=df, hrchy=hrchy)
-        # scores = self.concat_score(score_ts=score_ts, score_ml=score_ml)
         scores = score_ts + score_ml
 
         return scores, stack_data
+
+    def show_progress(self):
+        # Show prediction progress
+        self.cnt += 1
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
 
     def concat_score(self, score_ts, score_ml):
         if not self.exec_cfg['grid_search_yn']:
@@ -193,6 +210,9 @@ class Train(object):
         data_fit = self.make_ml_data(data=data, kind='fit')
         data_pred = self.make_ml_data(data=data, kind='pred')
 
+        # Get algorithm hyper-parameter
+        params = self.get_hyper_parameter(hrchy=hrchy)
+
         # Evaluation
         scores = []
         for estimator_nm, estimator in self.estimators_ml.items():
@@ -206,11 +226,11 @@ class Train(object):
                 )
 
             else:
-                params = {}
+                # Validation
                 score = self.validation_ml_model(
                     data=data_fit,
                     estimator=estimator,
-                    # params=self.ml_param_list[estimator_nm]
+                    params=params[estimator_nm]
                 )
             scores.append([estimator_nm, score, [], params])
 
@@ -246,7 +266,18 @@ class Train(object):
 
         return data_scaled
 
-    def validation_ml_model(self, data, estimator, params={}):
+    def get_hyper_parameter(self, hrchy: list):
+        # Get algorithm hyper-parameter
+        param_grid = {}
+        if self.ml_hyper_param_apply_option == 'best':
+            param_grid = self.ml_hyper_parameter['best']
+
+        elif self.ml_hyper_param_apply_option == 'each':
+            param_grid = self.ml_hyper_parameter['each'].get('_'.join(hrchy), self.ml_hyper_parameter['best'])
+
+        return param_grid
+
+    def validation_ml_model(self, data, estimator, params: dict):
         est = estimator()
         est.set_params(**params)
 
@@ -316,7 +347,7 @@ class Train(object):
         feature_by_variable = self.select_feature_by_variable(df=data)
 
         input_by_model = {}
-        for model in self.model_candidates:
+        for model in self.ts_model_candidates:
             # Classify dataset by variables
             data = feature_by_variable[self.model_info[model]['variate']]
 
@@ -356,7 +387,7 @@ class Train(object):
         try:
             prediction = self.estimators_ts[model](
                 history=data,
-                cfg=self.param_grid[model],
+                cfg=self.ts_param_grid[model],
                 pred_step=pred_width
                 )
             # Clip results & Round results
@@ -381,10 +412,13 @@ class Train(object):
         return data
 
     def fill_na_date(self, data):
+        na_df = None
         avg = round(data.mean(), self.decimal_point)
         na_date = list(set(self.hist_date) - set(data.index))
+
         if isinstance(data, pd.Series):
             na_df = pd.Series(avg, index=na_date)
+
         elif isinstance(data, pd.DataFrame):
             temp = avg.to_frame().transpose()
             temp = temp.append([temp] * (len(na_date) - 1), ignore_index=True)
@@ -392,6 +426,7 @@ class Train(object):
                 temp.values,
                 index=na_date,
                 columns=temp.columns)
+
         data = data.append(na_df).sort_index()
 
         return data
@@ -416,7 +451,7 @@ class Train(object):
         feature_by_variable = self.select_feature_by_variable(df=df)
 
         scores = []
-        for model in self.model_candidates:
+        for model in self.ts_model_candidates:
             # Validation
             score, diff, params = self.validation(
                 data=feature_by_variable[self.model_info[model]['variate']],
@@ -490,7 +525,7 @@ class Train(object):
             # Evaluation
             score, diff = self.evaluation(
                 model=model,
-                params=self.param_grid[model],
+                params=self.ts_param_grid[model],
                 train=data_train,
                 test=data_test,
                 n_test=n_test
@@ -618,7 +653,7 @@ class Train(object):
         n_test = ast.literal_eval(self.model_info[model]['label_width'])    # Change data type
         predictions = []
         for train, test in dataset:
-            yhat = self.estimators_ts[model](history=train, cfg=self.param_grid[model], pred_step=n_test)
+            yhat = self.estimators_ts[model](history=train, cfg=self.ts_param_grid[model], pred_step=n_test)
             yhat = np.nan_to_num(yhat)
             err = mean_squared_error(test, yhat, squared=False)
             predictions.append(err)
@@ -696,54 +731,60 @@ class Train(object):
             self.io.insert_to_db(df=best_params, tb_name='M4S_I103011')
 
     def save_best_params_stack(self, scores) -> None:
-        if self.hyper_param_apply_option == 'best':
-            self.save_most_cnt_params(scores=scores)
+        # Save best parameters for each data hierarchy
+        self.save_each_params(scores=scores)
 
-        elif self.hyper_param_apply_option == 'each':
-            self.save_each_params(scores=scores)
+        # Save most frequent parameters
+        self.save_most_cnt_params()
 
     # Save the most counted hyper-parameter set
-    def save_most_cnt_params(self, scores) -> None:
-        # Count best params for each data level
-        util.hrchy_recursion(
-            hrchy_lvl=self.hrchy['lvl']['total'] - 1,
-            fn=self.count_best_params,
-            df=scores
+    def save_most_cnt_params(self) -> None:
+        data_lvl_best_parameter = self.data_lvl_best_parameter.copy()
+
+        # Count best parameters
+        model_param_cnt = defaultdict(lambda: defaultdict(int))
+        for values in data_lvl_best_parameter.values():
+            for model, params in values.items():
+                model_param_cnt[model][str(params)] += 1
+
+        # Get the most counted parameter set of each model
+        model_most_param_cnt = {}
+        for model, param_cnt in model_param_cnt.items():
+            param_cnt_sorted = sorted(param_cnt.items(), key=lambda x: x[1], reverse=True)
+            model_most_param_cnt[model] = eval(param_cnt_sorted[0][0])
+
+        # save path
+        file_path = os.path.join(
+            self.path_root, 'parameter', self.ml_param_name['best'] + self.division + '_'
+            + self.hrchy['key'][:-1] + '.json'
         )
-
-        for model, count in self.grid_search_best_param_cnt.items():
-            params = [(val, key) for key, val in count.items()]
-            params = sorted(params, key=lambda x: x[0], reverse=True)
-            best_params = eval(params[0][1])
-            best_params, params_info_list = self.make_best_params_data(model=model, params=best_params)
-
-            for params_info in params_info_list:
-                self.io.delete_from_db(sql=self.sql_conf.del_hyper_params(**params_info))
-            self.io.insert_to_db(df=best_params, tb_name='M4S_I103011')
+        self.io.save_object(data=model_most_param_cnt, data_type='json', file_path=file_path)
 
     def save_each_params(self, scores) -> None:
         # Count best params for each data level
         util.hrchy_recursion_with_key(
             hrchy_lvl=self.hrchy['lvl']['total'] - 1,
-            fn=self.make_model_param_map,
+            fn=self.map_data_lvl_best_parameter,
             df=scores
         )
+
+        # save path
         file_path = os.path.join(
-            self.path_root, 'parameter', 'data_lvl_model_param_' + self.division + '_' +
-                                         self.hrchy['key'][:-1] + '_' + str(self.n_test) + '.json'
+            self.path_root, 'parameter', self.ml_param_name['each'] + self.division + '_' +
+            self.hrchy['key'][:-1] + '.json'
         )
-        self.io.save_object(data=self.model_param_by_data_lvl_map, data_type='json', file_path=file_path)
+        self.io.save_object(data=self.data_lvl_best_parameter, data_type='json', file_path=file_path)
 
     # Make the mapping dictionary
-    def make_model_param_map(self, hrchy, data):
+    def map_data_lvl_best_parameter(self, hrchy, data):
         model_param_map = {}
-        for eval_result in data:
-            if eval_result[0] != 'voting':
+        eval_result_list = data[0]
+        for eval_result in eval_result_list:
+            if eval_result[0] in self.estimators_ml_list:
                 model, _, _, params = eval_result
                 model_param_map[model] = params
 
-        self.model_param_by_data_lvl_map['_'.join(hrchy)] = model_param_map
-
+        self.data_lvl_best_parameter['_'.join(hrchy)] = model_param_map
 
     # Count best hyper-parameters
     def count_best_params(self, data) -> None:

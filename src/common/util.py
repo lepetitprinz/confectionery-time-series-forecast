@@ -90,6 +90,64 @@ def hrchy_recursion(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
     return temp
 
 
+def hrchy_recursion_score(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
+    temp = None
+    if lvl == 0:
+        temp = {}
+        for key, val in df.items():
+            result = hrchy_recursion_score(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
+            temp[key] = result
+
+    elif lvl < hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            result = hrchy_recursion_score(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
+            temp[key_hrchy] = result
+
+        return temp
+
+    elif lvl == hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            score, data = fn(val_hrchy)
+            temp[key_hrchy] = {'score': score, 'data': data}
+        return temp
+
+    return temp
+
+
+def hrchy_recursion_score_new(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
+    temp = None
+    if lvl == 0:
+        temp = {}
+        for key, val in df.items():
+            hrchy.append(key)
+            result = hrchy_recursion_score_new(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl+1, hrchy=hrchy)
+            hrchy.remove(key)
+            temp[key] = result
+
+    elif lvl < hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            hrchy.append(key_hrchy)
+            result = hrchy_recursion_score_new(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl+1, hrchy=hrchy)
+            hrchy.remove(key_hrchy)
+            temp[key_hrchy] = result
+
+        return temp
+
+    elif lvl == hrchy_lvl:
+        temp = {}
+        for key_hrchy, val_hrchy in val.items():
+            hrchy.append(key_hrchy)
+            score, data = fn(hrchy, val_hrchy)
+            hrchy.remove(key_hrchy)
+            temp[key_hrchy] = {'score': score, 'data': data}
+        return temp
+
+    return temp
+
+
 def hrchy_recursion_add_key(hrchy_lvl, fn=None, df=None, val=None, lvl=0, hrchy=[]):
     temp = None
     if lvl == 0:
@@ -269,28 +327,6 @@ def prep_exg_all(data: pd.DataFrame):
     return weather_map
 
 
-def prep_exg_all_bak(data: pd.DataFrame):
-    exg_map = defaultdict(lambda: defaultdict(list))
-    for lvl1, lvl2, date, val in zip(data['idx_dtl_cd'], data['idx_cd'], data['yymm'], data['ref_val']):
-        exg_map[lvl1][lvl2].append((date, val))
-
-    result = pd.DataFrame()
-    for key1, val1 in exg_map.items():
-        for key2, val2 in val1.items():
-            temp = pd.DataFrame(val2, columns=['yymmdd', key2])
-            temp = temp.sort_values(by='yymmdd')
-            if len(result) == 0:
-                result = pd.concat([result, temp], axis=1, join='outer')
-            else:
-                result = pd.merge(result, temp, on='yymmdd')
-
-    result.columns = [col.lower() for col in result.columns]
-    result.loc[:, 'yymmdd'] = result.loc[:, 'yymmdd'].astype(np.int64)
-    result = result.fillna(0)
-
-    return result
-
-
 def make_data_version(data_version: str) -> pd.DataFrame:
     today = date.today()
     monday = today - timedelta(days=today.weekday())  # Convert this week monday
@@ -400,29 +436,3 @@ def customize_accuracy(data: pd.DataFrame, col: str) -> pd.DataFrame:
     data[col] = acc
 
     return data
-
-
-def hrchy_recursion_score(hrchy_lvl, fn=None, df=None, val=None, lvl=0):
-    temp = None
-    if lvl == 0:
-        temp = {}
-        for key, val in df.items():
-            result = hrchy_recursion_score(hrchy_lvl=hrchy_lvl, fn=fn, val=val, lvl=lvl + 1)
-            temp[key] = result
-
-    elif lvl < hrchy_lvl:
-        temp = {}
-        for key_hrchy, val_hrchy in val.items():
-            result = hrchy_recursion_score(hrchy_lvl=hrchy_lvl, fn=fn, val=val_hrchy, lvl=lvl + 1)
-            temp[key_hrchy] = result
-
-        return temp
-
-    elif lvl == hrchy_lvl:
-        temp = {}
-        for key_hrchy, val_hrchy in val.items():
-            score, data = fn(val_hrchy)
-            temp[key_hrchy] = {'score': score, 'data': data}
-        return temp
-
-    return temp

@@ -2,6 +2,7 @@ import common.util as util
 import common.config as config
 from baseline.model.Algorithm import Algorithm
 
+import os
 import ast
 from datetime import datetime
 from datetime import timedelta
@@ -28,9 +29,13 @@ class Predict(object):
         'gb': GradientBoostingRegressor,
         'et': ExtraTreesRegressor
     }
+    ml_param_name = {
+        'each': 'data_lvl_ml_model_param_',
+        'best': 'ml_model_param_'
+    }
 
-    def __init__(self, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list, ml_data_map: dict):
+    def __init__(self, io, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict, data_cfg: dict,
+                 exec_cfg: dict, path_root: str,  mst_info: dict, exg_list: list, ml_data_map: dict):
         """
         :param date: Date information
         :param division: Division (SELL-IN/SELl-OUT)
@@ -42,44 +47,63 @@ class Predict(object):
         :param exg_list: Exogenous variable list
         """
         # Class instance attribute
+        self.io = io
         self.algorithm = Algorithm()
 
-        # Data instance attribute
-        self.date = date                    # Date information
+        # Configuration instance attribute
         self.data_cfg = data_cfg            # Data configuration
-        self.exec_cfg = exec_cfg
-        self.data_vrsn_cd = data_vrsn_cd    # Data version code
+        self.exec_cfg = exec_cfg            # Execution configuration
+
+        self.date = date                    # Date information
+        self.path_root = path_root
         self.division = division            # SELL-IN / SELL-OUT
+        self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.target_col = common['target_col']          # Target features
-        # self.exo_col_list = exg_list + ['discount']    # Exogenous features
         self.exo_col_list = exg_list + common['exg_fixed'].split(',')
+
+        # Data instance attribute
+        self.cal_mst = mst_info['cal_mst']              # Calendar master
         self.cust_grp = mst_info['cust_grp']            # Customer group master
         self.item_mst = mst_info['item_mst']            # Item master
-        self.cal_mst = mst_info['cal_mst']              # Calendar master
 
         # Data Level instance attribute
         self.cnt = 0          # Data level count
         self.hrchy = hrchy    # Hierarchy information
 
         # Algorithms instance attribute
-        self.err_val = 0    # Setting value for prediction error
+        self.err_val = 0                            # Setting value for prediction error
         self.fixed_n_test = 4
         self.max_val = float(10 ** 5 - 1)           # Clipping value for outlier
         self.model_info = mst_info['model_mst']     # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
         self.cand_models = list(self.model_info.keys())
 
-        # Stacking instance attribute
+        # Stacking algorithm instance attribute
         self.ml_data_map = ml_data_map
+        self.ml_hyper_parameter = {}
+        self.ml_hyper_param_apply_option = 'each'
 
-        # After processing instance attribute
+        # Post processing instance attribute
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
         self.rm_special_char_list = ['item_attr03_nm', 'item_attr04_nm', 'item_nm']
 
         self.decimal_point = 3
         self.voting_opt = 'mean'
 
+    def init(self):
+        param_path = os.path.join(self.path_root, 'parameter')
+        file_name = self.division + '_' + self.hrchy['key'][:-1] + '.json'
+        path_each = os.path.join(param_path, self.ml_param_name['each'] + file_name)
+        path_best = os.path.join(param_path, self.ml_param_name['best'] + file_name)
+
+        self.ml_hyper_parameter['each'] = self.io.load_object(file_path=path_each, data_type='json')
+        self.ml_hyper_parameter['best'] = self.io.load_object(file_path=path_best, data_type='json')
+
     def forecast(self, df):
+        # Initialize parameters
+        self.init()
+
+        # Forecast
         predictions = util.hrchy_recursion_extend_key(
             hrchy_lvl=self.hrchy['lvl']['cust'] + self.hrchy['lvl']['item'] - 1,
             fn=self.forecast_model,
@@ -90,9 +114,7 @@ class Predict(object):
 
     def forecast_model(self, hrchy, df):
         # Show prediction progress
-        self.cnt += 1
-        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
-            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+        self.show_progress()
 
         prediction_ts = self.forecast_time_series(hrchy=hrchy, data=df)
         prediction_ml = self.forecast_machine_learning(hrchy=hrchy)
@@ -100,22 +122,42 @@ class Predict(object):
 
         return prediction
 
+    def show_progress(self) -> None:
+        # Show prediction progress
+        self.cnt += 1
+        if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
+            print(f"Progress: ({self.cnt} / {self.hrchy['cnt']})")
+
     def forecast_machine_learning(self, hrchy):
         # get data
         data = self.ml_data_map['_'.join(hrchy)]
+
+        # Get algorithm hyper-parameter
+        params = self.get_hyper_parameter(hrchy=hrchy)
 
         predictions = []
         for estimator_nm, estimator in self.estimators_ml.items():
             prediction = self.predict_ml_model(
                 data=data,
                 estimator=estimator,
-                params={},
+                params=params[estimator_nm],
                 # params=self.ml_param_list[estimator_nm]
             )
             prediction = np.round(np.clip(prediction, 0, self.max_val).tolist(), self.decimal_point)
             predictions.append(hrchy + [estimator_nm.upper(), prediction])
 
         return predictions
+
+    def get_hyper_parameter(self, hrchy: list):
+        # Get algorithm hyper-parameter
+        param_grid = {}
+        if self.ml_hyper_param_apply_option == 'best':
+            param_grid = self.ml_hyper_parameter['best']
+
+        elif self.ml_hyper_param_apply_option == 'each':
+            param_grid = self.ml_hyper_parameter['each'].get('_'.join(hrchy), self.ml_hyper_parameter['best'])
+
+        return param_grid
 
     @staticmethod
     def predict_ml_model(data, estimator, params={}):

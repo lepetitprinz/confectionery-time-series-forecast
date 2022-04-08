@@ -28,7 +28,7 @@ class PipelineCycle(object):
         self.item_lvl = 3    # Brand Level (Fixed)
 
         # I/O & Execution instance attribute
-        self.exec_kind = 'batch'
+        self.exec_kind = 'dev'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -213,55 +213,57 @@ class PipelineCycle(object):
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores, file_path=self.path['train'], data_type='binary')
 
-            # Save best parameters
-            # if self.exec_cfg['grid_search_yn']:
-            #     training.save_best_params_ts(scores=scores)
+            # Save best parameters of time series
+            if self.exec_cfg['grid_search_yn']:
+                training.save_best_params_ts(scores=scores)
 
+            # Save best parameters of machine learning
             if self.exec_cfg['stack_grid_search_yn']:
                 training.save_best_params_stack(scores=scores)
 
-            # Make machine learning data
-            ml_data_map = training.make_ml_data_map(
-                data=scores,
-                fn=training.make_hrchy_data_dict
-            )
+            else:
+                # Make machine learning data
+                ml_data_map = training.make_ml_data_map(
+                    data=scores,
+                    fn=training.make_hrchy_data_dict
+                )
 
-            # Make score result
-            # All scores
-            scores_db, score_info = training.make_score_result(
-                data=scores,
-                hrchy_key=self.hrchy['key'],
-                fn=training.score_to_df
-            )
-            # Best scores
-            scores_best, score_best_info = training.make_score_result(
-                data=scores,
-                hrchy_key=self.hrchy['key'],
-                fn=training.make_best_score_df
-            )
+                # Make score result
+                # All scores
+                scores_db, score_info = training.make_score_result(
+                    data=scores,
+                    hrchy_key=self.hrchy['key'],
+                    fn=training.score_to_df
+                )
+                # Best scores
+                scores_best, score_best_info = training.make_score_result(
+                    data=scores,
+                    hrchy_key=self.hrchy['key'],
+                    fn=training.make_best_score_df
+                )
 
-            scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
-            scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
+                scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
+                scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
 
-            # Save best scores
-            if self.exec_cfg['save_step_yn']:
-                self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
-                self.io.save_object(data=ml_data_map, file_path=self.path['ml_data_map'], data_type='binary')
+                # Save best scores
+                if self.exec_cfg['save_step_yn']:
+                    self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
+                    self.io.save_object(data=ml_data_map, file_path=self.path['ml_data_map'], data_type='binary')
 
-            if self.exec_cfg['save_db_yn']:
-                # Save best of the training scores on the DB table
-                print("Save training all scores on DB")
-                table_nm = 'M4S_I110410'
-                score_info['table_nm'] = table_nm
-                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
-                self.io.insert_to_db(df=scores_db, tb_name=table_nm)
+                if self.exec_cfg['save_db_yn']:
+                    # Save best of the training scores on the DB table
+                    print("Save training all scores on DB")
+                    table_nm = 'M4S_I110410'
+                    score_info['table_nm'] = table_nm
+                    self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
+                    self.io.insert_to_db(df=scores_db, tb_name=table_nm)
 
-                # Save best of the training scores on the DB table
-                print("Save training best scores on DB")
-                table_nm = 'M4S_O110610'
-                score_best_info['table_nm'] = table_nm
-                self.io.delete_from_db(sql=self.sql_conf.del_score(**score_best_info))
-                self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
+                    # Save best of the training scores on the DB table
+                    print("Save training best scores on DB")
+                    table_nm = 'M4S_O110610'
+                    score_best_info['table_nm'] = table_nm
+                    self.io.delete_from_db(sql=self.sql_conf.del_score(**score_best_info))
+                    self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
 
             print("Training is finished\n")
         # ================================================================================================= #
@@ -281,6 +283,7 @@ class PipelineCycle(object):
 
             # Initiate predict class
             predict = Predict(
+                io=self.io,
                 division=self.division,
                 mst_info=mst_info,
                 date=self.date,
@@ -288,6 +291,7 @@ class PipelineCycle(object):
                 exg_list=exg_list,
                 hrchy=self.hrchy,
                 common=self.common,
+                path_root=self.path_root,
                 data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg,
                 ml_data_map=ml_data_map
