@@ -502,7 +502,7 @@ class SqlConfig(object):
               FROM M4S_I002040
              WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
                AND NEW_ITEM_YN = 'N'
-               AND ITEM_NM NOT LIKE N'%삭제%'
+            -- AND ITEM_NM NOT LIKE N'%삭제%'
         """
         return sql
 

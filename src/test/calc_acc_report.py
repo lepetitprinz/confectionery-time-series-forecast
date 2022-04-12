@@ -2,13 +2,14 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccReport import PipelineAccReport
+from baseline.deployment.PipelineAccReportBak import PipelineAccReport
 
-# W13(20220320) / W12(20220313) / W11(20220306) / W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
-hist_to = '20220313'
+# W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227)
+# W11(20220306) / W12(20220313) / W13(20220320) / w14(20220327)
+hist_to = '20220327'
 exec_kind = 'batch'
 item_lvl_list = [5]
-division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
+division_list = ['SELL_IN', 'SELL_OUT']    # SELL_IN / SELL_OUT
 
 root_path = os.path.join('..', '..')
 # root_path = os.path.join('/', 'opt', 'DF', 'fcst')

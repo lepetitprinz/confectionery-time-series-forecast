@@ -1,9 +1,9 @@
-from baseline.analysis.CalcAccuracyReportDev import CalcAccuracyReportDev
+from baseline.analysis.CalcAccuracyReportBak import CalcAccuracyReport
 
 import datetime
 
 
-class PipelineAccReportDev(object):
+class PipelineAccReport(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
     def __init__(self, exec_kind: str, exec_cfg: dict, root_path: str, save_path: str,
@@ -38,7 +38,7 @@ class PipelineAccReportDev(object):
 
                 for acc_classifier in self.acc_classifier_list:
                     # Initiate class
-                    acc = CalcAccuracyReportDev(
+                    acc = CalcAccuracyReport(
                         exec_kind=self.exec_kind,
                         exec_cfg=self.exec_cfg,
                         date_cfg=self.date_cfg,

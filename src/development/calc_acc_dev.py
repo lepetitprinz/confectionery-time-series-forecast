@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccReport import PipelineAccReport
+from baseline.deployment.PipelineAccReportBak import PipelineAccReport
 
 hist_to = '20220220'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
 exec_kind = 'test'

@@ -10,7 +10,10 @@ path_root = os.path.join('src', '..')
 
 # Sales Data configuration
 division = 'SELL_OUT'    # SELL_IN / SELL_OUT
-hist_to = '20220130'     # W07(20220206) / W06(20220130) / W05(20220123)
+
+# W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227)
+# W11(20220306) / W12(20220313) / W13(20220320) / w14(20220327)
+hist_to = '20220327'
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -25,10 +28,10 @@ md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
-    'cls_cns': False,
+    'cls_load': True,
+    'cls_cns': True,
     'cls_prep': False,
-    'cls_train': True,
+    'cls_train': False,
     'cls_pred': False,
     'cls_mdout': False
 }
@@ -38,7 +41,7 @@ exec_cfg = {
     'cycle': False,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': True,                    # Save each step result to object or csv
+    'save_step_yn': False,                    # Save each step result to object or csv
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration

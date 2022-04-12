@@ -40,6 +40,9 @@ class DataLoad(object):
         elif self.division == 'SELL_OUT':
             sales = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week(**self.date['history']))
 
+        # Filter New items
+        sales = self.filter_new_item(sales=sales)
+
         return sales
 
     # Load all of master dataset
@@ -98,8 +101,8 @@ class DataLoad(object):
     # Filter new item for predict sales on only old item
     def filter_new_item(self, sales: pd.DataFrame) -> pd.DataFrame:
         old_item = self.io.get_df_from_db(sql=self.sql_conf.sql_old_item_list())    # Load old item from DB
-        old_item = list(old_item.values)
+        old_item = old_item['item_cd'].tolist()
 
-        sales_filtered = sales[sales['sku'].isin(old_item)]    # Filter new items
+        sales_filtered = sales[sales['sku_cd'].isin(old_item)]    # Filter new items
 
         return sales_filtered

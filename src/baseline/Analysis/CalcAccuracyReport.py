@@ -11,6 +11,16 @@ from collections import defaultdict
 
 
 class CalcAccuracyReport(object):
+    #
+    divison_label_map = {
+        'SELL_IN': ['pred', 'plan'],
+        'SELL_OUT': ['pred']
+    }
+    summary_label_map = {
+        'SELL_IN': ['all', 'mega'],
+        'SELL_OUT': ['all', 'mega', 'chain_all', 'chain_mega']
+    }
+
     # all of item & date list
     item_list = ['item_attr01_cd', 'item_attr02_cd', 'item_attr03_cd', 'item_attr04_cd', 'item_cd']
     date_list = ['start_week_day', 'week']
@@ -24,8 +34,68 @@ class CalcAccuracyReport(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
     summary_tag = {
-        'all': '_summary.csv',
-        'mega': '_summary_mega.csv'
+        'all': '_summary_all.csv',
+        'mega': '_summary_mega.csv',
+        'chain_all': '_summary_chain_all.csv',
+        'chain_mega': '_summary_chain_mega.csv'
+    }
+    # Summary option
+    sell_in_mega_sp1_cust_class = ['1.시판', '2.유통']    # Summary
+    group_by_sum_col = {
+        'SELL_IN': {
+            False: ['cust_class', 'gubun'],
+            True: ['item_attr03_nm', 'cust_class', 'gubun']
+        },
+        'SELL_OUT': {
+            False: ['cust_class', 'gubun'],
+            True: ['cust_class', 'gubun']
+        }
+    }
+    group_by_tot_col = {
+        'SELL_IN': {
+            False: ['gubun'],
+            True: ['item_attr03_nm', 'gubun']
+        },
+        'SELL_OUT': {
+            False: ['gubun'],
+            True: ['gubun']
+        }
+    }
+    drop_col = {
+        'SELL_IN': {
+            False: ['zero_cnt'],
+            True: ['zero_cnt', 'less_cnt', 'over_cnt']
+        },
+        'SELL_OUT': {
+            False: ['zero_cnt'],
+            True: ['zero_cnt'],
+            # 'chain': ['zero_cnt'],
+            'chain': ['zero_cnt', 'less_cnt', 'over_cnt']
+        }
+    }
+
+    pivot_col = {
+        'SELL_IN': {
+            False: ['cust_class'],
+            True: ['item_attr03_nm', 'cust_class']
+        },
+        'SELL_OUT': {
+            False: ['cust_class'],
+            True: ['cust_class']
+        }
+    }
+
+    pivot_val_col = {
+        'SELL_IN': {
+            False: ['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate'],
+            True: ['cover_cnt_rate']
+        },
+        'SELL_OUT': {
+            False: ['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate'],
+            True: ['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate'],
+            # 'chain': ['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate'],
+            'chain': ['cover_cnt_rate'],
+        }
     }
 
     # Customer mapping
@@ -40,13 +110,24 @@ class CalcAccuracyReport(object):
             '110': '4.글로벌',
         },
         'SELL_OUT': {
-            '1065': '1.할인점',    # 이마트
-            '1066': '1.할인점',    # 롯데마트
-            '1067': '1.할인점',    # 홈플러스
-            '1073': '2.유통점',    # 롯데슈퍼
-            '1074': '2.유통점',    # GS유통
-            '1075': '2.유통점',    # 홈프러스슈퍼
-            '1076': '2.유통점',    # 이마트슈퍼
+            False: {
+                '1065': '1.할인점',    # 이마트
+                '1066': '1.할인점',    # 롯데마트
+                '1067': '1.할인점',    # 홈플러스
+                '1073': '2.유통점',    # 롯데슈퍼
+                '1074': '2.유통점',    # GS유통
+                '1075': '2.유통점',    # 홈플러스슈퍼
+                '1076': '2.유통점',    # 이마트슈퍼
+            },
+            True: {
+                '1065': '1.이마트',        # 이마트
+                '1066': '2.롯데마트',      # 롯데마트
+                '1067': '3.홈플러스',      # 홈플러스
+                '1073': '4.롯데슈퍼',      # 롯데슈퍼
+                '1074': '5.GS유통',       # GS유통
+                '1075': '6.홈플러스슈퍼',  # 홈플러스슈퍼
+                '1076': '7.이마트슈퍼',    # 이마트슈퍼
+            }
         }
     }
 
@@ -140,7 +221,7 @@ class CalcAccuracyReport(object):
     def calc_accuracy_pred_plan(self, data: dict):
         raw, db = [], []
         summary = defaultdict(list)
-        for label in ['pred', 'plan']:
+        for label in self.divison_label_map[self.division]:
             # Calculate accuracy
             acc = self.calc_accuracy(data=data[label], dividend='sales', divisor=label, label='')
             # Format: Raw
@@ -148,6 +229,11 @@ class CalcAccuracyReport(object):
             # Format: Summary
             summary['all'].append(self.calc_summary(data=acc, label=label, mega_filter=False))
             summary['mega'].append(self.calc_summary(data=acc, label=label, mega_filter=True))
+
+            # Add chain summary
+            if self.division == 'SELL_OUT':
+                summary['chain_all'].append(self.calc_summary(data=acc, label=label, mega_filter=False, chain=True))
+                summary['chain_mega'].append(self.calc_summary(data=acc, label=label, mega_filter=True, chain=True))
             # Format: DB
             db.append(self.calc_db(data=acc, label=label))
 
@@ -171,7 +257,7 @@ class CalcAccuracyReport(object):
                             '_' + str(self.hrchy['lvl']['item']) + '_raw.csv')
         data.to_csv(path, index=False, encoding='cp949')
 
-    def calc_summary(self, data: pd.DataFrame, label: str, mega_filter: bool):
+    def calc_summary(self, data: pd.DataFrame, label: str, mega_filter: bool, chain=False):
         if mega_filter:
             data = data[data['mega_yn'] == 'Y'].copy()
 
@@ -181,23 +267,52 @@ class CalcAccuracyReport(object):
             grp_col=self.cust_batch_list + self.item_batch_list + ['mega_yn']
         )
         summary_label = summary_label.reset_index()
-        summary_label = self.map_cust_class(data=summary_label)
+
+        #
+        if mega_filter and self.division == 'SELL_IN':
+            summary_label = self.add_item_name(data=summary_label)
+        summary_label = self.map_cust_class(data=summary_label, chain=chain)
+
+        # Filter customer class on viewing sell-in mega brand
+        if mega_filter and self.division == 'SELL_IN':
+            summary_label = summary_label[summary_label['cust_class'].isin(self.sell_in_mega_sp1_cust_class)]
+
         summary_label['gubun'] = label
-        summary_label = summary_label.groupby(by=['cust_class', 'gubun']).sum()
+
+        # Sum by group
+        summary_label = summary_label.groupby(by=self.group_by_sum_col[self.division][mega_filter]).sum()
+
+        # Summary for mega brand of SELL-IN
+        if mega_filter and self.division == 'SELL_IN':
+            summary_label_all = summary_label.reset_index()\
+                .groupby(by=['cust_class', 'gubun'])\
+                .sum()\
+                .reset_index()\
+                .copy()
+            summary_label_all['item_attr03_cd'] = '0.전체'
+            summary_label_all = summary_label_all.set_index(['item_attr03_cd', 'cust_class', 'gubun'])
+            summary_label = summary_label.append(summary_label_all).sort_index()
 
         # Add total result
         summary_label_sum = summary_label.reset_index() \
-            .groupby('gubun') \
+            .groupby(by=self.group_by_tot_col[self.division][mega_filter]) \
             .sum() \
             .reset_index() \
             .copy()
+
         summary_label_sum['cust_class'] = '0.전체'
-        summary_label_sum = summary_label_sum.set_index(['cust_class', 'gubun'])
+        summary_label_sum = summary_label_sum.set_index(self.group_by_sum_col[self.division][mega_filter])
         summary_label = summary_label.append(summary_label_sum).sort_index()
-        # summary_label = summary_label.drop(columns=['zero_cnt'])
 
         # Sum all of the class
-        summary_label['tot_cnt'] = summary_label.groupby(by=['cust_class', 'gubun']).sum().sum(axis=1).copy()
+        summary_label['tot_cnt'] = summary_label.groupby(
+            by=self.group_by_sum_col[self.division][mega_filter]
+        ).sum().sum(axis=1).copy()
+
+        if not chain:
+            summary_label = summary_label.drop(columns=self.drop_col[self.division][mega_filter])
+        else:
+            summary_label = summary_label.drop(columns=self.drop_col[self.division]['chain'])
 
         # Calculate the rate
         summary_label_rate = summary_label.div(summary_label['tot_cnt'], axis=0).copy()
@@ -208,25 +323,30 @@ class CalcAccuracyReport(object):
         if self.exec_cfg['summary_add_cnt']:
             summary_label_result = pd.concat([summary_label, summary_label_rate], axis=1)
             summary_label_result = summary_label_result[
-                ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate',
-                 'over_cnt', 'over_cnt_rate']
-                # ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate',
-                #  'over_cnt', 'over_cnt_rate', 'zero_cnt', 'zero_cnt_rate']
-            ]
-
+                ['tot_cnt', 'cover_cnt', 'cover_cnt_rate', 'less_cnt', 'less_cnt_rate', 'over_cnt', 'over_cnt_rate']]
         else:
             summary_label_rate = summary_label_rate.reset_index()
+            if not chain:
+                value_col = self.pivot_val_col[self.division][mega_filter]
+            else:
+                value_col = self.pivot_val_col[self.division]['chain']
             summary_label_result = summary_label_rate.pivot(
                 index=['gubun'],
-                columns='cust_class',
-                values=['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate']
-                # values = ['cover_cnt_rate', 'less_cnt_rate', 'over_cnt_rate', 'zero_cnt_rate']
+                columns=self.pivot_col[self.division][mega_filter],
+                values=value_col
             )
 
         return summary_label_result
 
+    def add_item_name(self, data):
+        item_info = self.item_mst.copy()
+        item_info = item_info[['item_attr03_cd', 'item_attr03_nm']].drop_duplicates()
+        data = pd.merge(data, item_info, on='item_attr03_cd', how='left')
+
+        return data
+
     def save_summary(self, data) -> None:
-        for tag in ['all', 'mega']:
+        for tag in self.summary_label_map[self.division]:
             result = data[tag]
             result = pd.concat(result, axis=0)
             name = str(self.hrchy['lvl']['item']) + '_' + str(self.acc_classifier) + self.summary_tag[tag]
@@ -338,12 +458,12 @@ class CalcAccuracyReport(object):
 
         return merged
 
-    def map_cust_class(self, data):
+    def map_cust_class(self, data, chain):
         cust_class = []
         if self.division == 'SELL_IN':
             cust_class = [self.sp1_hrchy_map[self.division][sp1c] for sp1c in data['sp1_c_cd'].values]
         elif self.division == 'SELL_OUT':
-            cust_class = [self.sp1_hrchy_map[self.division][sp1c] for sp1c in data['cust_grp_cd'].values]
+            cust_class = [self.sp1_hrchy_map[self.division][chain][sp1c] for sp1c in data['cust_grp_cd'].values]
         data['cust_class'] = cust_class
 
         return data
