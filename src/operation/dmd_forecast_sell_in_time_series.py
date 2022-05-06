@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineCycle import PipelineCycle
+from baseline.deployment.PipelineTimeSeries import Pipeline
 
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
@@ -12,8 +12,8 @@ data_cfg = {'division': 'SELL_IN'}
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': False,
-    'cls_cns': False,
+    'cls_load': True,
+    'cls_cns': True,
     'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,
@@ -26,7 +26,7 @@ exec_cfg = {
 
     # save configuration
     'save_step_yn': True,                    # Save each step result to object or csv
-    'save_db_yn': False,                      # Save each step result to Database
+    'save_db_yn': True,                      # Save each step result to Database
 
     # Data preprocessing configuration
     'add_exog_dist_sales': True,
@@ -39,6 +39,10 @@ exec_cfg = {
     'rm_outlier_yn': True,                   # Outlier clipping
     'data_imputation_yn': True,              # Data Imputation
 
+    # Feature engineering configuration
+    'rolling_statistics_yn': False,  # Add features of rolling statistics
+    'representative_sampling_yn': False,  # Add features of representative sampling
+
     # Training configuration
     'scaling_yn': False,                     # Data scaling
     'grid_search_yn': False,                 # Grid Search
@@ -46,13 +50,13 @@ exec_cfg = {
 }
 
 print('------------------------------------------------')
-print('Demand Forecast - SELL-IN')
+print('Demand Forecast - SELL-IN: Time Series')
 print('------------------------------------------------')
 
 # Check start time
 print("Forecast Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-pipeline = PipelineCycle(
+pipeline = Pipeline(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,

@@ -9,7 +9,7 @@ exec_kind = 'batch'
 item_lvl_list = [5]
 division_list = ['SELL_OUT']    # SELL_IN / SELL_OUT
 
-acc_classify_standard = 0.25
+acc_classify_standard = 0.4    # 0.25
 
 root_path = os.path.join('/', 'opt', 'DF', 'fcst')
 save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)

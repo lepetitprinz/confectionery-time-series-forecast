@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineCycle import PipelineCycle
+from baseline.deployment.PipelineTimeSeries import Pipeline
 
 # Root path
 path_root = os.path.join('..', '..')
@@ -81,7 +81,7 @@ data_cfg = {
     }
 }
 
-pipeline = PipelineCycle(
+pipeline = Pipeline(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,

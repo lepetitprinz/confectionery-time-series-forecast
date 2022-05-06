@@ -2,31 +2,25 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineAccReportBak import PipelineAccReport
+from baseline.deployment.PipelineAccReport import PipelineAccReport
 
-hist_to = '20220220'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
-exec_kind = 'test'
+
+# W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) / W12(20220313)
+# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417)
+hist_to = '20220417'
+exec_kind = 'stack'    # batch / dev / stack
 item_lvl_list = [5]
 division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
-root_path = os.path.join('/', 'opt', 'DF', 'fcst')
+acc_classifier_list = [0.5]    # Cover rate
 
-acc_classify_standard = 0.25
-
+root_path = os.path.join('..', '..')
 save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
-step_cfg = {
-    'cls_prep': True,     # Preprocessing
-    'cls_comp': True,     # Compare result
-    'cls_top_n': False,    # Choose top N
-    'cls_graph': False    # Draw graph
-}
+
 
 exec_cfg = {
     'save_db_yn': False,
     'cycle_yn': False,
-    'rm_zero_yn': False,                   # Remove zeros
-    'filter_sales_threshold_yn': False,    # Filter based on sales threshold
-    'pick_specific_biz_yn': False,         # Pick Specific business code
-    'pick_specific_sp1_yn': False,         # Pick Specific sp1 list
+    'summary_add_cnt': False
 }
 
 pipe_acc = PipelineAccReport(
@@ -37,15 +31,9 @@ pipe_acc = PipelineAccReport(
     division_list=division_list,
     item_lvl_list=item_lvl_list,
     hist_to=hist_to,
-    acc_classify_standard=acc_classify_standard
+    acc_classifier_list=acc_classifier_list,
 )
-print("")
-print("Calculate the accuracy")
+
 print(f"Apply end date of history: {hist_to}")
-print(f"Execution type: {exec_kind}")
-print(f"Accuracy classification standard: {str(acc_classify_standard)}")
-
-# Run
 pipe_acc.run()
-
 print("Calculating accuracy is finished")

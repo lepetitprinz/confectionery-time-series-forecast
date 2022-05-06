@@ -3,31 +3,20 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineDev import PipelineDev
+from baseline.deployment.PipelineStack import Pipeline
 
 # Root path
+# path_root = os.path.join('..', '..')
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
-# Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
-hist_to = '20220213'    # W10(20220227) / W09(20220220) / W08(20220213) / W07(20220206)
-
-# Change data type (string -> datetime)
-hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
-
-# Add dates
-hist_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
-md_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=13) + datetime.timedelta(days=1)
-
-# Change data type (datetime -> string)
-hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')
-md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
+# Data Configuration
+data_cfg = {'division': 'SELL_IN'}
 
 # Execute Configuration
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': False,
+    'cls_prep': True,
     'cls_train': True,
     'cls_pred': True,
     'cls_mdout': True
@@ -35,11 +24,11 @@ step_cfg = {
 
 # Configuration
 exec_cfg = {
-    'cycle': False,                           # Prediction cycle
+    'cycle': True,                           # Prediction cycle
 
     # save configuration
     'save_step_yn': True,                     # Save each step result to object or csv
-    'save_db_yn': False,                      # Save each step result to Database
+    'save_db_yn': True,                      # Save each step result to Database
 
     # Data preprocessing configuration
     'add_exog_dist_sales': True,
@@ -58,27 +47,16 @@ exec_cfg = {
 
     # Training configuration
     'scaling_yn': False,                      # Data scaling
-    'grid_search_yn': False,                   # Grid Search
-    'voting_yn': True                         # Add voting algorithm
+    'grid_search_yn': False,                  # Grid Search
+    'voting_yn': True,                        # Add voting algorithm
+    'stack_grid_search_yn': False,            # Stacking Model
 }
 
-# Data Configuration
-data_cfg = {
-    'division': division,
-    'cycle': 'w',
-    'date': {
-        'history': {
-            'from': hist_from,
-            'to': hist_to
-        },
-        'middle_out': {
-            'from': md_from,
-            'to': hist_to
-        }
-    }
-}
+print('------------------------------------------------')
+print('Demand Forecast - SELL-IN: STACK')
+print('------------------------------------------------')
 
-pipeline = PipelineDev(
+pipeline = Pipeline(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,
@@ -87,3 +65,7 @@ pipeline = PipelineDev(
 
 # Execute Baseline Forecast
 pipeline.run()
+
+# Check end time
+print("Forecast End: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+print("")

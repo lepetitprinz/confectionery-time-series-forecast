@@ -49,6 +49,7 @@ class PipelineDecompCycle(object):
         # 1. Initiate basic setting
         # ================================================================================================= #
         init = Init(
+            method='decomp',
             data_cfg=self.data_cfg,
             exec_cfg=self.exec_cfg,
             common=self.common,

@@ -187,7 +187,7 @@ class CalcAccuracyReport(object):
             self.exec_batch()
 
         # Run dev process
-        elif (self.exec_kind == 'dev') or (self.exec_kind == 'test'):
+        elif (self.exec_kind == 'dev') or (self.exec_kind == 'stack'):
             self.exec_dev()
 
     # Execute the batch process

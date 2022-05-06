@@ -11,10 +11,11 @@ from baseline.middle_out.MiddleOut import MiddleOut
 
 import gc
 import warnings
+import pandas as pd
 warnings.filterwarnings("ignore")
 
 
-class PipelineCycle(object):
+class Pipeline(object):
     """
     Baseline forecast pipeline
     """
@@ -26,9 +27,15 @@ class PipelineCycle(object):
         :param path_root: root path for baseline forecast
         """
         self.item_lvl = 3    # Brand Level (Fixed)
+        self.method = 'stack'
+
+        # SP1-C
+        self.sp1c_list = ('103', '107', '108', '109', '110')   # EC / Global
+        self.sp1c_sp1 = None
+        self.cust_grp = None
 
         # I/O & Execution instance attribute
-        self.exec_kind = 'dev'
+        self.exec_kind = 'batch'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -61,7 +68,8 @@ class PipelineCycle(object):
             common=self.common,
             division=self.division,
             path_root=self.path_root,
-            exec_kind=self.exec_kind
+            exec_kind=self.exec_kind,
+            method=self.method
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)
 
@@ -134,14 +142,20 @@ class PipelineCycle(object):
             sales = cns.check(df=sales)
 
             # Save Step result
-            # if self.exec_cfg['save_step_yn']:
-            self.io.save_object(data=sales, file_path=self.path['cns'], data_type='csv')
+            if self.exec_cfg['save_step_yn']:
+                self.io.save_object(data=sales, file_path=self.path['cns'], data_type='csv')
 
             print("Consistency check is finished\n")
 
         # ================================================================================================= #
         # 3. Data Preprocessing
         # ================================================================================================= #
+        # sp1c <-> sp1
+        sp1c_sp1 = self.io.get_df_from_db(sql=self.sql_conf.sql_sp1_sp1c(self.sp1c_list))
+        sp1c_sp1['cust_grp_cd'] = sp1c_sp1['cust_grp_cd'].astype(int)
+        self.sp1c_sp1 = sp1c_sp1
+        self.cust_grp = tuple(self.sp1c_sp1['cust_grp_cd'].to_list())
+
         data_prep = None
         exg_list = None
         sales_dist = None
@@ -166,6 +180,10 @@ class PipelineCycle(object):
                 data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
+
+            # Filter sp1c
+            sales = pd.merge(sales, sp1c_sp1, how='inner', on='cust_grp_cd')
+            sales = sales.drop(columns=['sp1c_cd'])
 
             # Preprocessing the dataset
             data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, weather=exg, sales_dist=sales_dist)
@@ -195,6 +213,7 @@ class PipelineCycle(object):
 
             # Initiate train class
             training = Train(
+                date=self.date,
                 data_vrsn_cd=self.data_vrsn_cd,    # Data version code
                 division=self.division,            # Division code
                 hrchy=self.hrchy,                  # Hierarchy
@@ -242,8 +261,8 @@ class PipelineCycle(object):
                     fn=training.make_best_score_df
                 )
 
-                scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
-                scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
+                # scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
+                # scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
 
                 # Save best scores
                 if self.exec_cfg['save_step_yn']:
@@ -255,6 +274,7 @@ class PipelineCycle(object):
                     print("Save training all scores on DB")
                     table_nm = 'M4S_I110410'
                     score_info['table_nm'] = table_nm
+                    score_info['cust_grp_cd'] = self.cust_grp
                     self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
                     self.io.insert_to_db(df=scores_db, tb_name=table_nm)
 
@@ -262,6 +282,7 @@ class PipelineCycle(object):
                     print("Save training best scores on DB")
                     table_nm = 'M4S_O110610'
                     score_best_info['table_nm'] = table_nm
+                    score_best_info['cust_grp_cd'] = self.cust_grp
                     self.io.delete_from_db(sql=self.sql_conf.del_score(**score_best_info))
                     self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
 
@@ -320,6 +341,7 @@ class PipelineCycle(object):
                 print("Save all of prediction results on DB")
                 table_pred_all = 'M4S_I110400'
                 pred_info['table_nm'] = table_pred_all
+                pred_info['cust_grp_cd'] = self.cust_grp
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_all(**pred_info))
                 self.io.insert_to_db(df=pred_all, tb_name=table_pred_all)
 
@@ -327,6 +349,7 @@ class PipelineCycle(object):
                 print("Save best of prediction results on DB")
                 table_pred_best = 'M4S_O110600'
                 pred_info['table_nm'] = table_pred_best
+                pred_info['cust_grp_cd'] = self.cust_grp
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
@@ -373,6 +396,7 @@ class PipelineCycle(object):
 
             if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()
+                middle_info['cust_grp_cd'] = self.cust_grp
                 # Save middle-out prediction of best algorithm to prediction table
                 print("Save middle-out results on all result table")
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**middle_info))
@@ -381,7 +405,7 @@ class PipelineCycle(object):
                 # Save prediction of best algorithm to recent prediction table
                 print("Save middle-out results on recent result table")
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(
-                    **{'division_cd': self.division}
+                    **{'division_cd': self.division, 'cust_grp_cd': self.cust_grp}
                 ))
                 self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 

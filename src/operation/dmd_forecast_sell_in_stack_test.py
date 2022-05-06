@@ -3,12 +3,14 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineTimeSeries import Pipeline
+from baseline.deployment.PipelineStack import Pipeline
 
+# Root path
+# path_root = os.path.join('..', '..')
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Data Configuration
-data_cfg = {'division': 'SELL_OUT'}
+data_cfg = {'division': 'SELL_IN'}
 
 # Execute Configuration
 step_cfg = {
@@ -22,11 +24,11 @@ step_cfg = {
 
 # Configuration
 exec_cfg = {
-    'cycle': True,                            # Prediction cycle
+    'cycle': True,                           # Prediction cycle
 
     # save configuration
     'save_step_yn': True,                     # Save each step result to object or csv
-    'save_db_yn': False,                       # Save each step result to Database
+    'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration
     'add_exog_dist_sales': True,
@@ -39,17 +41,20 @@ exec_cfg = {
     'rm_outlier_yn': True,                    # Outlier clipping
     'data_imputation_yn': True,               # Data Imputation
 
+    # Feature engineering configuration
+    'rolling_statistics_yn': False,           # Add features of rolling statistics
+    'representative_sampling_yn': False,      # Add features of representative sampling
+
     # Training configuration
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
-    'voting_yn': True                         # Add voting algorithm
+    'voting_yn': True,                        # Add voting algorithm
+    'stack_grid_search_yn': False,            # Stacking Model
 }
 
 print('------------------------------------------------')
-print('Demand Forecast - SELL-OUT')
+print('Demand Forecast - SELL-IN: STACK')
 print('------------------------------------------------')
-# Check start time
-print("Forecast Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 pipeline = Pipeline(
     data_cfg=data_cfg,

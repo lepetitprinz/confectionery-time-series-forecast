@@ -40,7 +40,7 @@ class OpenAPIWeather(object):
         prev_sunday = datetime.date.strftime(prev_sunday, '%Y%m%d')
 
         self.date = {'from': prev_monday, 'to': prev_sunday}
-        # self.date = {'from': '20190101', 'to': '20191231'}
+        # self.date = {'from': '20220403', 'to': '20220409'}
 
     # Get the dataset from API call
     def get_api_dataset(self) -> list:

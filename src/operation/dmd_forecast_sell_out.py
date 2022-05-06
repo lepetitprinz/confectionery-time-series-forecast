@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineCycle import PipelineCycle
+from baseline.deployment.PipelineTimeSeries import Pipeline
 
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
@@ -51,7 +51,7 @@ print('------------------------------------------------')
 # Check start time
 print("Forecast Start: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-pipeline = PipelineCycle(
+pipeline = Pipeline(
     data_cfg=data_cfg,
     exec_cfg=exec_cfg,
     step_cfg=step_cfg,

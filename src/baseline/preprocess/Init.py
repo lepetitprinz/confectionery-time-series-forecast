@@ -6,8 +6,17 @@ class Init(object):
     """
     Time series setting class
     """
-    def __init__(self, data_cfg: dict, exec_cfg: dict, common: dict,
-                 division: str, path_root: str, exec_kind: str, resample_rule='w'):
+    def __init__(
+            self,
+            method: str,
+            data_cfg: dict,
+            exec_cfg: dict,
+            common: dict,
+            division: str,
+            path_root: str,
+            exec_kind: str,
+            resample_rule='w'
+    ):
         """
         :param data_cfg: Data configuration
         :param exec_cfg: Execution configuration
@@ -17,6 +26,7 @@ class Init(object):
         :param exec_kind: Kinds of execution (batch/verify/dev)
         :param resample_rule: Rule of data resampling
         """
+        self.method = method
         self.data_cfg = data_cfg
         self.exec_cfg = exec_cfg
         self.common = common
@@ -106,58 +116,87 @@ class Init(object):
             # Data preprocessing result (Binary)
             'prep': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='prep', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='prep_' + self.method,
+                extension='pickle'
+            ),
             # Training result of all (Binary)
             'train': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='train', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='train_' + self.method,
+                extension='pickle'
+            ),
             # Training result of best (Binary)
             'train_score_best': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='train_score_best', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='train_score_best_' + self.method,
+                extension='pickle'
+            ),
             # Prediction step
             'pred': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_' + self.method,
+                extension='pickle'
+            ),
             # Prediction result of all (Binary)
             'pred_all': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all_' + self.method,
+                extension='pickle'
+            ),
             # Prediction result of best (Binary)
             'pred_best': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best_' + self.method,
+                extension='pickle'
+            ),
             # Training result of all (csv)
             'score_all_csv': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_all', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_all_' + self.method,
+                extension='csv'
+            ),
             # Training result of best (csv)
             'score_best_csv': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_best', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='score_best_' + self.method,
+                extension='csv'
+            ),
             # Prediction result of all (csv)
             'pred_all_csv': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_all_' + self.method,
+                extension='csv'
+            ),
             # Prediction result of best (csv)
             'pred_best_csv': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_best_' + self.method,
+                extension='csv'
+            ),
             # Middle-out result of all (csv)
             'middle_out_all': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_all', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_all_' + self.method,
+                extension='csv'
+            ),
             # Middle-out result of best (csv)
             'middle_out_best': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_best', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_best_' + self.method,
+                extension='csv'
+            ),
             'middle_out_db': util.make_path_baseline(
                 path=self.path_root, module='prediction', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='pred_middle_out_db_' + self.method,
+                extension='csv'
+            ),
             'decompose_db': util.make_path_baseline(
                 path=self.path_root, module='data', exec_kind='batch', division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='decompose_db', extension='csv'
+            ),
             'ml_data_map': util.make_path_baseline(
                 path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
-                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='ml_data_map', extension='pickle'),
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='ml_data_map_' + self.method,
+                extension='pickle'
+            ),
         }

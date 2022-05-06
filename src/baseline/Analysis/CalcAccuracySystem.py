@@ -654,6 +654,8 @@ class CalcAccuracySystem(object):
             'yymmdd': self.date_cfg['date']['compare']['from']
         }
 
+        data_db = data_db.fillna('-')
+
         self.io.delete_from_db(sql=self.sql_conf.del_pred_plan_acc(**del_info))
 
         # Save result on the DB

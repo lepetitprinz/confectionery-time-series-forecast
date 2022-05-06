@@ -46,8 +46,19 @@ class Train(object):
         'best': 'ml_model_param_'
     }
 
-    def __init__(self, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list, path_root: str):
+    def __init__(
+            self,
+            date: dict,
+            division: str,
+            data_vrsn_cd: str,
+            common: dict,
+            hrchy: dict,
+            data_cfg: dict,
+            exec_cfg: dict,
+            mst_info: dict,
+            exg_list: list,
+            path_root: str
+    ):
         """
         :param division: Division (SELL-IN/SELl-OUT)
         :param data_vrsn_cd: Data version code
@@ -63,6 +74,7 @@ class Train(object):
         self.sql_conf = SqlConfig()
 
         # Data instance attribute
+        self.date = date
         self.path_root = path_root
         self.common = common    # Common information
         self.data_cfg = data_cfg    # Data configuration
@@ -101,8 +113,8 @@ class Train(object):
         # Window Generator instance attribute
         self.window_method = 'expand'    # slice / expand
         self.hist_date = pd.date_range(
-            start=self.data_cfg['date']['history']['from'],
-            end=self.data_cfg['date']['history']['to'],
+            start=self.date['history']['from'],
+            end=self.date['history']['to'],
             freq='W'
         )
         self.hist_width = len(self.hist_date)
