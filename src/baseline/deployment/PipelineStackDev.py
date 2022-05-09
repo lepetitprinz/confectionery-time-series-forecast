@@ -4,7 +4,7 @@ from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
 from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
-from baseline.model.TrainStack import Train
+from baseline.model.TrainStackDev import Train
 from baseline.model.PredictStack import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
 

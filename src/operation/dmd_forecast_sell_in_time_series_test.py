@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineTimeSeries import Pipeline
 
+# path_root = os.path.join('..', '..')
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Data Configuration
@@ -15,9 +16,9 @@ step_cfg = {
     'cls_load': False,
     'cls_cns': False,
     'cls_prep': True,
-    'cls_train': True,
-    'cls_pred': True,
-    'cls_mdout': True
+    'cls_train': False,
+    'cls_pred': False,
+    'cls_mdout': False
 }
 
 # Configuration

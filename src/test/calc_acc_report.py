@@ -6,11 +6,11 @@ from baseline.deployment.PipelineAccReport import PipelineAccReport
 
 
 # W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) / W12(20220313)
-# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417)
-hist_to = '20220417'
+# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417) / W18(20220424)
+hist_to = '20220424'
 exec_kind = 'batch'   # batch / dev
 item_lvl_list = [5]
-division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
+division_list = ['SELL_IN', 'SELL_OUT']    # SELL_IN / SELL_OUT
 acc_classifier_list = [0.3, 0.4, 0.5]    # Cover rate
 
 root_path = os.path.join('..', '..')

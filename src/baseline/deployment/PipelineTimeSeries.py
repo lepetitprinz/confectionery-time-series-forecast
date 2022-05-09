@@ -152,7 +152,7 @@ class Pipeline(object):
         # ================================================================================================= #
         # sp1c <-> sp1
         sp1c_sp1 = self.io.get_df_from_db(sql=self.sql_conf.sql_sp1_sp1c(self.sp1c_list))
-        sp1c_sp1['cust_grp_cd'] = sp1c_sp1['cust_grp_cd'].astype(int)
+        sp1c_sp1['cust_grp_cd'] = sp1c_sp1['cust_grp_cd'].astype(str)
         self.sp1c_sp1 = sp1c_sp1
         self.cust_grp = tuple(self.sp1c_sp1['cust_grp_cd'].to_list())
 

@@ -5,7 +5,8 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineTimeSeries import Pipeline
 
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Data Configuration
 data_cfg = {'division': 'SELL_OUT'}

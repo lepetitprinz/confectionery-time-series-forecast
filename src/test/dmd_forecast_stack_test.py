@@ -6,15 +6,15 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from baseline.deployment.PipelineStack import Pipeline
 
 # Root path
-# path_root = os.path.join('..', '..')
-path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+path_root = os.path.join('..', '..')
+# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
-division = 'SELL_IN'    # SELL_IN / SELL_OUT
+division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 
-# W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) /  W12(20220313)
-# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410)
-hist_to = '20220417'
+# W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) / W12(20220313)
+# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417) / W18(20220424)
+hist_to = '20220424'
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
@@ -31,10 +31,10 @@ md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 step_cfg = {
     'cls_load': False,
     'cls_cns': False,
-    'cls_prep': True,
+    'cls_prep': False,
     'cls_train': True,
-    'cls_pred': True,
-    'cls_mdout': True
+    'cls_pred': False,
+    'cls_mdout': False
 }
 
 # Configuration
@@ -42,7 +42,7 @@ exec_cfg = {
     'cycle': False,                           # Prediction cycle
 
     # save configuration
-    'save_step_yn': True,                     # Save each step result to object or csv
+    'save_step_yn': False,                     # Save each step result to object or csv
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration

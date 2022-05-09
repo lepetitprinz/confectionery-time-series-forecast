@@ -9,7 +9,7 @@ import ast
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Sequence
+from typing import List, Tuple, Sequence, Union
 from itertools import product
 from collections import defaultdict
 from sklearn.metrics import mean_squared_error
@@ -357,6 +357,7 @@ class Train(object):
     def generate_input(self, data: pd.DataFrame):
         # Set features by models (univ/multi)
         feature_by_variable = self.select_feature_by_variable(df=data)
+        discount = data['discount']
 
         input_by_model = {}
         for model in self.ts_model_candidates:
@@ -364,13 +365,14 @@ class Train(object):
             data = feature_by_variable[self.model_info[model]['variate']]
 
             # Generate the machine learning input
-            input_by_model[model] = self.predict_on_window_list(model=model, data=data)
+            # data = pd.concat([data, discount], axis=1)
+            input_by_model[model] = self.predict_on_window_list(model=model, data=data, discount=discount)
 
         input_df = pd.DataFrame(input_by_model)
 
         return input_df
 
-    def predict_on_window_list(self, model: str, data: list):
+    def predict_on_window_list(self, model: str, data: Union[pd.Series, pd.DataFrame], discount):
         data_window = self.split_window(data=data)
 
         ml_input = []
