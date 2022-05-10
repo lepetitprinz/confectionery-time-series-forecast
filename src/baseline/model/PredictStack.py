@@ -34,8 +34,21 @@ class Predict(object):
         'best': 'ml_model_param_'
     }
 
-    def __init__(self, io, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict, data_cfg: dict,
-                 exec_cfg: dict, path_root: str,  mst_info: dict, exg_list: list, ml_data_map: dict):
+    def __init__(
+            self,
+            io,
+            date: dict,
+            division: str,
+            data_vrsn_cd: str,
+            common: dict,
+            hrchy: dict,
+            data_cfg: dict,
+            exec_cfg: dict,
+            path_root: str,
+            mst_info: dict,
+            exg_list: list,
+            ml_data_map: dict
+    ):
         """
         :param date: Date information
         :param division: Division (SELL-IN/SELl-OUT)

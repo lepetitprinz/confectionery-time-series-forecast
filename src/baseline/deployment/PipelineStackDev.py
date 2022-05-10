@@ -35,7 +35,7 @@ class Pipeline(object):
         self.cust_grp = None
 
         # I/O & Execution instance attribute
-        self.exec_kind = 'batch'
+        self.exec_kind = 'dev'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -182,6 +182,7 @@ class Pipeline(object):
             )
 
             # Filter sp1c
+            sales['cust_grp_cd'] = sales['cust_grp_cd'].astype(str)
             sales = pd.merge(sales, sp1c_sp1, how='inner', on='cust_grp_cd')
             sales = sales.drop(columns=['sp1c_cd'])
 

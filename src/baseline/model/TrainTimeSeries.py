@@ -27,8 +27,17 @@ class Train(object):
         'sarima': Algorithm.sarimax
     }
 
-    def __init__(self, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,
-                 data_cfg: dict, exec_cfg: dict, mst_info: dict, exg_list: list):
+    def __init__(
+            self,
+            division: str,
+            data_vrsn_cd: str,
+            common: dict,
+            hrchy: dict,
+            data_cfg: dict,
+            exec_cfg: dict,
+            mst_info: dict,
+            exg_list: list
+    ):
         """
         :param division: Division (SELL-IN/SELl-OUT)
         :param data_vrsn_cd: Data version code

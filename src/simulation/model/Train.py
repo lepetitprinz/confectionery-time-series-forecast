@@ -22,8 +22,16 @@ class Train(object):
         'et': ExtraTreesRegressor
     }
 
-    def __init__(self, data_version: str, division: str, hrchy: dict, common, exec_cfg: dict,
-                 algorithms: pd.DataFrame, path_root: str):
+    def __init__(
+            self,
+            data_version: str,
+            division: str,
+            hrchy: dict,
+            common,
+            exec_cfg: dict,
+            algorithms: pd.DataFrame,
+            path_root: str
+    ):
 
         # Data Configuration
         self.common = common          # Common configuration

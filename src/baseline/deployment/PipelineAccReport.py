@@ -6,9 +6,17 @@ import datetime
 class PipelineAccReport(object):
     item_lvl_map = {3: 'BRAND', 5: 'SKU'}
 
-    def __init__(self, exec_kind: str, exec_cfg: dict, root_path: str, save_path: str,
-                 division_list: list, item_lvl_list: list, hist_to='',
-                 acc_classifier_list=[0.3]):
+    def __init__(
+            self,
+            exec_kind: str,
+            exec_cfg: dict,
+            root_path: str,
+            save_path: str,
+            division_list: list,
+            item_lvl_list: list,
+            hist_to='',
+            acc_classifier_list=[0.3]
+    ):
         # Execution instance attribute
         self.exec_kind = exec_kind
         self.exec_cfg = exec_cfg

@@ -30,8 +30,17 @@ class Simulate(object):
     }
     hrchy_sku_to_db_sku_map = {'sku_cd': 'item_cd', 'sku_nm': 'item_nm'}
 
-    def __init__(self, data_version: str, division_cd: str, cust_grp_cd: str, date: dict, lag: str, exec_cfg: dict,
-                 item_cd, discount):
+    def __init__(
+            self,
+            data_version: str,
+            division_cd: str,
+            cust_grp_cd: str,
+            date: dict,
+            lag: str,
+            exec_cfg: dict,
+            item_cd,
+            discount
+    ):
         # Class Configuration
         self.io = DataIO()
         self.sql_conf = SqlConfig()

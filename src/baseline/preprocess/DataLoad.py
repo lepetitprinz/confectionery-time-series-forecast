@@ -5,7 +5,14 @@ from typing import Union, Dict, List, Tuple, Any
 
 
 class DataLoad(object):
-    def __init__(self, io, sql_conf, date: dict, division: str, data_vrsn_cd: str):
+    def __init__(
+            self,
+            io,
+            sql_conf,
+            date: dict,
+            division: str,
+            data_vrsn_cd: str
+    ):
         """
         :param io: Pipeline step configuration
         :param sql_conf: SQL configuration

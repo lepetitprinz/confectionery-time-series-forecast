@@ -7,8 +7,16 @@ from copy import deepcopy
 class DataPrep(object):
     drop_col = ['division_cd', 'seq', 'unit_price', 'unit_cd', 'from_dc_cd', 'create_date', 'week']
 
-    def __init__(self, division: str, hrchy: dict, lag: str, common: dict, date: dict, threshold: int,
-                 exec_cfg: dict):
+    def __init__(
+            self,
+            division: str,
+            hrchy: dict,
+            lag: str,
+            common: dict,
+            date: dict,
+            threshold: int,
+            exec_cfg: dict
+    ):
         self.exec_cfg = exec_cfg    # Execution configuration
         self.division = division    # Division (SELL-IN/SELL-OUT)
         self.date_col = common['date_col']        # Date column name

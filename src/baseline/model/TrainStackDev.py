@@ -365,12 +365,36 @@ class Train(object):
             data = feature_by_variable[self.model_info[model]['variate']]
 
             # Generate the machine learning input
-            # data = pd.concat([data, discount], axis=1)
             input_by_model[model] = self.predict_on_window_list(model=model, data=data, discount=discount)
 
+            if model == 'hw':
+                disc = self.make_discount_input(model=model, data=discount)
+
         input_df = pd.DataFrame(input_by_model)
+        input_df['discount'] = disc
 
         return input_df
+
+    def make_discount_input(self, model, data: pd.Series):
+        disc = data.values
+
+        # miss val
+        input_length = self.hist_width + self.pred_width - self.shift_width
+        avg_value = np.mean(disc)
+        miss_arr = np.array([avg_value] * (input_length-len(disc)-self.pred_width))
+
+        # exception
+        if len(disc) > (self.hist_width - self.shift_width):
+            disc = disc[-(self.hist_width - self.shift_width):]
+
+        if len(disc) >= self.pred_width:
+            prediction = self.predict(model=model, data=data, pred_width=self.pred_width)
+        else:
+            prediction = [avg_value] * self.pred_width
+
+        disc_input = np.concatenate((miss_arr, disc, prediction), axis=0)
+
+        return disc_input
 
     def predict_on_window_list(self, model: str, data: Union[pd.Series, pd.DataFrame], discount):
         data_window = self.split_window(data=data)

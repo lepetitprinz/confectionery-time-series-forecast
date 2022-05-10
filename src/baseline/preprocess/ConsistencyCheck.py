@@ -11,8 +11,17 @@ from copy import deepcopy
 class ConsistencyCheck(object):
     item_class_list = ['10', '20', '60']    # Applying item class list
 
-    def __init__(self, data_vrsn_cd: str, division: str, common: dict, hrchy: dict,
-                 mst_info: dict, exec_cfg: dict, err_grp_map: dict, path_root: str):
+    def __init__(
+            self,
+            data_vrsn_cd: str,
+            division: str,
+            common: dict,
+            hrchy: dict,
+            mst_info: dict,
+            exec_cfg: dict,
+            err_grp_map: dict,
+            path_root: str
+    ):
         """
         :param data_vrsn_cd: Data version
         :param division: Division (SELL-IN/SELL-OUT)
@@ -110,7 +119,7 @@ class ConsistencyCheck(object):
         # Print result
         print("-----------------------------------")
         print(f"All data length: {len(test_df)}")
-        print(f"Normal data length: {len(normal)}")
+        print(f"*Normal data length: {len(normal)}")
         print(f"Error data length: {len(err)}")
         print("-----------------------------------")
 

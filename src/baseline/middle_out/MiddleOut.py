@@ -7,8 +7,15 @@ from copy import deepcopy
 
 
 class MiddleOut(object):
-    def __init__(self, division: str, data_vrsn: str, common: dict, hrchy: dict,
-                 ratio_lvl, item_mst: pd.DataFrame):
+    def __init__(
+            self,
+            division: str,
+            data_vrsn: str,
+            common: dict,
+            hrchy: dict,
+            ratio_lvl,
+            item_mst: pd.DataFrame
+    ):
         """
         :param division: Division (SELL-IN/SELl-OUT)
         :param data_vrsn: Data version code

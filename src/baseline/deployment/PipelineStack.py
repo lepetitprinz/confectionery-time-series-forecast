@@ -19,7 +19,13 @@ class Pipeline(object):
     """
     Baseline forecast pipeline
     """
-    def __init__(self, step_cfg: dict, data_cfg: dict, exec_cfg: dict, path_root: str):
+    def __init__(
+            self,
+            step_cfg: dict,
+            data_cfg: dict,
+            exec_cfg: dict,
+            path_root: str
+    ):
         """
         :param step_cfg: Pipeline step configuration
         :param data_cfg: Data configuration
@@ -182,6 +188,7 @@ class Pipeline(object):
             )
 
             # Filter sp1c
+            sales['cust_grp_cd'] = sales['cust_grp_cd'].astype(str)
             sales = pd.merge(sales, sp1c_sp1, how='inner', on='cust_grp_cd')
             sales = sales.drop(columns=['sp1c_cd'])
 

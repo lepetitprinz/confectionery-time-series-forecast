@@ -17,7 +17,15 @@ class DataPrep(object):
     DROP_COLS_DATA_PREP = ['division_cd', 'seq', 'from_dc_cd', 'unit_price', 'create_date']
     STR_TYPE_COLS = ['cust_grp_cd', 'sku_cd']    # Columns of string type
 
-    def __init__(self, date: dict, common: dict, hrchy: dict, division: str, data_cfg: dict, exec_cfg: dict):
+    def __init__(
+            self,
+            date: dict,
+            common: dict,
+            hrchy: dict,
+            division: str,
+            data_cfg: dict,
+            exec_cfg: dict
+    ):
         """
         :param date: Date information
         :param common: Common information
@@ -130,7 +138,7 @@ class DataPrep(object):
             print("-----------------------------")
             print(f"Total SKU: {self.tot_sp1_sku_cnt}")
             print(f"Removed SKU: {self.rm_sp1_sku_cnt}")
-            print(f"Applied SKU: {self.tot_sp1_sku_cnt - self.rm_sp1_sku_cnt}")
+            print(f"*Applied SKU: {self.tot_sp1_sku_cnt - self.rm_sp1_sku_cnt}")
             print("-----------------------------")
 
         # Time series decomposition
@@ -159,7 +167,7 @@ class DataPrep(object):
         print('-----------------------------------')
         print(f"Total data Level counts: {hrchy_cnt}")
         print(f"Removed data Level counts: {self.rm_lvl_cnt}")
-        print(f"Applying data Level counts: {hrchy_cnt - self.rm_lvl_cnt}")
+        print(f"*Applying data Level counts: {hrchy_cnt - self.rm_lvl_cnt}")
         print('-----------------------------------')
         hrchy_cnt -= self.rm_lvl_cnt
 
