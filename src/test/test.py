@@ -1,12 +1,20 @@
-from dao.DataIO import DataIO
-from common.SqlConfig import SqlConfig
+def test(number, k):
+    length = len(number)
+    n = length - k
 
+    result = []
+    start_idx = 0
+    end_idx = length - n
+    for i in range(n):
+        max_num = max(number[start_idx:end_idx+1])
+        result.append(max_num)
+        start_idx += number[start_idx:].index(max_num) + 1
+        end_idx += 1
 
-io = DataIO()  # Data In/Out class
-sql_conf = SqlConfig()  # DB Query class
+    return result
 
-sp1c_list = {'sp1c_list': ('101', '102')}
+number = "4177252841"
+k = 4
 
-data = io.get_df_from_db(sql=sql_conf.sql_sp1_sp1c_test(**sp1c_list))
-data_list = tuple(data['cust_grp_cd'].to_list())
-print("")
+result = test(number, 4)
+print(result)

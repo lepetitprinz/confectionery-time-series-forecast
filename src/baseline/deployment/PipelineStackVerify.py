@@ -4,7 +4,7 @@ from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
 from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
-from baseline.model.TrainStackDev import Train
+from baseline.model.TrainStack import Train
 from baseline.model.PredictStack import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
 
@@ -19,7 +19,13 @@ class Pipeline(object):
     """
     Baseline forecast pipeline
     """
-    def __init__(self, step_cfg: dict, data_cfg: dict, exec_cfg: dict, path_root: str):
+    def __init__(
+            self,
+            step_cfg: dict,
+            data_cfg: dict,
+            exec_cfg: dict,
+            path_root: str
+    ):
         """
         :param step_cfg: Pipeline step configuration
         :param data_cfg: Data configuration
@@ -35,7 +41,7 @@ class Pipeline(object):
         self.cust_grp = None
 
         # I/O & Execution instance attribute
-        self.exec_kind = 'dev'
+        self.exec_kind = 'verify'
         self.data_cfg = data_cfg
         self.step_cfg = step_cfg
         self.exec_cfg = exec_cfg
@@ -261,9 +267,6 @@ class Pipeline(object):
                     hrchy_key=self.hrchy['key'],
                     fn=training.make_best_score_df
                 )
-
-                # scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
-                # scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
 
                 # Save best scores
                 if self.exec_cfg['save_step_yn']:

@@ -1,5 +1,5 @@
 from baseline.analysis.Decomposition import Decomposition
-from baseline.feature_engineering.FeatureEngineering import FeatureEngineering
+from baseline.feature_engineering.selection import FeatureEngineering
 import common.util as util
 import common.config as config
 
@@ -195,7 +195,6 @@ class DataPrep(object):
     def conv_data_type(self, df: pd.DataFrame) -> pd.DataFrame:
         # Drop unnecessary columns
         df = df.drop(columns=self.__class__.DROP_COLS_DATA_PREP, errors='ignore')
-        # df['unit_cd'] = df['unit_cd'].str.replace(' ', '')
 
         # Convert unit code
         # if self.data_cfg['division'] == 'SELL_OUT':
@@ -338,12 +337,6 @@ class DataPrep(object):
         return df_trim
 
     def check_missing_value(self, df: pd.DataFrame) -> float:
-        # df_sum_resampled = self.resample_by_agg(df=df, agg='sum')
-        # df_avg_resampled = self.resample_by_agg(df=df, agg='avg')
-        #
-        # # Concatenate aggregation
-        # df_resampled = pd.concat([df_sum_resampled, df_avg_resampled], axis=1)
-
         # Check and add dates when sales does not exist
         missed_rate = 0
         if len(df.index) != len(self.hist_date_range):

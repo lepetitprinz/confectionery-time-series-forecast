@@ -200,34 +200,6 @@ class SqlConfig(object):
         """
         return sql
 
-    ######################################
-    # Sales dataset
-    ######################################
-    # SELL-IN Table
-    # @staticmethod
-    # def sql_sell_in(**kwargs):
-    #     sql = f"""
-    #          SELECT DIVISION_CD
-    #              , CUST_GRP_CD
-    #              , ITEM_ATTR01_CD AS BIZ_CD
-    #              , ITEM_ATTR02_CD AS LINE_CD
-    #              , ITEM_ATTR03_CD AS BRAND_CD
-    #              , ITEM_ATTR04_CD AS ITEM_CD
-    #              , ITEM_CD AS SKU_CD
-    #              , YYMMDD
-    #              , SEQ
-    #              , FROM_DC_CD
-    #              , UNIT_PRICE
-    #              , UNIT_CD
-    #              , DISCOUNT
-    #              , WEEK
-    #              , QTY
-    #              , CREATE_DATE
-    #           FROM M4S_I002176
-    #          WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
-    #     """
-    #     return sql
-
     @staticmethod
     def sql_sell_in(**kwargs):
         sql = f"""

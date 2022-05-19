@@ -4,23 +4,41 @@ from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
 from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
-from baseline.model.TrainDev import TrainDev
-from baseline.model.PredictDev import PredictDev
+from baseline.model.TrainTimeSeries import Train
+from baseline.model.PredictTimeSeries import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
 
+
+import gc
+import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
 
-class PipelineDev(object):
-    def __init__(self, data_cfg: dict, exec_cfg: dict, step_cfg: dict, path_root: str):
+class Pipeline(object):
+    """
+    Baseline forecast pipeline
+    """
+    def __init__(
+            self,
+            step_cfg: dict,
+            data_cfg: dict,
+            exec_cfg: dict,
+            path_root: str
+    ):
         """
-        :param data_cfg: Data Configuration
-        :param exec_cfg: Data I/O Configuration
-        :param step_cfg: Execute Configuration
+        :param step_cfg: Pipeline step configuration
+        :param data_cfg: Data configuration
+        :param exec_cfg: Execution configuration
+        :param path_root: root path for baseline forecast
         """
-        # Hierarchy Level instance attribute
-        self.item_lvl = 3    # Fixed
+        self.item_lvl = 3    # Brand Level (Fixed)
+        self.method = 'ts'
+
+        # SP1-C
+        self.sp1c_list = ('101', '102')
+        self.sp1c_sp1 = None
+        self.cust_grp = None
 
         # I/O & Execution instance attribute
         self.exec_kind = 'dev'
@@ -29,26 +47,27 @@ class PipelineDev(object):
         self.exec_cfg = exec_cfg
         self.path_root = path_root
 
-        # Class instance attribute
-        self.io = DataIO()
-        self.sql_conf = SqlConfig()
-        self.common = self.io.get_dict_from_db(
+        # Object instance attribute
+        self.io = DataIO()    # Data In/Out class
+        self.sql_conf = SqlConfig()    # DB Query class
+        self.common: dict = self.io.get_dict_from_db(    # common information dictionary
             sql=SqlConfig.sql_comm_master(),
             key='OPTION_CD',
             val='OPTION_VAL'
         )
+        self.common['week_eval'] = 'W04'
 
         # Data instance attribute
-        self.division = data_cfg['division']
-        self.data_vrsn_cd = ''
-        self.hrchy = {}
-        self.level = {}
-        self.path = {}
-        self.date = {}
+        self.date = {}     # Date information (History / Middle-out)
+        self.path = {}     # Save & Load path
+        self.level = {}    # Data hierarchy level for customer & item
+        self.hrchy = {}    # Data hierarchy for customer & item
+        self.data_vrsn_cd = ''    # Data version
+        self.division = data_cfg['division']    # division (SELL-IN/SELL-OUT)
 
     def run(self):
         # ================================================================================================= #
-        # 1. Initiate basic setting
+        # 1. Initialize time series setting
         # ================================================================================================= #
         init = Init(
             data_cfg=self.data_cfg,
@@ -56,7 +75,8 @@ class PipelineDev(object):
             common=self.common,
             division=self.division,
             path_root=self.path_root,
-            exec_kind=self.exec_kind
+            exec_kind=self.exec_kind,
+            method=self.method
         )
         init.run(cust_lvl=1, item_lvl=self.item_lvl)
 
@@ -82,8 +102,7 @@ class PipelineDev(object):
         if self.step_cfg['cls_load']:
             print("Step 1: Load the dataset\n")
             # Check data version
-            # if self.exec_cfg['save_db_yn']:
-            #     load.check_data_version()
+            load.check_data_version()
 
             # Load sales dataset
             sales = load.load_sales()
@@ -97,6 +116,8 @@ class PipelineDev(object):
         # Load master dataset
         mst_info = load.load_mst()
 
+        # Garbage collection
+        gc.collect()
         # ================================================================================================= #
         # 2. Check Consistency
         # ================================================================================================= #
@@ -136,32 +157,44 @@ class PipelineDev(object):
         # ================================================================================================= #
         # 3. Data Preprocessing
         # ================================================================================================= #
+        # sp1c <-> sp1
+        sp1c_sp1 = self.io.get_df_from_db(sql=self.sql_conf.sql_sp1_sp1c(self.sp1c_list))
+        sp1c_sp1['cust_grp_cd'] = sp1c_sp1['cust_grp_cd'].astype(str)
+        self.sp1c_sp1 = sp1c_sp1
+        self.cust_grp = tuple(self.sp1c_sp1['cust_grp_cd'].to_list())
+
         data_prep = None
         exg_list = None
+        sales_dist = None
+
         # Exogenous dataset
-        exg_info = {
-            'partial_yn': 'N',
-            'from': self.date['history']['from'],
-            'to': self.date['history']['to']
-        }
-        exg = load.load_exog(info=exg_info)
+        exg = load.load_exog()    # Weather dataset
+
+        if (self.division == 'SELL_OUT') & (self.exec_cfg['add_exog_dist_sales']):
+            sales_dist = load.load_sales_dist()
 
         if self.step_cfg['cls_prep']:
             print("Step 3: Data Preprocessing\n")
             if not self.step_cfg['cls_cns']:
                 sales = self.io.load_object(file_path=self.path['cns'], data_type='csv')
 
-            # Initiate data preprocessing class
+            # instantiate data preprocessing class
             preprocess = DataPrep(
                 date=self.date,
                 common=self.common,
                 hrchy=self.hrchy,
+                division=self.division,
                 data_cfg=self.data_cfg,
                 exec_cfg=self.exec_cfg
             )
 
+            # Filter sp1c
+            sales['cust_grp_cd'] = sales['cust_grp_cd'].astype(str)
+            sales = pd.merge(sales, sp1c_sp1, how='inner', on='cust_grp_cd')
+            sales = sales.drop(columns=['sp1c_cd'])
+
             # Preprocessing the dataset
-            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, weather=exg)
+            data_prep, exg_list, hrchy_cnt = preprocess.preprocess(data=sales, weather=exg, sales_dist=sales_dist)
             self.hrchy['cnt'] = hrchy_cnt
 
             # Save Step result
@@ -184,8 +217,8 @@ class PipelineDev(object):
                 data_prep, exg_list, hrchy_cnt = self.io.load_object(file_path=self.path['prep'], data_type='binary')
                 self.hrchy['cnt'] = hrchy_cnt
 
-            # Initiate train class
-            training = TrainDev(
+            # instantiate train class
+            training = Train(
                 data_vrsn_cd=self.data_vrsn_cd,    # Data version code
                 division=self.division,            # Division code
                 hrchy=self.hrchy,                  # Hierarchy
@@ -193,8 +226,7 @@ class PipelineDev(object):
                 mst_info=mst_info,                 # Master information
                 exg_list=exg_list,                 # Exogenous variable list
                 data_cfg=self.data_cfg,            # Data configuration
-                exec_cfg=self.exec_cfg,            # Execute configuration
-                path_root=self.path_root
+                exec_cfg=self.exec_cfg             # Execute configuration
             )
 
             # Train the models
@@ -206,24 +238,21 @@ class PipelineDev(object):
 
             # Save best parameters
             if self.exec_cfg['grid_search_yn']:
-                training.save_params(scores=scores)
+                training.save_best_params(scores=scores)
 
             # Make score result
             # All scores
             scores_db, score_info = training.make_score_result(
                 data=scores,
                 hrchy_key=self.hrchy['key'],
-                fn=training.conv_score_to_df
+                fn=training.score_to_df
             )
             # Best scores
             scores_best, score_best_info = training.make_score_result(
                 data=scores,
                 hrchy_key=self.hrchy['key'],
-                fn=training.conv_best_score_df
+                fn=training.make_best_score_df
             )
-
-            scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
-            scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
 
             # Save best scores
             if self.exec_cfg['save_step_yn']:
@@ -234,6 +263,7 @@ class PipelineDev(object):
                 print("Save training all scores on DB")
                 table_nm = 'M4S_I110410'
                 score_info['table_nm'] = table_nm
+                score_info['cust_grp_cd'] = self.cust_grp
                 self.io.delete_from_db(sql=self.sql_conf.del_score(**score_info))
                 self.io.insert_to_db(df=scores_db, tb_name=table_nm)
 
@@ -241,11 +271,11 @@ class PipelineDev(object):
                 print("Save training best scores on DB")
                 table_nm = 'M4S_O110610'
                 score_best_info['table_nm'] = table_nm
+                score_best_info['cust_grp_cd'] = self.cust_grp
                 self.io.delete_from_db(sql=self.sql_conf.del_score(**score_best_info))
                 self.io.insert_to_db(df=scores_best, tb_name='M4S_O110610')
 
             print("Training is finished\n")
-
         # ================================================================================================= #
         # 5. Forecast
         # ================================================================================================= #
@@ -257,22 +287,23 @@ class PipelineDev(object):
                 self.hrchy['cnt'] = hrchy_cnt
 
             if not self.step_cfg['cls_train']:
+                # Load best scores
                 scores_best = self.io.load_object(file_path=self.path['train_score_best'], data_type='binary')
 
-            # Initiate predict class
-            predict = PredictDev(
+            # instantiate predict class
+            predict = Predict(
                 division=self.division,
-                mst_info=mst_info, date=self.date,
+                mst_info=mst_info,
+                date=self.date,
                 data_vrsn_cd=self.data_vrsn_cd,
                 exg_list=exg_list,
                 hrchy=self.hrchy,
                 common=self.common,
                 data_cfg=self.data_cfg,
-                exec_cfg=self.exec_cfg,
-                path_root=self.path_root
+                exec_cfg=self.exec_cfg
             )
 
-            # Forecast the model
+            # Forecast
             prediction = predict.forecast(df=data_prep)
 
             # Save Step result
@@ -281,9 +312,9 @@ class PipelineDev(object):
 
             # Make database format
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
-            pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
-
             pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
+
+            pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
             pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
 
             if self.exec_cfg['save_step_yn']:
@@ -294,14 +325,16 @@ class PipelineDev(object):
                 # Save prediction of all algorithms
                 print("Save all of prediction results on DB")
                 table_pred_all = 'M4S_I110400'
-                pred_info['table_nm'] = table_pred_all
+                pred_info['table_nm'] = 'M4S_I110400'
+                pred_info['cust_grp_cd'] = self.cust_grp
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_all(**pred_info))
                 self.io.insert_to_db(df=pred_all, tb_name=table_pred_all)
 
-                # Save prediction of best algorithm
+                # Save prediction results of best algorithm
                 print("Save best of prediction results on DB")
                 table_pred_best = 'M4S_O110600'
                 pred_info['table_nm'] = table_pred_best
+                pred_info['cust_grp_cd'] = self.cust_grp
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**pred_info))
                 self.io.insert_to_db(df=pred_best, tb_name=table_pred_best)
 
@@ -315,6 +348,7 @@ class PipelineDev(object):
             # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
+            # instantiate middle-out class
             md_out = MiddleOut(
                 common=self.common,
                 division=self.division,
@@ -329,102 +363,39 @@ class PipelineDev(object):
                 'to': self.date['middle_out']['to']
             }
 
-            # Load dataset
+            # Load sales dataset
             sales_recent = None
             if self.division == 'SELL_IN':    # Sell-In Dataset
                 sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
             elif self.division == 'SELL_OUT':    # Sell-Out Dataset
                 sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
 
-            # Load prediction
             if not self.step_cfg['cls_pred']:
                 pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
 
             # Run middle-out
-            middle_out_db, middle_out = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
+            middle_out_db, _ = md_out.run_middle_out(sales=sales_recent, pred=pred_best)
 
             if self.exec_cfg['save_step_yn']:
-                self.io.save_object(
-                    data=middle_out, file_path=self.path['middle_out'], data_type='csv')
                 self.io.save_object(
                     data=middle_out_db, file_path=self.path['middle_out_db'], data_type='csv')
 
             if self.exec_cfg['save_db_yn']:
                 middle_info = md_out.add_del_information()
+                middle_info['cust_grp_cd'] = self.cust_grp
                 # Save middle-out prediction of best algorithm to prediction table
                 print("Save middle-out results on all result table")
                 self.io.delete_from_db(sql=self.sql_conf.del_pred_best(**middle_info))
                 self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O110600')
 
-                # Save middle-out prediction of best algorithm to recent prediction table
+                # Save prediction of best algorithm to recent prediction table
                 print("Save middle-out results on recent result table")
-                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(**{'division_cd': self.division}))
+                self.io.delete_from_db(sql=self.sql_conf.del_pred_recent(
+                    **{'division_cd': self.division, 'cust_grp_cd': self.cust_grp}
+                ))
                 self.io.insert_to_db(df=middle_out_db, tb_name='M4S_O111600')
 
-            print("Middle-out is finished\n")
+            # Close DB session
+            self.io.session.close()
 
-        # ================================================================================================= #
-        # 7. Report result
-        # ================================================================================================= #
-        # if self.step_cfg['cls_rpt']:
-        #     print("Step 7: Report result\n")
-        #     test_vrsn_cd = self.test_vrsn_cd
-        #
-        #     if self.level['middle_out']:
-        #         pred_best = self.io.load_object(file_path=self.path['middle_out'], data_type='csv')
-        #         test_vrsn_cd = test_vrsn_cd + '_MIDDLE_OUT'
-        #     else:
-        #         if not self.step_cfg['cls_pred']:
-        #             pred_best = self.io.load_object(file_path=self.path['pred_best'], data_type='binary')
-        #
-        #     # Load compare dataset
-        #     date_compare = {
-        #         'from': self.date['evaluation']['from'],
-        #         'to': self.date['evaluation']['to']
-        #     }
-        #     date_recent = {
-        #         'from': self.date['middle_out']['from'],
-        #         'to': self.date['middle_out']['to']
-        #     }
-        #
-        #     sales_comp = None
-        #     sales_recent = None
-        #     # Sell-In dataset
-        #     if self.division == 'SELL_IN':
-        #         sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_compare))
-        #         sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_in_week_grp(**date_recent))
-        #
-        #     # Sell-Out dataset
-        #     elif self.division == 'SELL_OUT':
-        #         if self.data_cfg['cycle'] == 'w':  # Weekly Prediction
-        #             sales_comp = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_compare))
-        #             sales_recent = self.io.get_df_from_db(sql=self.sql_conf.sql_sell_out_week_grp(**date_recent))
-        #
-        #     # Load item master
-        #     item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
-        #
-        #     verify = ResultSummary(
-        #         data_vrsn=self.data_vrsn_cd,
-        #         division=self.division,
-        #         common=self.common,
-        #         date=self.date,
-        #         test_vrsn=test_vrsn_cd,
-        #         hrchy=self.hrchy,
-        #         item_mst=item_mst,
-        #         lvl_cfg=self.level
-        #     )
-        #     result = verify.compare_result(sales_comp=sales_comp, sales_recent=sales_recent, pred=pred_best)
-        #     result, result_info = verify.make_db_format(data=result)
-        #
-        #     if self.exec_cfg['save_step_yn']:
-        #         self.io.save_object(data=result, file_path=self.path['verify'], data_type='csv')
-        #
-        #     if self.exec_cfg['save_db_yn']:
-        #         print("Save prediction results on DB")
-        #         self.io.delete_from_db(sql=self.sql_conf.del_compare_result(**result_info))
-        #         self.io.insert_to_db(df=result, tb_name='M4S_O110620')
-        #
-        #     # Close DB session
-        #     self.io.session.close()
-        #
-        #     print("Report results is finished\n")
+            print("Middle-out is finished\n")

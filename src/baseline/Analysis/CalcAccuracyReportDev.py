@@ -134,7 +134,7 @@ class CalcAccuracyReport(object):
     pred_csv_map = {
         'name': {
             'C1-P3': 'pred_best.csv',
-            'C1-P5': 'pred_middle_out_db.csv'
+            'C1-P5': 'pred_middle_out_db_ts.csv'
         },
         'encoding': {
             'C1-P3': 'cp949',

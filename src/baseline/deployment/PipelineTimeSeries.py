@@ -253,9 +253,6 @@ class Pipeline(object):
                 fn=training.make_best_score_df
             )
 
-            # scores_db.to_csv(self.path['score_all_csv'], index=False, encoding='cp949')
-            # scores_best.to_csv(self.path['score_best_csv'], index=False, encoding='cp949')
-
             # Save best scores
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=scores_best, file_path=self.path['train_score_best'], data_type='binary')
