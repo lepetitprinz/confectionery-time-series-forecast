@@ -6,7 +6,7 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.TrainTimeSeries import Train
 from baseline.model.PredictTimeSeries import Predict
-from baseline.middle_out.MiddleOut import MiddleOut
+from baseline.middle_out.MiddleOutDev import MiddleOut
 
 
 import gc
