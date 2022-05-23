@@ -13,6 +13,7 @@ class MiddleOut(object):
             self,
             division: str,
             data_vrsn: str,
+            yy_week: pd.DataFrame,
             common: dict,
             hrchy: dict,
             ratio_lvl,
@@ -28,6 +29,7 @@ class MiddleOut(object):
         """
         # Data Information instance attribute
         self.common = common
+        self.yy_week = yy_week
         self.division_cd = division
         self.data_vrsn_cd = data_vrsn
 
@@ -39,6 +41,9 @@ class MiddleOut(object):
         self.hrchy_cd_to_db_cd = config.HRCHY_CD_TO_DB_CD_MAP
         self.drop_col = ['project_cd', 'division_cd', 'data_vrsn_cd', 'fkey', 'create_user_cd', 'accuracy'] + \
                          common['db_hrchy_item_nm'].split(',')
+
+        # Weight instance attribute
+        self.n_weight = 5
 
         # Middle-out instance attribute
         self.err_val = 0              # Setting value for prediction error
@@ -59,14 +64,19 @@ class MiddleOut(object):
         data_split = self.prep_split(data=pred)     # preprocess the prediction result
 
         # Feature Engineering : Sales
-        importance = FeatureImportance()
+        importance = FeatureImportance(
+            item_mst=self.item_mst,
+            yy_week=self.yy_week,
+            n_feature=self.n_weight,
+        )
+
+        # Calculate weights
         weights = importance.run(data=sales)
+        data_ratio = self.prep_ratio(data=sales, weight=weights)    # preprocess the recent sales history
+        middle_out = self.middle_out(data_split=data_split, data_ratio=data_ratio)    # Middle out
+        middle_out_db = self.after_processing(data=middle_out)    # After process the middle out result
 
-        # data_ratio = self.prep_ratio(data=sales)    # preprocess the recent sales history
-        # middle_out = self.middle_out(data_split=data_split, data_ratio=data_ratio)    # Middle out
-        # middle_out_db = self.after_processing(data=middle_out)    # After process the middle out result
-
-        # return middle_out_db, middle_out
+        return middle_out_db, middle_out
 
     # Preprocess the prediction result
     def prep_split(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -76,7 +86,32 @@ class MiddleOut(object):
         return data
 
     # Preprocess the recent sales history
-    def prep_ratio(self, data: pd.DataFrame) -> pd.DataFrame:
+    def prep_ratio(self, data: pd.DataFrame, weight) -> pd.DataFrame:
+        item_temp = deepcopy(self.item_mst)
+        item_col = [col for col in item_temp.columns if 'nm' not in col]    # Item code list
+        item_temp = item_temp[item_col]    # Filter item code data
+        merged = pd.merge(data, item_temp, how='left', on=['sku_cd'])    # Merge item information
+
+        # aggregate by each weight
+        ratio = self.agg_by_weight(data=merged, weight=weight)
+        ratio = ratio.rename(columns=config.HRCHY_CD_TO_DB_CD_MAP)    # Rename columns
+
+        return ratio
+
+    def agg_by_weight(self, data, weight):
+        merged = pd.merge(data, weight, how='inner', on=['cust_grp_cd', 'brand_cd', 'week'])
+        merged['weight_sales'] = merged['sales'] * merged['weight']
+
+        agg_sales = merged.groupby(by=['cust_grp_cd', 'biz_cd', 'line_cd', 'brand_cd',
+                           'item_cd', 'sku_cd']).sum().reset_index()
+
+        agg_sales = agg_sales.drop(columns=['weight', 'sales'])
+        agg_sales = agg_sales.rename(columns={'weight_sales': 'sales'})
+
+        return agg_sales
+
+    # Preprocess the recent sales history
+    def prep_ratio_bak(self, data: pd.DataFrame) -> pd.DataFrame:
         item_temp = deepcopy(self.item_mst)
         item_col = [col for col in item_temp.columns if 'nm' not in col]    # Item code list
         item_temp = item_temp[item_col]    # Filter item code data

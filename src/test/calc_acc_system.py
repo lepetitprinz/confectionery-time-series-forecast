@@ -9,8 +9,9 @@ item_lvl_list = [5]
 division_list = ['SELL_IN']    # SELL_IN / SELL_OUT
 
 # W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) / W12(20220313)
-# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417)
-hist_to = '20211226'
+# W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417) / W18(20220424)
+# W19(20220501) / W20(20220508)
+hist_to = '20220508'
 
 acc_classify_standard = 0.4
 
@@ -20,7 +21,7 @@ save_path = os.path.join(root_path, 'analysis', 'accuracy', exec_kind)
 
 exec_cfg = {
     'save_file_yn': False,
-    'save_db_yn': True,
+    'save_db_yn': False,
     'cycle_yn': False,
 }
 

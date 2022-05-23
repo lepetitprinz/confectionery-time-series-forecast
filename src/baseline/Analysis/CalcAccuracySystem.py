@@ -116,7 +116,8 @@ class CalcAccuracySystem(object):
         # Filter business range (Fixed)
         pred_plan = pred_plan[pred_plan['item_attr01_cd'] == 'P1']
 
-        # Fill empty brand code
+        # Fill missing labels: mega_yn / brand
+        pred_plan['mega_yn'] = pred_plan['mega_yn'].fillna('N')
         pred_plan['item_attr03_cd'] = pred_plan['item_attr03_cd'].fillna('UNDEFINED')
 
         # Make the raw result

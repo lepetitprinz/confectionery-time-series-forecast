@@ -1211,6 +1211,7 @@ class SqlConfig(object):
                          SELECT ITEM_CD
                               , MEGA_YN
                            FROM M4S_I002040
+                          WHERE USE_YN = 'Y'
                         ) ITEM
                 ON COMPARE.ITEM_CD = ITEM.ITEM_CD
         """
@@ -1313,14 +1314,27 @@ class SqlConfig(object):
     @staticmethod
     def sql_sp1_sp1c(sp1_list: tuple):
         sql = f"""
-          SELECT RIGHT(PARENT_SALES_MGMT_CD, 3) as SP1C_CD
-               , LINK_SALES_MGMT_CD as CUST_GRP_CD
-            FROM M4S_I204030
-           WHERE USE_YN = 'Y'
-             AND SALES_MGMT_TYPE_CD = 'SP1'
-             AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
-             AND RIGHT(PARENT_SALES_MGMT_CD, 3) IN {sp1_list}
-           GROUP BY RIGHT(PARENT_SALES_MGMT_CD, 3)
-               , LINK_SALES_MGMT_CD
+            SELECT RIGHT(PARENT_SALES_MGMT_CD, 3) as SP1C_CD
+                 , LINK_SALES_MGMT_CD as CUST_GRP_CD
+              FROM M4S_I204030
+             WHERE USE_YN = 'Y'
+               AND SALES_MGMT_TYPE_CD = 'SP1'
+               AND SALES_MGMT_VRSN_ID = (SELECT SALES_MGMT_VRSN_ID FROM M4S_I204010 WHERE USE_YN = 'Y')
+               AND RIGHT(PARENT_SALES_MGMT_CD, 3) IN {sp1_list}
+             GROUP BY RIGHT(PARENT_SALES_MGMT_CD, 3)
+                    , LINK_SALES_MGMT_CD
             """
+        return sql
+
+    @staticmethod
+    def sql_cal_yy_week(**kwargs):
+        sql = f"""
+            SELECT YY
+                 , WEEK
+              FROM M4S_I002030
+             WHERE YYMMDD BETWEEN '{kwargs['from']}' AND '{kwargs['to']}'
+             GROUP BY YY
+                    , WEEK
+        """
+
         return sql

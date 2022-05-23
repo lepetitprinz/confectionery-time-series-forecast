@@ -348,20 +348,24 @@ class Pipeline(object):
             # Load item master
             item_mst = self.io.get_df_from_db(sql=self.sql_conf.sql_item_view())
 
+            date_recent = {
+                'from': self.date['middle_out']['from'],
+                'to': self.date['middle_out']['to']
+            }
+
+            # Load calendar dataset
+            yy_week = self.io.get_df_from_db(sql=self.sql_conf.sql_cal_yy_week(**date_recent))
+
             # instantiate middle-out class
             md_out = MiddleOut(
                 common=self.common,
                 division=self.division,
                 data_vrsn=self.data_vrsn_cd,
+                yy_week=yy_week,
                 hrchy=self.hrchy,
                 ratio_lvl=5,
                 item_mst=item_mst
             )
-            # Load compare dataset
-            date_recent = {
-                'from': self.date['middle_out']['from'],
-                'to': self.date['middle_out']['to']
-            }
 
             # Load sales dataset
             sales_recent = None
