@@ -3,7 +3,6 @@
 *.pyc
 *.csv
 *.zip
-*.png
 *.xlsx
 *.pickle
 *.exe
