@@ -17,8 +17,8 @@ class MiddleOut(object):
             item_mst: pd.DataFrame
     ):
         """
-        :param division: Division (SELL-IN/SELl-OUT)
-        :param data_vrsn: Data version code
+        :param division: Sales Division (SELL-IN/SELl-OUT)
+        :param data_vrsn: Data version code (YYYYMMDD-YYYYMMDD)
         :param common: Common information
         :param hrchy: Hierarchy information
         :param ratio_lvl: Middle-out level
@@ -135,7 +135,6 @@ class MiddleOut(object):
         data['data_vrsn_cd'] = self.data_vrsn_cd
         data['division_cd'] = self.division_cd
         data['fkey'] = 'C1-P5' + '-MIDDLE-OUT-' + data['cust_grp_cd'] + '-' + data['item_cd']
-        # data['fkey'] = self.hrchy['key'] + 'MIDDLE-OUT-' + data['cust_grp_cd'] + '-' + data['item_cd']
 
         return data
 

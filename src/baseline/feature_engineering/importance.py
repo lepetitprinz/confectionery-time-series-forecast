@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from copy import deepcopy
+from typing import Union, Dict, Tuple, List, Any
+
 from sklearn.decomposition import PCA
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -15,7 +17,9 @@ class FeatureImportance(object):
         'rf': RandomForestRegressor()
     }
 
-    def __init__(self, item_mst, yy_week: pd.DataFrame, n_feature: int):
+    def __init__(self, path, item_mst, yy_week: pd.DataFrame, n_feature: int):
+        self.path = path
+
         self.yy_week = yy_week
         self.item_mst = item_mst
 
@@ -34,7 +38,7 @@ class FeatureImportance(object):
         self.weight_threshold = 0.2
         self.weight_top_n = 3
 
-    def run(self, data) -> dict:
+    def run(self, data) -> Tuple[Union[pd.DataFrame, pd.Series], dict]:
         self.make_feature_idx_map()
 
         data = self.add_item_info(data=data)
@@ -58,18 +62,21 @@ class FeatureImportance(object):
 
         return merged
 
-    def sum_by_upper_level(self, data: pd.DataFrame):
+    @staticmethod
+    def sum_by_upper_level(data: pd.DataFrame):
         data_group = data.groupby(
             by=['division_cd', 'cust_grp_cd', 'biz_cd', 'line_cd', 'brand_cd', 'yy', 'week']
         ).sum().reset_index()
 
         return data_group
 
-    def generate_time_series_weight(self, data: pd.DataFrame):
+    def generate_time_series_weight(self, data: pd.DataFrame) -> pd.DataFrame:
         cust_brand_weight = pd.DataFrame()
         for cust_grp, cust_grp_df in data.groupby(by='cust_grp_cd'):
             for brand, brand_df in cust_grp_df.groupby(by='brand_cd'):
                 sales = self.fill_na_week(data=brand_df)
+
+                # Reshape sales dataset
                 sales = sales.to_numpy().reshape(-1, 1)
 
                 # Scale the dataset
@@ -88,19 +95,19 @@ class FeatureImportance(object):
                     cust_grp=cust_grp,
                     brand=brand
                 )
-
                 cust_brand_weight = pd.concat([cust_brand_weight, weight_df], axis=0)
 
         return cust_brand_weight
 
-    def make_weight_df(self, weight: dict, cust_grp, brand) -> pd.DataFrame:
+    @staticmethod
+    def make_weight_df(weight: dict, cust_grp, brand) -> pd.DataFrame:
         weight_df = pd.DataFrame(weight)
         weight_df['cust_grp_cd'] = cust_grp
         weight_df['brand_cd'] = brand
 
         return weight_df
 
-    def fill_na_week(self, data):
+    def fill_na_week(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data[['yy', 'week', 'sales']].copy()
         merged = pd.merge(self.yy_week, data, how='left', on=['yy', 'week'])
         merged = merged.fillna(0)
@@ -108,21 +115,9 @@ class FeatureImportance(object):
 
         return merged
 
-    def calc_weighted_sales(self, sales, weights):
-        filter_idx, apply_weight = [], []
-        for idx, weight in weights:
-            filter_idx.append(idx)
-            apply_weight.append(weight)
-
-        sales_filtered = sales[filter_idx]
-        weighted_sales_sum = sum([sale * weight for sale, weight in zip(sales_filtered, apply_weight)])
-
-        return weighted_sales_sum
-
-    def generate_featrue_importance(self, data) -> list:
-        weights = []
+    def generate_featrue_importance(self, data: np.array) -> List[float]:
         if self.method == 'pca':
-            weight = self.pca(data=data[:, 1:])
+            weights = self.pca(data=data)
         else:
             x = data[:, :-1]
             y = data[:, -1]
@@ -131,14 +126,14 @@ class FeatureImportance(object):
 
         return weights
 
-    def window_generator(self, data: np.array):
+    def window_generator(self, data: np.array) -> np.array:
         sliced = []
         for i in range(len(data) - self.n_feature):
             sliced.append(data[i: i + self.n_feature + 1])
 
         return np.array(sliced)
 
-    def scaling(self, data):
+    def scaling(self, data: np.array) -> np.array:
         # Instantiate scaler class
         scaler = None
 
@@ -152,7 +147,7 @@ class FeatureImportance(object):
 
         return transform_data
 
-    def regression_estimate(self, estimator, x, y):
+    def regression_estimate(self, estimator: str, x: np.array, y: np.array) -> List[int]:
         model = self.estimators[estimator]
         model.fit(x, y)
 
@@ -163,7 +158,7 @@ class FeatureImportance(object):
 
         return importance
 
-    def pca(self, data):
+    def pca(self, data: np.array) -> List[int]:
         # Instantiate pca method
         pca = PCA(n_components=self.n_components)
 
@@ -175,7 +170,7 @@ class FeatureImportance(object):
 
         return importance
 
-    def apply_weight(self, weights: list):
+    def apply_weight(self, weights: list) -> Dict[str, List[Any]]:
         weights = [(i, weight) for i, weight in enumerate(weights)]
 
         if self.weight_apply_method == 'all':

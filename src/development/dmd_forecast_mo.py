@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineDev import Pipeline
+from baseline.deployment.PipelineMo import Pipeline
 
 # Path configuration
 path_root = os.path.join('..', '..')
@@ -20,8 +20,8 @@ hist_to = '20220501'
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
 
 # Add dates
-hist_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
-md_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=13) + datetime.timedelta(days=1)
+hist_from = hist_to_datetime - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
+md_from = hist_to_datetime - datetime.timedelta(weeks=13) + datetime.timedelta(days=1)
 
 # Change data type (datetime -> string)
 hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')

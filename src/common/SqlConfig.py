@@ -883,6 +883,7 @@ class SqlConfig(object):
                                                     , SP1_CD
                                                  FROM M4S_I002061
                                                 WHERE ITEM_CLASS_CD IN ('10', '20', '60')
+                                                  AND DEL_YN = 'N'
                                               ) CUST
                                 ON SALES.CUST_CD = CUST.CUST_CD
                                AND SALES.CUST_MAP = CUST.CUST_MAP
@@ -892,10 +893,12 @@ class SqlConfig(object):
                             , CUST_GRP_CD
                             , CUST_MAP
                    ) RSLT
-              LEFT OUTER JOIN (
+              INNER JOIN (
                                SELECT CUST_CD
                                     , CUST_NM
                                  FROM M4S_I002060
+                                WHERE USE_YN = 'Y'
+                                  AND DEL_YN = 'N'
                               ) CUST_MST
                 ON RSLT.CUST_CD = CUST_MST.CUST_CD
              ORDER BY CUST_CD

@@ -1,20 +1,8 @@
-def check_angle(numbers):
-    numbers = sorted(numbers)
-    if numbers[0] ** 2 + numbers[1] ** 2 == numbers[2] ** 2:
-        flag = 'right'
-    else:
-        flag = 'wrong'
+from collections import deque
 
-    return flag
+n = int(input())
+sequence = [int(input()) for _ in range(n)]
 
-while True:
-    numbers = list(map(int, input().split()))
-
-    if numbers == [0, 0, 0]:
-        break
-    else:
-        flag = check_angle(numbers)
-        print(flag)
-
-
-
+queue = deque(list(range(1, n+1)))
+while queue:
+    pass

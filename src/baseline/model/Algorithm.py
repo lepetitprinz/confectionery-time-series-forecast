@@ -401,3 +401,7 @@ class Algorithm(object):
         yhat = regr.predict(data['x_test'])
 
         return yhat
+
+    @staticmethod
+    def weight_moving_avg(data, weight):
+        pass

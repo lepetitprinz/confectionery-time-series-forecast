@@ -199,4 +199,9 @@ class Init(object):
                 data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='ml_data_map_' + self.method,
                 extension='pickle'
             ),
+            'middle_out_sales': util.make_path_baseline(
+                path=self.path_root, module='result', exec_kind=self.exec_kind, division=self.division,
+                data_vrsn=self.data_vrsn_cd, hrchy_lvl=self.hrchy['key'], step='middle_out_sales_' + self.method,
+                extension='pickle'
+            ),
         }

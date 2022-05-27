@@ -2,7 +2,7 @@ import pandas as pd
 
 
 class FeatureEngineering(object):
-    def __init__(self, common, exg_list=None):
+    def __init__(self, common):
         self.common = common
         self.target_col = common['target_col']
         self.decimal_point = 2

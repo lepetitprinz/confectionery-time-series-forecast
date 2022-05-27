@@ -3,7 +3,7 @@ import sys
 import datetime
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from baseline.deployment.PipelineDev import PipelineDev
+from baseline.deployment.PipelineMo import PipelineDev
 
 # path_root = os.path.join('..', '..')
 path_root = os.path.join('/', 'opt', 'DF', 'fcst')
