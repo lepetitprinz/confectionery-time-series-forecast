@@ -284,17 +284,6 @@ def make_path_sim(path: str, module: str, division: str, data_vrsn: str, step: s
     return path
 
 
-# def make_lvl_key_val_map(df: pd.DataFrame, lvl: str, key: str, val: str):
-#     result = {}
-#     for i in df[lvl].unique():
-#         temp = df[df[lvl] == i]
-#         result[i] = {}
-#         for k, v in zip(temp[key], temp[val]):
-#             result[i][k] = v
-#
-#     return result
-
-
 def make_lvl_key_val_map(df: pd.DataFrame, lvl: str, key: str, val: str):
     result = defaultdict(lambda: defaultdict(dict))
     for lvl, key, val in zip(df[lvl], df[key], df[val]):
@@ -415,7 +404,19 @@ def func_accuracy(data, dividend: str, divisor: str) -> np.array:
         data[divisor] == 0,
         data[dividend] != data[divisor]
     ]
-    # values = [1, 0, data['pred'] / data['sales']]
+    values = [1, 2, data[dividend] / data[divisor]]
+
+    result = np.select(conditions, values)
+
+    return result
+
+
+def func_accuracy_bak(data, dividend: str, divisor: str) -> np.array:
+    conditions = [
+        data[dividend] == data[divisor],
+        data[divisor] == 0,
+        data[dividend] != data[divisor]
+    ]
     values = [1, 0, data[dividend] / data[divisor]]
 
     result = np.select(conditions, values)

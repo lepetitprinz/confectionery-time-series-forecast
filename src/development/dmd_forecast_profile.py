@@ -1,5 +1,5 @@
 import os
-from baseline.after_process.profile import Profile
+from baseline.post_process.profile import Profile
 
 
 hist_to = '20220501'

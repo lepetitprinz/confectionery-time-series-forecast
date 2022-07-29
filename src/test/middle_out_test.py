@@ -5,23 +5,25 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from baseline.deployment.PipelineStack import Pipeline
 
-# Root path
-path_root = os.path.join('..', '..')
-# path_root = os.path.join('/', 'opt', 'DF', 'fcst')
+# Path configuration
+# path_root = os.path.join('..', '..')
+path_root = os.path.join('/', 'opt', 'DF', 'fcst')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
 
 # W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) / W12(20220313)
 # W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417) / W18(20220424)
-hist_to = '20220508'
+# W19(20220501) / W20(20220508) / W21(20220515) / W22(20220522) / W23(20220529) / W24(20220605)
+# W25(20220612) / W26(20220619) / W27(20220626) / W28(20220703)
+hist_to = '20220703'
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
 
 # Add dates
-hist_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
-md_from = datetime.datetime.strptime(hist_to, '%Y%m%d') - datetime.timedelta(weeks=13) + datetime.timedelta(days=1)
+hist_from = hist_to_datetime - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
+md_from = hist_to_datetime - datetime.timedelta(weeks=17) + datetime.timedelta(days=1)
 
 # Change data type (datetime -> string)
 hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')
@@ -32,9 +34,9 @@ step_cfg = {
     'cls_load': False,
     'cls_cns': False,
     'cls_prep': False,
-    'cls_train': True,
+    'cls_train': False,
     'cls_pred': False,
-    'cls_mdout': False
+    'cls_mdout': True
 }
 
 # Configuration
@@ -64,13 +66,12 @@ exec_cfg = {
     'scaling_yn': False,                      # Data scaling
     'grid_search_yn': False,                  # Grid Search
     'voting_yn': True,                        # Add voting algorithm
-    'stack_grid_search_yn': False,         # Stacking Model
+    'stack_grid_search_yn': False,            # Stacking Model
 }
 
 # Data Configuration
 data_cfg = {
     'division': division,
-    'cycle': 'w',
     'date': {
         'history': {
             'from': hist_from,
@@ -80,7 +81,7 @@ data_cfg = {
             'from': md_from,
             'to': hist_to
         }
-    }
+    },
 }
 
 pipeline = Pipeline(

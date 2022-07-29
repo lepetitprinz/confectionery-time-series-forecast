@@ -1,8 +1,5 @@
-from collections import deque
+n, m, b = map(int, input().split())
 
-n = int(input())
-sequence = [int(input()) for _ in range(n)]
-
-queue = deque(list(range(1, n+1)))
-while queue:
-    pass
+land = []
+for _ in range(n):
+    land.append(list(map(int, input().split())))

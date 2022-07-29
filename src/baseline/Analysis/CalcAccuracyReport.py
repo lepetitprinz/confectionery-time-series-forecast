@@ -134,7 +134,7 @@ class CalcAccuracyReport(object):
     pred_csv_map = {
         'name': {
             'C1-P3': 'pred_best.csv',
-            'C1-P5': 'pred_middle_out_db.csv'
+            'C1-P5': 'pred_middle_out_db_ts.csv'
         },
         'encoding': {
             'C1-P3': 'cp949',
@@ -203,7 +203,7 @@ class CalcAccuracyReport(object):
         pred_plan = self.load_data_batch()
 
         # Update recent sales matrix
-        pred_plan = pd.merge(pred_plan, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
+        # pred_plan = pd.merge(pred_plan, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
 
         # Filter data (Option)
         pred_plan = self.filter_data(data=pred_plan)
@@ -215,10 +215,10 @@ class CalcAccuracyReport(object):
         sales_plan, pred = self.load_data_dev()
 
         # Preprocess the dataset
-        merged = self.preprocess_dev(sales_plan=sales_plan, pred=pred)
+        pred_plan = self.preprocess_dev(sales_plan=sales_plan, pred=pred)
 
         # Update recent sales matrix
-        pred_plan = pd.merge(merged, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
+        # pred_plan = pd.merge(merged, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
 
         # Filter data (Option)
         pred_plan = self.filter_data(data=pred_plan)
@@ -619,7 +619,7 @@ class CalcAccuracyReport(object):
             pred_plan = pred_plan.drop(columns='sales')
 
             # Merge sales dataset
-            pred_plan = self.merge_sales_pred_plan(sales=sales, pred_plan=pred_plan)
+            # pred_plan = self.merge_sales_pred_plan(sales=sales, pred_plan=pred_plan)
 
         return pred_plan
 

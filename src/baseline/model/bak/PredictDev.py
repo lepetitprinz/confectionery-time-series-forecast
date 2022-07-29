@@ -18,7 +18,7 @@ class PredictDev(object):
         'hw': Algorithm.hw,            # Holt-winters model
         'var': Algorithm.var,          # Vector Autoregressive model
         'varmax': Algorithm.varmax,    # VARMAX model
-        'sarima': Algorithm.sarimax    # SARIMAX model
+        'sarima': Algorithm.sarimax,    # SARIMAX model
     }
 
     def __init__(self, date: dict, division: str, data_vrsn_cd: str, common: dict, hrchy: dict,

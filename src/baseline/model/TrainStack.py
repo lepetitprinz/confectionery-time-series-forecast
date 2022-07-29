@@ -518,7 +518,7 @@ class Train(object):
 
     def train_test_validation(self, model: str, data) -> Tuple[float, Sequence, dict]:
         # Set test length
-        n_test = ast.literal_eval(self.model_info[model]['label_width'])
+        n_test = ast.literal_eval(self.model_info[model]['eval_width'])
 
         # Split train & test dataset
         data_train, data_test = self.split_train_test(data=data, model=model, n_test=n_test)
@@ -662,7 +662,7 @@ class Train(object):
         dataset = self.window_generator(df=data, model=model)
 
         # evaluation
-        n_test = ast.literal_eval(self.model_info[model]['label_width'])    # Change data type
+        n_test = ast.literal_eval(self.model_info[model]['eval_width'])    # Change data type
         predictions = []
         for train, test in dataset:
             yhat = self.estimators_ts[model](history=train, cfg=self.ts_param_grid[model], pred_step=n_test)
@@ -911,7 +911,7 @@ class Train(object):
     def window_generator(self, df, model: str) -> List[Tuple]:
         data_length = len(df)
         input_width = int(self.model_info[model]['input_width'])
-        label_width = int(self.model_info[model]['label_width'])
+        label_width = int(self.model_info[model]['eval_width'])
         data_input = None
         data_target = None
         dataset = []

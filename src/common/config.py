@@ -41,9 +41,9 @@ web_page = 1
 wea_service_key = 'UYRNns1wVRWz8MIyaMqUcL%2BHhIsbY0xjNyzRyvBNZRwh9zefraNj4lh9eBLgOw%2B2c8lBV%2Fh1SbzyNV96aO3DUw%3D%3D'
 wea_url = 'http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList'
 
-week_eval = 13
-week_hist = 156
-week_pred = 13
+# Middle-out option
+weights = [0.162, 0.175, 0.174, 0.211, 0.278]    # weights
+weight_top_n = 5
 
 # Model Hyper-parameters
 # 1.Time Series Forecast

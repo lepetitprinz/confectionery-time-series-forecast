@@ -1,13 +1,16 @@
+import common.config as config
+
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from typing import Union, Dict, Tuple, List, Any
+from typing import Dict, List, Any
 
 from sklearn.decomposition import PCA
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
 
 
 class FeatureImportance(object):
@@ -17,9 +20,7 @@ class FeatureImportance(object):
         'rf': RandomForestRegressor()
     }
 
-    def __init__(self, path, item_mst, yy_week: pd.DataFrame, n_feature: int):
-        self.path = path
-
+    def __init__(self, item_mst, yy_week: pd.DataFrame, n_feature: int):
         self.yy_week = yy_week
         self.item_mst = item_mst
 
@@ -27,33 +28,32 @@ class FeatureImportance(object):
         self.n_feature = n_feature    # 52 weeks
         self.idx_to_week = {}
 
-        # Feature Importance Method instance
-        self.method = 'dt'    # pca / lr(linear regression) / dt(decision tree) / rf(random forest)
+        # Feature importance method instance
+        self.method = 'manual'    # manual / pca / lr(linear regression) / dt(decision tree) / rf(random forest)
         self.n_components = self.n_feature
-        self.scaling_method = 'mnmx'    # std / mnmx
+        self.scaling_method = 'mnmx'    # std (standard deviation) / mnmx (min-max)
 
         # Weight applying method
+        self.weight_top_n = 5    # Top N numbers
         self.feature_week_map = {}
-        self.weight_apply_method = 'top_n'    # all / threshold / top_n
         self.weight_threshold = 0.2
-        self.weight_top_n = 3
+        self.weight_apply_method = 'top_n'    # all / threshold / top_n / manual
 
-    def run(self, data) -> Tuple[Union[pd.DataFrame, pd.Series], dict]:
+    def run(self, data: pd.DataFrame) -> pd.DataFrame:
         self.make_feature_idx_map()
 
         data = self.add_item_info(data=data)
         data = self.sum_by_upper_level(data=data)
-
         weights = self.generate_time_series_weight(data=data)
 
         return weights
 
-    def make_feature_idx_map(self):
+    def make_feature_idx_map(self) -> None:
         feature_week = self.yy_week['week'].iloc[-self.n_feature:].copy()
 
         self.feature_week_map = {i: week for i, week in enumerate(feature_week)}
 
-    def add_item_info(self, data):
+    def add_item_info(self, data: pd.DataFrame) -> pd.DataFrame:
         item_temp = deepcopy(self.item_mst)
         item_col = [col for col in item_temp.columns if 'nm' not in col]    # Item code list
         item_temp = item_temp[item_col]    # Filter item code data
@@ -116,7 +116,9 @@ class FeatureImportance(object):
         return merged
 
     def generate_featrue_importance(self, data: np.array) -> List[float]:
-        if self.method == 'pca':
+        if self.method == 'manual':
+            weights = config.weights
+        elif self.method == 'pca':
             weights = self.pca(data=data)
         else:
             x = data[:, :-1]

@@ -11,17 +11,18 @@ path_root = os.path.join('..', '..')
 
 # Sales Data configuration
 division = 'SELL_IN'    # SELL_IN / SELL_OUT
+
 # W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227) / W11(20220306) / W12(20220313)
 # W13(20220320) / W14(20220327) / W15(20220403) / W16(20220410) / W17(20220417) / W18(20220424)
-# W19(20220501)
-hist_to = '20220501'
+# W19(20220501) / W20(20220508) / W21(20220515) / W22(20220522)
+hist_to = '20220522'
 
 # Change data type (string -> datetime)
 hist_to_datetime = datetime.datetime.strptime(hist_to, '%Y%m%d')
 
 # Add dates
 hist_from = hist_to_datetime - datetime.timedelta(weeks=156) + datetime.timedelta(days=1)
-md_from = hist_to_datetime - datetime.timedelta(weeks=13) + datetime.timedelta(days=1)
+md_from = hist_to_datetime - datetime.timedelta(weeks=17) + datetime.timedelta(days=1)
 
 # Change data type (datetime -> string)
 hist_from = datetime.datetime.strftime(hist_from, '%Y%m%d')

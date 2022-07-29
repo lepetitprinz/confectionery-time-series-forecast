@@ -189,6 +189,55 @@ class Algorithm(object):
 
         return yhat
 
+    @staticmethod
+    def hw2(history, cfg: dict, pred_step=1):
+        """
+        :param history: time series history (Pandas Series)
+            index: weekly dates
+            data: Sales quantity
+        :param cfg:
+            trend: 'add', 'mul', 'additive', 'multiplicative'
+                - type of trend component
+            damped_trend: bool
+                - should the trend component be damped
+            seasonal: 'add', 'mul', 'additive', 'multiplicative', None
+                - Type of seasonal component
+            seasonal_periods: int
+                - The number of periods in a complete seasonal cycle
+            use_boxcox : True, False, ‘log’, float
+                - Should the Box-Cox transform be applied to the data first?
+            remove_bias : bool
+                - Remove bias from forecast values and fitted values by enforcing that the average residual is
+                  equal to zero
+            smoothing_level : float
+            smoothing_trend : float
+            smoothing_seasonal : float
+        :param pred_step: prediction steps
+        :return: forecast result
+        """
+        # define model
+        model = ExponentialSmoothing(history, trend=cfg['trend'],
+                                     damped_trend=bool(cfg['damped_trend']),
+                                     seasonal=cfg['seasonal'],
+                                     seasonal_periods=ast.literal_eval(cfg['seasonal_period']))
+
+        # fit model
+        model_fit = model.fit(
+            smoothing_level=float(cfg['alpha']),
+            smoothing_trend=float(cfg['beta']),
+            smoothing_seasonal=float(cfg['gamma']),
+            optimized=True,
+            remove_bias=bool(cfg['remove_bias'])
+        )
+
+        # Make multi-step forecast
+        yhat = model_fit.forecast(steps=pred_step)
+
+        # Convert nan values to zeros
+        yhat = yhat.fillna(0)
+
+        return yhat
+
     #############################
     # Multi-variate Model
     #############################

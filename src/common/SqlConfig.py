@@ -165,7 +165,8 @@ class SqlConfig(object):
     def sql_algorithm(**kwargs):
         sql = f"""
             SELECT LOWER(STAT_CD) AS MODEL
-                 , INPUT_POINT AS INPUT_WIDTH
+                 , POINT AS INPUT_WIDTH
+                 , EVAL_POINT AS EVAL_WIDTH
                  , PERIOD AS LABEL_WIDTH
                  , VARIATE
               FROM M4S_I103010
@@ -739,62 +740,6 @@ class SqlConfig(object):
                AND YYMMDD = '{kwargs['yymmdd']}'
 
         """
-        return sql
-
-    # --------------------------------------------------
-
-    @staticmethod
-    def sql_sell_in_unit(**kwargs):
-        sql = f""" 
-              SELECT DIVISION_CD
-                   , CUST_GRP_CD
-                   , BIZ_CD
-                   , LINE_CD
-                   , BRAND_CD
-                   , ITEM_CD
-                   , SALES.SKU_CD 
-                   , YYMMDD
-                   , SEQ
-                   , FROM_DC_CD
-                   , UNIT_PRICE
-                   , UNIT_CD
-                   , DISCOUNT
-                   , WEEK
-                   , QTY
-                   , CREATE_DATE
-                FROM (
-                      SELECT PROJECT_CD
-                           , DIVISION_CD
-                           , SOLD_CUST_GRP_CD AS CUST_GRP_CD
-                           , ITEM_CD AS SKU_CD
-                           , YYMMDD
-                           , SEQ
-                           , FROM_DC_CD
-                           , UNIT_PRICE
-                           , RTRIM(UNIT_CD) AS UNIT_CD
-                           , DISCOUNT
-                           , WEEK
-                           , RST_SALES_QTY AS QTY
-                           , CREATE_DATE
-                        FROM M4S_I002170_TEST
-                       WHERE YYMMDD BETWEEN {kwargs['from']} AND {kwargs['to']}
-                         AND RST_SALES_QTY > 0 
-                         AND SOLD_CUST_GRP_CD = '{kwargs['cust_grp_cd']}',
-                         AND ITEM_CD = '{kwargs['item_cd']}'
-                       --and SOLD_CUST_GRP_CD = '1033' -- exception
-                      ) SALES
-               INNER JOIN (
-                           SELECT ITEM_CD AS SKU_CD
-                                , ITEM_ATTR01_CD AS BIZ_CD
-                                , ITEM_ATTR02_CD AS LINE_CD
-                                , ITEM_ATTR03_CD AS BRAND_CD
-                                , ITEM_ATTR04_CD AS ITEM_CD
-                             FROM VIEW_I002040
-                            WHERE ITEM_TYPE_CD IN ('HAWA', 'FERT')
-                          ) ITEM
-                  ON SALES.SKU_CD = ITEM.SKU_CD
-                 """
-
         return sql
 
     @staticmethod

@@ -6,7 +6,7 @@ from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
 from baseline.model.TrainTimeSeries import Train
 from baseline.model.PredictTimeSeries import Predict
-from baseline.middle_out.MiddleOutDev import MiddleOut
+from baseline.middle_out.MiddleOut import MiddleOut
 
 
 import gc
@@ -33,7 +33,7 @@ class Pipeline(object):
         :param path_root: root path for baseline forecast
         """
         self.item_lvl = 3    # Brand Level (Fixed)
-        self.method = 'ts'
+        self.method = 'stack'
 
         # SP1-C
         self.sp1c_list = ('101', '102')

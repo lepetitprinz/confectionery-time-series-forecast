@@ -111,7 +111,7 @@ class CalcAccuracySystem(object):
         pred_plan = self.load_data_batch()
 
         # Update recent sales matrix
-        pred_plan = pd.merge(pred_plan, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
+        # pred_plan = pd.merge(pred_plan, self.sales_matrix, how='inner', on=['cust_grp_cd', 'item_cd'])
 
         # Filter business range (Fixed)
         pred_plan = pred_plan[pred_plan['item_attr01_cd'] == 'P1']
