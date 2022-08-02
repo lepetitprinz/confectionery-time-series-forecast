@@ -43,7 +43,7 @@ class MiddleOut(object):
 
         # Weight instance attribute
         self.n_weight = 5
-        self.apply_method = 'weight'    # all / weight
+        self.apply_method = 'weight'  # all / weight
 
         # Middle-out instance attribute
         self.err_val = 0  # Setting value for prediction error

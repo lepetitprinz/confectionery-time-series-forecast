@@ -88,9 +88,6 @@ class DataPrep(object):
         else:
             exg_list = []
 
-        # Initiate feature engineering class
-        fe = FeatureEngineering(common=self.common, exg_list=exg_list)
-
         # Change data type
         for col in self.STR_TYPE_COLS:
             data[col] = data[col].astype(str)
@@ -114,6 +111,8 @@ class DataPrep(object):
 
         # Feature engineering
         if self.exec_cfg['feature_selection_yn']:
+            # Initiate feature engineering class
+            fe = FeatureEngineering(common=self.common, exg_list=exg_list)
             data, exg_list = fe.feature_selection(data=data)
 
         # Group by data level hierarchy

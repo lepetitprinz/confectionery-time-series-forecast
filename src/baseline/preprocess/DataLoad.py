@@ -22,9 +22,9 @@ class DataLoad(object):
         """
         self.io = io
         self.sql_conf = sql_conf
-        self.date: dict = date
-        self.division: str = division
-        self.data_vrsn_cd: str = data_vrsn_cd
+        self.date = date
+        self.division = division
+        self.data_vrsn_cd = data_vrsn_cd
 
     # Check that data version exist
     def check_data_version(self) -> None:

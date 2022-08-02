@@ -12,7 +12,7 @@ path_root = os.path.join('..', '..')
 # Sales Data configuration
 # W07(20220206) / W08(20220213) / W09(20220220) / W10(20220227)
 # W11(20220306) / W12(20220313) / W13(20220320) / w14(20220327)
-hist_to = '20220320'
+hist_to = '20220731'
 division = 'SELL_OUT'    # SELL_IN / SELL_OUT
 
 # Change data type (string -> datetime)
@@ -28,12 +28,12 @@ md_from = datetime.datetime.strftime(md_from, '%Y%m%d')
 
 # Execute Configuration
 step_cfg = {
-    'cls_load': True,
+    'cls_load': False,
     'cls_cns': False,
     'cls_prep': False,
     'cls_train': False,
     'cls_pred': False,
-    'cls_mdout': False
+    'cls_mdout': True
 }
 
 # Configuration
@@ -45,7 +45,7 @@ exec_cfg = {
     'save_db_yn': False,                      # Save each step result to Database
 
     # Data preprocessing configuration
-    'add_exog_dist_sales': True,
+    'add_exog_dist_sales': False,
     'decompose_yn': False,                    # Decomposition
     'feature_selection_yn': False,            # Feature Selection
     'filter_threshold_cnt_yn': False,         # Filter data level under threshold count

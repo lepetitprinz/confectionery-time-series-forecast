@@ -60,10 +60,9 @@ class Train(object):
         self.data_vrsn_cd = data_vrsn_cd    # Data version code
         self.target_col = common['target_col']    # Target column
 
-        # self.exo_col_list = exg_list + ['discount']    # Exogenous features
-        self.exo_col_list = exg_list + common['exg_fixed'].split(',')
         self.cust_grp = mst_info['cust_grp']    # Customer group master
         self.item_mst = mst_info['item_mst']    # Item master
+        self.exo_col_list = exg_list + common['exg_fixed'].split(',')
 
         # Data Level instance attribute
         self.cnt = 0    # Data level count
@@ -72,16 +71,15 @@ class Train(object):
         # Algorithm instance attribute
         self.model_info = mst_info['model_mst']    # Algorithm master
         self.param_grid = mst_info['param_grid']    # Hyper-parameter master
-        self.model_candidates = list(self.model_info.keys())    # Model candidates list
         self.param_grid_list = config.PARAM_GRIDS_FCST    # Hyper-parameter
+        self.model_candidates = list(self.model_info.keys())    # Model candidates list
 
         # Training instance attribute
-        self.decimal_point = 3
         self.fixed_n_test = 4
+        self.decimal_point = 3
         self.err_val = float(10 ** 5 - 1)    # set error values or clip outlier values
-        self.validation_method = 'train_test'    # Train-test / Walk-forward
-        self.grid_search_yn: bool = exec_cfg['grid_search_yn']    # Execute grid search or not
         self.best_params_cnt = defaultdict(lambda: defaultdict(int))
+        self.validation_method = 'train_test'    # Train-test / Walk-forward
 
         # After processing instance attribute
         self.fill_na_chk_list = ['cust_grp_nm', 'item_attr03_nm', 'item_attr04_nm', 'item_nm']
@@ -97,7 +95,7 @@ class Train(object):
 
         return scores
 
-    def train_model(self, df) -> List[List[np.array]]:
+    def train_model(self, df: pd.DataFrame) -> List[List[np.array]]:
         # Print training progress
         self.cnt += 1
         if (self.cnt % 1000 == 0) or (self.cnt == self.hrchy['cnt']):
@@ -175,7 +173,7 @@ class Train(object):
 
         diff = None
         best_params = {}
-        if self.grid_search_yn:
+        if self.exec_cfg['grid_search_yn']:
             # Grid Search
             err, diff, best_params = self.grid_search(
                 model=model,

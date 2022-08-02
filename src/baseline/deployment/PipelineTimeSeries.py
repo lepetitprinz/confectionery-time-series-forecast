@@ -2,8 +2,8 @@ from dao.DataIO import DataIO
 from common.SqlConfig import SqlConfig
 from baseline.preprocess.Init import Init
 from baseline.preprocess.DataLoad import DataLoad
-from baseline.preprocess.DataPrep import DataPrep
 from baseline.preprocess.ConsistencyCheck import ConsistencyCheck
+from baseline.preprocess.DataPrep import DataPrep
 from baseline.model.TrainTimeSeries import Train
 from baseline.model.PredictTimeSeries import Predict
 from baseline.middle_out.MiddleOut import MiddleOut
@@ -313,8 +313,8 @@ class Pipeline(object):
             pred_all, pred_info = predict.make_db_format_pred_all(df=prediction, hrchy_key=self.hrchy['key'])
             pred_best = predict.make_db_format_pred_best(pred=pred_all, score=scores_best)
 
-            pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
-            pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
+            # pred_all.to_csv(self.path['pred_all_csv'], index=False, encoding='CP949')
+            # pred_best.to_csv(self.path['pred_best_csv'], index=False, encoding='CP949')
 
             if self.exec_cfg['save_step_yn']:
                 self.io.save_object(data=pred_best, file_path=self.path['pred_best'], data_type='binary')
